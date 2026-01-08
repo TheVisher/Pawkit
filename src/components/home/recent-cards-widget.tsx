@@ -139,8 +139,8 @@ export function RecentCardsWidget() {
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 py-0">
-      <CardContent className="p-3">
+    <Card className="border-border-subtle bg-bg-surface-2 py-0 h-full">
+      <CardContent className="p-3 h-full flex flex-col">
         <div className="flex items-center gap-2 mb-2 shrink-0">
           <div className="p-2 rounded-lg bg-purple-500/20">
             <Layers className="h-4 w-4 text-purple-500" />
@@ -152,18 +152,18 @@ export function RecentCardsWidget() {
         </div>
 
         {recentCards.length > 0 ? (
-          <>
-            {/* Two-row horizontal scroll grid layout */}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {/* Horizontal scroll grid layout */}
             <div
-              className="overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-bg-surface-3 scrollbar-track-transparent"
+              className="h-full overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-bg-surface-3 scrollbar-track-transparent"
               style={{ scrollbarWidth: 'thin' }}
             >
               <div
-                className="grid gap-3"
+                className="h-full grid gap-2"
                 style={{
                   gridTemplateRows: 'repeat(2, 1fr)',
                   gridAutoFlow: 'column',
-                  gridAutoColumns: '160px',
+                  gridAutoColumns: '140px',
                 }}
               >
                 {recentCards.map((card) => (
@@ -175,7 +175,7 @@ export function RecentCardsWidget() {
                 ))}
               </div>
             </div>
-          </>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-6 text-center">
             <Layers className="h-8 w-8 text-text-muted/50 mb-2" />

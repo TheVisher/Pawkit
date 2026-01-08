@@ -253,7 +253,7 @@ export function BillsWidget() {
             <p className="text-sm text-text-muted">Loading...</p>
           </div>
         ) : subscriptions.length > 0 ? (
-          <div className="flex-1 space-y-2 overflow-y-auto">
+          <div className="flex-1 space-y-2 overflow-y-auto min-h-0">
             <BillSection
               title="Due This Week"
               bills={grouped.dueThisWeek}

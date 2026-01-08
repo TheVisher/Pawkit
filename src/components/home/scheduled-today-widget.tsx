@@ -104,7 +104,7 @@ export function ScheduledTodayWidget() {
         </div>
 
         {scheduledToday.length > 0 ? (
-          <div className="flex-1 space-y-2">
+          <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
             {scheduledToday.map((card) => (
               <ScheduledCardItem
                 key={card.id}
