@@ -13,6 +13,13 @@
 import { db } from '@/lib/db/schema';
 import type { LocalCard, LocalCollection } from '@/lib/db/types';
 import { addToQueue } from '@/lib/services/sync-queue';
+import type { UpdateSpec } from 'dexie';
+
+// Legacy card type for migration - includes the old collections field
+// that no longer exists on LocalCard but may exist in old data
+type LegacyCardWithCollections = LocalCard & {
+  collections?: string[];
+};
 
 // =============================================================================
 // MIGRATION STATUS
@@ -241,10 +248,11 @@ export async function runTagArchitectureMigration(
       const slugToId = await buildSlugToIdMap(workspace.id);
 
       // Get all cards in this workspace
+      // Cast to legacy type to access old collections field during migration
       const cards = await db.cards
         .where('workspaceId')
         .equals(workspace.id)
-        .toArray();
+        .toArray() as LegacyCardWithCollections[];
 
       for (const card of cards) {
         result.cardsProcessed++;
@@ -372,7 +380,7 @@ export async function addCardToPawkit(
   const oldTags = card.tags || [];
   const result = checkSupertagAddition(oldTags, newTags, card.content);
 
-  const updates: Record<string, unknown> = {
+  const updates: UpdateSpec<LocalCard> = {
     tags: newTags,
     _synced: false,
     _lastModified: new Date(),

@@ -127,8 +127,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
         description: bookmarkDescription || undefined,
         domain,
         status: 'READY',
-        tags: [],
-        collections: bookmarkCollection ? [bookmarkCollection] : [],
+        tags: bookmarkCollection ? [bookmarkCollection] : [],
         pinned: false,
         isFileCard: false,
       });
@@ -153,8 +152,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
         title: noteTitle,
         content: noteContent || undefined,
         status: 'READY',
-        tags: [],
-        collections: noteCollection ? [noteCollection] : [],
+        tags: noteCollection ? [noteCollection] : [],
         pinned: false,
         isFileCard: false,
       });

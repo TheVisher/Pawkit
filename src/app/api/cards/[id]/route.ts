@@ -170,7 +170,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     if ('metadata' in updates) updateData.metadata = updates.metadata ?? undefined;
     if (updates.status !== undefined) updateData.status = updates.status;
     if (updates.tags !== undefined) updateData.tags = updates.tags;
-    if (updates.collections !== undefined) updateData.collections = updates.collections;
+    // collections field removed - Pawkit membership now uses tags
     if (updates.pinned !== undefined) updateData.pinned = updates.pinned;
 
     // Scheduling

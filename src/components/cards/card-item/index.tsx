@@ -32,6 +32,8 @@ interface CardItemProps {
   onTagClick?: (tag: string) => void;
   /** Called when a system tag in the footer is clicked (for filtering) */
   onSystemTagClick?: (tag: SystemTag) => void;
+  /** Prioritize this card's image for LCP (use for first ~6 visible cards) */
+  priority?: boolean;
 }
 
 /**
@@ -46,6 +48,7 @@ export const CardItem = memo(function CardItem({
   uniformHeight = false,
   onTagClick,
   onSystemTagClick,
+  priority = false,
 }: CardItemProps) {
   // Use specialized QuickNoteCard for quick-note types in grid mode
   if (variant === 'grid' && card.type === 'quick-note') {
@@ -62,6 +65,7 @@ export const CardItem = memo(function CardItem({
         uniformHeight={uniformHeight}
         onTagClick={onTagClick}
         onSystemTagClick={onSystemTagClick}
+        priority={priority}
       />
     );
   }
@@ -100,7 +104,8 @@ export const CardItem = memo(function CardItem({
     prevSettings.showMetadataFooter === nextSettings.showMetadataFooter &&
     prevSettings.showTitles === nextSettings.showTitles &&
     prevSettings.showTags === nextSettings.showTags &&
-    prevProps.uniformHeight === nextProps.uniformHeight
+    prevProps.uniformHeight === nextProps.uniformHeight &&
+    prevProps.priority === nextProps.priority
   );
 });
 

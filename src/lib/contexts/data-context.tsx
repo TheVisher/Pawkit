@@ -13,7 +13,7 @@
  * @see Phase 2 of performance optimization plan
  */
 
-import React, { createContext, useContext, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { LocalCard, LocalCollection, LocalCalendarEvent } from '@/lib/db/types';
@@ -28,6 +28,8 @@ interface DataContextValue {
   collections: LocalCollection[];
   calendarEvents: LocalCalendarEvent[];
   isLoading: boolean;
+  /** True when all cards have been loaded (not just initial batch) */
+  isFullyLoaded: boolean;
   workspaceId: string | undefined;
 }
 
@@ -45,50 +47,93 @@ export function DataProvider({ children }: DataProviderProps) {
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const workspaceId = currentWorkspace?.id;
 
-  // Single query for all cards - shared by all consumers
-  const cards = useLiveQuery(
+  // ==========================================================================
+  // TWO-PHASE CARD LOADING (for faster LCP)
+  // Phase 1: Load 50 most recent cards quickly for initial render
+  // Phase 2: Load ALL cards in background after UI paints
+  // ==========================================================================
+
+  // Phase 1: Initial fast query - get 50 most recent by updatedAt
+  // Uses orderBy + limit for speed, filters deleted client-side (rare in recent 50)
+  const initialCards = useLiveQuery(
     async () => {
-      if (!workspaceId) return [];
+      if (!workspaceId) return undefined;
+      const recent = await db.cards
+        .orderBy('updatedAt')
+        .reverse()
+        .limit(60) // Fetch 60 to account for potential deleted cards
+        .toArray();
+      return recent
+        .filter((c) => c.workspaceId === workspaceId && !c._deleted)
+        .slice(0, 50);
+    },
+    [workspaceId]
+  );
+
+  // Phase 2: Full query - runs after a short delay to let UI paint
+  const [shouldLoadAll, setShouldLoadAll] = useState(false);
+
+  useEffect(() => {
+    if (initialCards !== undefined && !shouldLoadAll) {
+      // Delay full load to let initial render complete and LCP happen
+      const timer = setTimeout(() => setShouldLoadAll(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [initialCards, shouldLoadAll]);
+
+  // Reset shouldLoadAll when workspace changes
+  useEffect(() => {
+    setShouldLoadAll(false);
+  }, [workspaceId]);
+
+  const allCards = useLiveQuery(
+    async () => {
+      if (!workspaceId || !shouldLoadAll) return undefined;
       return db.cards
         .where('workspaceId')
         .equals(workspaceId)
         .filter((c) => !c._deleted)
         .toArray();
     },
-    [workspaceId],
-    [] as LocalCard[]
+    [workspaceId, shouldLoadAll]
   );
+
+  // Combine: use allCards when available, otherwise initialCards
+  const cards = allCards ?? initialCards;
 
   // Single query for all collections - shared by all consumers
   const collections = useLiveQuery(
     async () => {
-      if (!workspaceId) return [];
+      if (!workspaceId) return undefined;
       return db.collections
         .where('workspaceId')
         .equals(workspaceId)
         .filter((c) => !c._deleted)
         .toArray();
     },
-    [workspaceId],
-    [] as LocalCollection[]
+    [workspaceId]
   );
 
   // Single query for all calendar events - shared by all consumers
   const calendarEvents = useLiveQuery(
     async () => {
-      if (!workspaceId) return [];
+      if (!workspaceId) return undefined;
       return db.calendarEvents
         .where('workspaceId')
         .equals(workspaceId)
         .filter((e) => !e._deleted)
         .toArray();
     },
-    [workspaceId],
-    [] as LocalCalendarEvent[]
+    [workspaceId]
   );
 
-  // Determine loading state (useLiveQuery returns undefined while loading)
-  const isLoading = cards === undefined || collections === undefined || calendarEvents === undefined;
+  // Determine loading state - useLiveQuery returns undefined while loading
+  // Also consider loading if no workspace is selected yet
+  // Use initialCards for isLoading (fast initial load), not allCards
+  const isLoading = !workspaceId || initialCards === undefined || collections === undefined || calendarEvents === undefined;
+
+  // isFullyLoaded indicates all cards are loaded, not just the initial batch
+  const isFullyLoaded = allCards !== undefined;
 
   const value = useMemo(
     () => ({
@@ -96,9 +141,10 @@ export function DataProvider({ children }: DataProviderProps) {
       collections: collections ?? [],
       calendarEvents: calendarEvents ?? [],
       isLoading,
+      isFullyLoaded,
       workspaceId,
     }),
-    [cards, collections, calendarEvents, isLoading, workspaceId]
+    [cards, collections, calendarEvents, isLoading, isFullyLoaded, workspaceId]
   );
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

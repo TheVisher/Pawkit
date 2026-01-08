@@ -7,6 +7,7 @@ import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { FolderPlus, Folder } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useDataContext } from '@/lib/contexts/data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { usePawkitOverviewSettings } from '@/lib/stores/view-store';
@@ -22,6 +23,7 @@ export default function PawkitsPage() {
   const workspace = useCurrentWorkspace();
   const collections = useCollections(workspace?.id);
   const cards = useCards(workspace?.id);
+  const { isFullyLoaded } = useDataContext();
   const isLoading = useDataStore((state) => state.isLoading);
   const updateCollection = useDataStore((state) => state.updateCollection);
   const openCreatePawkitModal = useModalStore((state) => state.openCreatePawkitModal);
@@ -170,9 +172,10 @@ export default function PawkitsPage() {
     );
   }
 
+  // Show loading indicator when card counts may not be final
   const subtitle = rootCollections.length === 0
     ? 'Organize cards into visual groups'
-    : `${rootCollections.length} pawkit${rootCollections.length === 1 ? '' : 's'}`;
+    : `${rootCollections.length} pawkit${rootCollections.length === 1 ? '' : 's'}${!isFullyLoaded ? ' (updating counts...)' : ''}`;
 
   return (
     <>

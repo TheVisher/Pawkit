@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useCallback, useEffect, useRef, useDeferredValue } from 'react';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
+import { useCollections } from '@/lib/hooks/use-live-data';
+import { useDataContext } from '@/lib/contexts/data-context';
 import {
   useLayout,
   useSorting,
@@ -87,13 +87,11 @@ interface CardGroup {
 
 export default function LibraryPage() {
   const workspace = useCurrentWorkspace();
-  const rawCards = useCards(workspace?.id);
   const collections = useCollections(workspace?.id);
-  const isLoading = useDataStore((state) => state.isLoading);
-
-  // Defer card processing to avoid blocking initial paint
-  // This allows React to render the page shell first, then process cards
-  const cards = useDeferredValue(rawCards);
+  // Get cards AND isLoading from the same source to ensure consistency
+  // This prevents the "No bookmarks" flash caused by useDeferredValue lag
+  // isFullyLoaded indicates whether all cards are loaded (not just initial batch)
+  const { cards, isLoading, isFullyLoaded } = useDataContext();
 
   // Build set of Pawkit slugs for "No Pawkits" filter
   // A card is "in a Pawkit" if any of its tags match a Pawkit slug
@@ -240,15 +238,53 @@ export default function LibraryPage() {
     });
   }, [activeCards, sortBy, sortOrder, cardOrder]);
 
+  // Progressive rendering - render first batch immediately, then auto-load rest in chunks
+  // This unblocks the main thread for faster LCP while progressively loading more
+  // 12 cards fills viewport (3 rows × 4 cols on desktop) for fast initial paint
+  const INITIAL_DISPLAY_LIMIT = 12;
+  const LOAD_MORE_CHUNK = 20;
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY_LIMIT);
+
+  // Reset display limit when filters/sort change
+  useEffect(() => {
+    setDisplayLimit(INITIAL_DISPLAY_LIMIT);
+  }, [activeCards.length, sortBy, sortOrder]);
+
+  // Infinite scroll - load more when sentinel enters viewport
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    if (displayLimit >= sortedCards.length) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setDisplayLimit(prev => Math.min(prev + LOAD_MORE_CHUNK, sortedCards.length));
+        }
+      },
+      { rootMargin: '400px' } // Trigger 400px before sentinel is visible
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [displayLimit, sortedCards.length]);
+
+  const paginatedCards = useMemo(() => {
+    return sortedCards.slice(0, displayLimit);
+  }, [sortedCards, displayLimit]);
+
+  const hasMoreCards = displayLimit < sortedCards.length;
+
   // Group cards based on groupBy setting
   const groupedCards = useMemo((): CardGroup[] => {
     if (groupBy === 'none') {
-      return [{ key: 'all', label: '', cards: sortedCards }];
+      return [{ key: 'all', label: '', cards: paginatedCards }];
     }
 
     const groups = new Map<string, LocalCard[]>();
 
-    for (const card of sortedCards) {
+    for (const card of paginatedCards) {
       let key: string;
 
       switch (groupBy) {
@@ -376,9 +412,11 @@ export default function LibraryPage() {
     );
   }
 
+  // Show loading indicator in subtitle when filters are active but not all cards loaded
+  const showLoadingMore = hasActiveFilters && !isFullyLoaded;
   const subtitle = activeCards.length === 0
-    ? (hasActiveFilters ? 'No matching items' : 'All your saved content')
-    : `${activeCards.length} item${activeCards.length === 1 ? '' : 's'}`;
+    ? (hasActiveFilters ? (showLoadingMore ? 'Loading...' : 'No matching items') : 'All your saved content')
+    : `${activeCards.length} item${activeCards.length === 1 ? '' : 's'}${showLoadingMore ? ' (loading more...)' : ''}`;
 
   return (
     <ContentAreaContextMenu>
@@ -422,59 +460,69 @@ export default function LibraryPage() {
               />
             )
           ) : groupBy === 'none' ? (
-            <CardGrid
-              cards={sortedCards}
-              layout={layout}
-              onReorder={handleReorder}
-              cardSize={cardSize}
-              cardSpacing={cardSpacing}
-              displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
-              onTagClick={handleTagClick}
-              onSystemTagClick={handleSystemTagClick}
-            />
+            <>
+              <CardGrid
+                cards={paginatedCards}
+                layout={layout}
+                onReorder={handleReorder}
+                cardSize={cardSize}
+                cardSpacing={cardSpacing}
+                displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                onTagClick={handleTagClick}
+                onSystemTagClick={handleSystemTagClick}
+              />
+              {/* Infinite scroll spacer */}
+              {hasMoreCards && <div ref={loadMoreRef} className="h-20" />}
+            </>
           ) : layout === 'list' ? (
             // List view with grouping - pass groups to single CardGrid for inline separators
-            <CardGrid
-              cards={sortedCards}
-              layout={layout}
-              onReorder={handleReorder}
-              cardSize={cardSize}
-              cardSpacing={cardSpacing}
-              displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
-              groups={groupedCards}
-              groupIcon={GroupIcon || undefined}
-              onTagClick={handleTagClick}
-              onSystemTagClick={handleSystemTagClick}
-            />
+            <>
+              <CardGrid
+                cards={paginatedCards}
+                layout={layout}
+                onReorder={handleReorder}
+                cardSize={cardSize}
+                cardSpacing={cardSpacing}
+                displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                groups={groupedCards}
+                groupIcon={GroupIcon || undefined}
+                onTagClick={handleTagClick}
+                onSystemTagClick={handleSystemTagClick}
+              />
+              {hasMoreCards && <div className="h-20" />}
+            </>
           ) : (
             // Masonry/Grid view with grouping - separate sections with headers
-            <div className="space-y-8">
-              {groupedCards.map((group) => (
-                <div key={group.key}>
-                  {/* Group header */}
-                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-text-muted)]/15">
-                    {GroupIcon && <GroupIcon className="h-4 w-4 text-[var(--color-text-muted)]" />}
-                    <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
-                      {group.label}
-                    </h2>
-                    <span className="text-xs text-[var(--color-text-muted)]">
-                      {group.cards.length} item{group.cards.length === 1 ? '' : 's'}
-                    </span>
+            <>
+              <div className="space-y-8">
+                {groupedCards.map((group) => (
+                  <div key={group.key}>
+                    {/* Group header */}
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-text-muted)]/15">
+                      {GroupIcon && <GroupIcon className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                      <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                        {group.label}
+                      </h2>
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        {group.cards.length} item{group.cards.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    {/* Group cards */}
+                    <CardGrid
+                      cards={group.cards}
+                      layout={layout}
+                      onReorder={handleReorder}
+                      cardSize={cardSize}
+                      cardSpacing={cardSpacing}
+                      displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                      onTagClick={handleTagClick}
+                      onSystemTagClick={handleSystemTagClick}
+                    />
                   </div>
-                  {/* Group cards */}
-                  <CardGrid
-                    cards={group.cards}
-                    layout={layout}
-                    onReorder={handleReorder}
-                    cardSize={cardSize}
-                    cardSpacing={cardSpacing}
-                    displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
-                    onTagClick={handleTagClick}
-                    onSystemTagClick={handleSystemTagClick}
-                  />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {hasMoreCards && <div className="h-20" />}
+            </>
           )}
         </div>
       </div>

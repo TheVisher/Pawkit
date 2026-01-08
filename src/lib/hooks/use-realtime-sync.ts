@@ -309,7 +309,7 @@ function serverToLocal(serverCard: CardPayload): LocalCard {
     metadata,
     status: status || 'READY',
     tags: tags || [],
-    collections: collections || [],
+    // collections field removed - Pawkit membership now uses tags
     pinned: pinned || false,
     scheduledDate: scheduledDate ? new Date(scheduledDate as string) : undefined,
     scheduledStartTime,

@@ -146,7 +146,7 @@ function serverCardToLocal(server: ServerCard): LocalCard {
     favicon: server.favicon,
     status: server.status,
     tags: server.tags,
-    collections: server.collections,
+    // collections field removed - Pawkit membership now uses tags
     pinned: server.pinned,
     scheduledDate: server.scheduledDate ? new Date(server.scheduledDate) : undefined,
     isFileCard: false, // Default, not in server type

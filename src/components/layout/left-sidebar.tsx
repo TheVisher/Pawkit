@@ -28,6 +28,7 @@ import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
 import { useSyncStore } from "@/lib/stores/sync-store";
 import { getClient } from "@/lib/supabase/client";
 import { fullSync } from "@/lib/services";
+import { retryFailedItems } from "@/lib/services/sync-queue";
 import { useDataStore } from "@/lib/stores/data-store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -58,6 +59,9 @@ const SyncMenuItem = memo(function SyncMenuItem({ workspaceId }: { workspaceId?:
   const isSyncing = useSyncStore((s) => s.status === 'syncing');
 
   const handleSync = async () => {
+    // First retry any failed local pushes
+    await retryFailedItems();
+    // Then do a full sync (push pending + pull from server)
     await fullSync();
     if (workspaceId) {
       await useDataStore.getState().loadAll(workspaceId);
@@ -71,7 +75,7 @@ const SyncMenuItem = memo(function SyncMenuItem({ workspaceId }: { workspaceId?:
       className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
     >
       <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
-      {isSyncing ? "Syncing..." : "Sync from server"}
+      {isSyncing ? "Syncing..." : "Sync"}
     </DropdownMenuItem>
   );
 });
