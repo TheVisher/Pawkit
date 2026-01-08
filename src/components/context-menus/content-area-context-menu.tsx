@@ -50,7 +50,6 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
       pinned: false,
       isFileCard: false,
       tags: [],
-      collections: [],
     });
     toast({ type: 'success', message: 'Quick note created' });
   };
@@ -74,7 +73,6 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
           pinned: false,
           isFileCard: false,
           tags: [],
-          collections: [],
         });
         toast({ type: 'success', message: 'Bookmark created from clipboard' });
       } else if (trimmed) {
@@ -89,7 +87,6 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
           pinned: false,
           isFileCard: false,
           tags: [],
-          collections: [],
         });
         toast({ type: 'success', message: 'Quick note created from clipboard' });
       }
