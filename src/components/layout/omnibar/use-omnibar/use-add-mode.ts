@@ -124,6 +124,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: template,
             tags: ['contact'],
             pinned: false,
+            status: 'READY',
+            isFileCard: false,
           });
           openCardDetail(card.id);
         }
@@ -140,6 +142,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: template,
             tags: ['todo'],
             pinned: false,
+            status: 'READY',
+            isFileCard: false,
           });
           openCardDetail(card.id);
         }
@@ -156,6 +160,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: template,
             tags: ['subscription'],
             pinned: false,
+            status: 'READY',
+            isFileCard: false,
           });
           openCardDetail(card.id);
         }
@@ -172,6 +178,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: template,
             tags: ['recipe'],
             pinned: false,
+            status: 'READY',
+            isFileCard: false,
           });
           openCardDetail(card.id);
         }
@@ -188,6 +196,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: template,
             tags: ['reading'],
             pinned: false,
+            status: 'READY',
+            isFileCard: false,
           });
           openCardDetail(card.id);
         }
@@ -204,6 +214,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: template,
             tags: ['project'],
             pinned: false,
+            status: 'READY',
+            isFileCard: false,
           });
           openCardDetail(card.id);
         }
