@@ -18,15 +18,13 @@ export function ToastContent({ toast, isCompact, onDismiss }: ToastContentProps)
 
   return (
     <motion.div
-      className="flex items-center w-full h-full px-3 gap-3"
-      initial={{ opacity: 0, scale: 0.85, y: -8 }}
+      className="absolute inset-0 flex items-center w-full h-full px-3 gap-3"
+      initial={{ opacity: 0, scale: 0.95, y: -4 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+      exit={{ opacity: 0, scale: 0.98 }}
       transition={{
-        type: 'spring',
-        stiffness: 400,
-        damping: 20,
-        mass: 0.8,
+        duration: 0.15,
+        ease: 'easeOut',
       }}
     >
       {/* Icon */}

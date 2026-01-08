@@ -99,11 +99,14 @@ export function IdleContent({
 
   return (
     <motion.div
-      className="flex flex-col w-full h-full px-1"
+      className="absolute inset-0 flex flex-col w-full h-full px-1"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.15 }}
+      transition={{
+        duration: 0.15,
+        ease: 'easeOut',
+      }}
     >
       {/* Top Row: Plus Button + Content + Search + Chat */}
       {/* All buttons stay in DOM, flex layout handles positioning */}

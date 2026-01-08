@@ -24,7 +24,11 @@ export function BulkActionsContent({ isCompact }: BulkActionsContentProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="flex items-center justify-center h-12 px-3 gap-2"
+        transition={{
+          duration: 0.15,
+          ease: 'easeOut',
+        }}
+        className="absolute inset-0 flex items-center justify-center h-12 px-3 gap-2"
       >
         {/* Count */}
         <span className="text-sm font-medium text-[var(--color-accent)]">
@@ -78,11 +82,14 @@ export function BulkActionsContent({ isCompact }: BulkActionsContentProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      transition={{ duration: 0.15 }}
-      className="flex items-center h-12 px-3 gap-2"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{
+        duration: 0.15,
+        ease: 'easeOut',
+      }}
+      className="absolute inset-0 flex items-center h-12 px-3 gap-2"
     >
       {/* Selection count */}
       <div className="flex items-center gap-2 pr-2 border-r border-[var(--glass-border)]">
