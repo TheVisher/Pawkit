@@ -353,11 +353,11 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
 
         // Event listeners
         if (onDragStart) {
-          grid.on('dragStart', (item: MuuriItem) => onDragStart(item));
+          grid.on('dragStart', ((item: MuuriItem) => onDragStart(item)) as (...args: unknown[]) => void);
         }
 
         if (onDragEnd) {
-          grid.on('dragEnd', (item: MuuriItem) => {
+          grid.on('dragEnd', ((item: MuuriItem) => {
             onDragEnd(item);
             if (onOrderChange) {
               const items = grid.getItems();
@@ -366,15 +366,15 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
                 .filter(Boolean);
               onOrderChange(newOrder);
             }
-          });
+          }) as (...args: unknown[]) => void);
         }
 
         if (onDragMove) {
-          grid.on('dragMove', (item: MuuriItem) => onDragMove(item));
+          grid.on('dragMove', ((item: MuuriItem) => onDragMove(item)) as (...args: unknown[]) => void);
         }
 
         if (onLayoutEnd) {
-          grid.on('layoutEnd', () => onLayoutEnd());
+          grid.on('layoutEnd', (() => onLayoutEnd()) as (...args: unknown[]) => void);
         }
 
         // Mark grid as ready after first layout completes
