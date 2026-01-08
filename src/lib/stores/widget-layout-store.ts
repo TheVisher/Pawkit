@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { useMemo } from 'react';
-import type { Layout } from 'react-grid-layout';
+import type { LayoutItem } from 'react-grid-layout';
 
 // Widget types available
 export type WidgetType =
@@ -39,12 +39,12 @@ export const WIDGET_MIN_SIZE: Record<WidgetType, { minW: number; minH: number }>
 
 // Maximum sizes per widget type
 export const WIDGET_MAX_SIZE: Record<WidgetType, { maxW: number; maxH: number }> = {
-  'daily-log': { maxW: 4, maxH: 3 },
-  'scheduled-today': { maxW: 2, maxH: 2 },
-  'continue-reading': { maxW: 2, maxH: 3 },
-  'recent-cards': { maxW: 4, maxH: 2 }, // Can be full width
-  'tasks': { maxW: 2, maxH: 3 },
-  'bills': { maxW: 2, maxH: 3 },
+  'daily-log': { maxW: 4, maxH: 4 },
+  'scheduled-today': { maxW: 2, maxH: 3 },
+  'continue-reading': { maxW: 2, maxH: 4 },
+  'recent-cards': { maxW: 4, maxH: 6 }, // Can be full width and tall
+  'tasks': { maxW: 2, maxH: 4 },
+  'bills': { maxW: 2, maxH: 4 },
 };
 
 // Widget metadata for display
@@ -69,21 +69,21 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
 
 // Default grid layout positions (react-grid-layout format)
 // x: column, y: row, w: width in columns, h: height in rows
-const DEFAULT_LAYOUT: Layout[] = [
-  { i: 'daily-log', x: 0, y: 0, w: 2, h: 2, minW: 1, minH: 1, maxW: 4, maxH: 3 },
-  { i: 'scheduled-today', x: 2, y: 0, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 2 },
-  { i: 'continue-reading', x: 3, y: 0, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 3 },
-  { i: 'recent-cards', x: 2, y: 1, w: 2, h: 1, minW: 1, minH: 1, maxW: 4, maxH: 2 },
-  { i: 'tasks', x: 0, y: 2, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 3 },
-  { i: 'bills', x: 1, y: 2, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 3 },
+const DEFAULT_LAYOUT: LayoutItem[] = [
+  { i: 'daily-log', x: 0, y: 0, w: 2, h: 2, minW: 1, minH: 1, maxW: 4, maxH: 4 },
+  { i: 'scheduled-today', x: 2, y: 0, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 3 },
+  { i: 'continue-reading', x: 3, y: 0, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 4 },
+  { i: 'recent-cards', x: 2, y: 1, w: 2, h: 1, minW: 1, minH: 1, maxW: 4, maxH: 6 },
+  { i: 'tasks', x: 0, y: 2, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 4 },
+  { i: 'bills', x: 1, y: 2, w: 1, h: 1, minW: 1, minH: 1, maxW: 2, maxH: 4 },
 ];
 
 interface WidgetLayoutState {
   widgets: WidgetConfig[];
-  layout: Layout[];
+  layout: LayoutItem[];
 
   // Actions
-  setLayout: (layout: Layout[]) => void;
+  setLayout: (layout: LayoutItem[]) => void;
   setWidgetEnabled: (widgetId: string, enabled: boolean) => void;
   resetToDefaults: () => void;
 }

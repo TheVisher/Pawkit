@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { Coffee, Sun, Sunset, Moon } from 'lucide-react';
-import GridLayout from 'react-grid-layout';
+import { GridLayout, Layout, verticalCompactor } from 'react-grid-layout';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useGreeting } from '@/lib/hooks/use-greeting';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
@@ -83,8 +83,8 @@ export default function HomePage() {
 
   // Handle layout changes from drag/resize
   const handleLayoutChange = useCallback(
-    (newLayout: GridLayout.Layout[]) => {
-      setLayout(newLayout);
+    (newLayout: Layout) => {
+      setLayout([...newLayout]); // Convert readonly array to mutable
     },
     [setLayout]
   );
@@ -132,18 +132,23 @@ export default function HomePage() {
             <GridLayout
               className="widget-grid"
               layout={layout}
-              cols={GRID_CONFIG.cols}
-              rowHeight={GRID_CONFIG.rowHeight}
               width={containerWidth}
-              margin={GRID_CONFIG.margin}
-              containerPadding={GRID_CONFIG.containerPadding}
+              gridConfig={{
+                cols: GRID_CONFIG.cols,
+                rowHeight: GRID_CONFIG.rowHeight,
+                margin: GRID_CONFIG.margin,
+                containerPadding: GRID_CONFIG.containerPadding,
+              }}
+              dragConfig={{
+                enabled: true,
+                bounded: true,
+                handle: '.widget-drag-handle',
+              }}
+              resizeConfig={{
+                enabled: true,
+              }}
+              compactor={verticalCompactor}
               onLayoutChange={handleLayoutChange}
-              draggableHandle=".widget-drag-handle"
-              isResizable={true}
-              isDraggable={true}
-              isBounded={true}
-              compactType="vertical"
-              preventCollision={false}
             >
               {enabledWidgets.map((widget) => {
                 const WidgetComponent = WIDGET_COMPONENTS[widget.type];
