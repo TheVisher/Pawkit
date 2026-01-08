@@ -88,7 +88,6 @@ export function TodaysNoteWidget() {
       isDailyNote: true,
       scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
       tags: ['daily-note'],
-      collections: [],
       pinned: false,
       status: 'READY',
       isFileCard: false,
