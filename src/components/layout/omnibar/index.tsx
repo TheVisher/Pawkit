@@ -100,57 +100,59 @@ export function Omnibar({ isCompact }: OmnibarProps) {
         style={{
           transformOrigin: 'center top',
           willChange: 'width, height',
-          contain: 'layout style',
         }}
       >
-        <AnimatePresence mode="popLayout">
-          {showToast ? (
-            <ToastContent
-              key="toast"
-              toast={activeToast}
-              isCompact={isCompact}
-              onDismiss={dismissActiveToast}
-            />
-          ) : hasSelection ? (
-            <BulkActionsContent
-              key="bulk-actions"
-              isCompact={effectivelyCompact}
-            />
-          ) : (
-            <IdleContent
-              key="idle"
-              isCompact={effectivelyCompact}
-              isAddMenuOpen={isAddMenuOpen}
-              setIsAddMenuOpen={setIsAddMenuOpen}
-              onSearchClick={handleSearchClick}
-              onAddAction={handleAddAction}
-              isQuickNoteMode={isQuickNoteMode}
-              setIsQuickNoteMode={setIsQuickNoteMode}
-              quickNoteText={quickNoteText}
-              setQuickNoteText={setQuickNoteText}
-              textareaRef={textareaRef}
-              onQuickNoteKeyDown={handleQuickNoteKeyDown}
-              onQuickNoteBlur={handleQuickNoteBlur}
-              onSaveQuickNote={saveQuickNote}
-              onForceExpand={handleForceExpand}
-              searchResults={searchResults}
-              selectedIndex={selectedIndex}
-              onSelectResult={executeResult}
-              // Add Mode Props
-              isAddMode={isAddMode}
-              addModeSelectedIndex={addModeSelectedIndex}
-              onToggleAddMode={handleToggleAddMode}
-              onAddModeAction={handleAddModeAction}
-              // Kit Mode Props
-              isKitMode={isKitMode}
-              kitModeSelectedIndex={kitModeSelectedIndex}
-              kitMenuItems={kitMenuItems}
-              onToggleKitMode={handleToggleKitMode}
-              onKitModeAction={handleKitModeAction}
-              isOnTagsPage={isOnTagsPage}
-            />
-          )}
-        </AnimatePresence>
+        {/* Content wrapper - relative positioning for absolute children during transitions */}
+        <div className="relative flex-1 min-h-0">
+          <AnimatePresence mode="sync">
+            {showToast ? (
+              <ToastContent
+                key="toast"
+                toast={activeToast}
+                isCompact={isCompact}
+                onDismiss={dismissActiveToast}
+              />
+            ) : hasSelection ? (
+              <BulkActionsContent
+                key="bulk-actions"
+                isCompact={effectivelyCompact}
+              />
+            ) : (
+              <IdleContent
+                key="idle"
+                isCompact={effectivelyCompact}
+                isAddMenuOpen={isAddMenuOpen}
+                setIsAddMenuOpen={setIsAddMenuOpen}
+                onSearchClick={handleSearchClick}
+                onAddAction={handleAddAction}
+                isQuickNoteMode={isQuickNoteMode}
+                setIsQuickNoteMode={setIsQuickNoteMode}
+                quickNoteText={quickNoteText}
+                setQuickNoteText={setQuickNoteText}
+                textareaRef={textareaRef}
+                onQuickNoteKeyDown={handleQuickNoteKeyDown}
+                onQuickNoteBlur={handleQuickNoteBlur}
+                onSaveQuickNote={saveQuickNote}
+                onForceExpand={handleForceExpand}
+                searchResults={searchResults}
+                selectedIndex={selectedIndex}
+                onSelectResult={executeResult}
+                // Add Mode Props
+                isAddMode={isAddMode}
+                addModeSelectedIndex={addModeSelectedIndex}
+                onToggleAddMode={handleToggleAddMode}
+                onAddModeAction={handleAddModeAction}
+                // Kit Mode Props
+                isKitMode={isKitMode}
+                kitModeSelectedIndex={kitModeSelectedIndex}
+                kitMenuItems={kitMenuItems}
+                onToggleKitMode={handleToggleKitMode}
+                onKitModeAction={handleKitModeAction}
+                isOnTagsPage={isOnTagsPage}
+              />
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
 
       {/* Discard confirmation overlay */}

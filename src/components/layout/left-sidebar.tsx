@@ -30,6 +30,7 @@ import { getClient } from "@/lib/supabase/client";
 import { fullSync } from "@/lib/services";
 import { retryFailedItems } from "@/lib/services/sync-queue";
 import { useDataStore } from "@/lib/stores/data-store";
+import { usePrefetch } from "@/lib/hooks/use-prefetch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -88,6 +89,7 @@ export function LeftSidebar() {
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const { toggleSettings } = useRightSidebarSettings();
   const workspace = useCurrentWorkspace();
+  const { prefetchOnInteraction } = usePrefetch();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard SSR hydration pattern
@@ -176,6 +178,7 @@ export function LeftSidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                {...prefetchOnInteraction(item.href)}
                 className={cn(
                   "flex items-center px-3 py-2 text-sm transition-colors duration-200 group relative rounded-xl",
                   isActive
@@ -239,6 +242,7 @@ export function LeftSidebar() {
               <div className="relative z-10 flex items-center flex-1 min-w-0">
                 <Link
                   href="/pawkits"
+                  {...prefetchOnInteraction("/pawkits")}
                   className="flex items-center flex-1 min-w-0"
                 >
                   <span className="relative flex items-center gap-3">
@@ -300,6 +304,7 @@ export function LeftSidebar() {
           {/* Tags Nav Item */}
           <Link
             href="/tags"
+            {...prefetchOnInteraction("/tags")}
             className={cn(
               "flex items-center px-3 py-2 text-sm transition-colors duration-200 group relative rounded-xl",
               pathname === "/tags"
