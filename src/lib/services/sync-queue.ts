@@ -788,7 +788,7 @@ async function handleCardConflict(
     domain: serverCard.domain as string | undefined,
     favicon: serverCard.favicon as string | undefined,
     tags: addConflictTag(serverTags),
-    collections: serverCard.collections as string[] || [],
+    // collections field removed - Pawkit membership now uses tags
     pinned: serverCard.pinned as boolean || false,
     status: serverCard.status as string || 'READY',
     version: serverVersion,

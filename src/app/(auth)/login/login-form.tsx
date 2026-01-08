@@ -9,10 +9,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
+// Whitelist of allowed redirect paths to prevent open redirect attacks
+const ALLOWED_REDIRECT_PATHS = ['/dashboard', '/library', '/home', '/calendar', '/notes', '/favorites'];
+
+function getSafeRedirectPath(requestedPath: string | null): string {
+  if (!requestedPath) return '/dashboard';
+  // Only allow relative paths that are in our whitelist
+  if (ALLOWED_REDIRECT_PATHS.includes(requestedPath)) {
+    return requestedPath;
+  }
+  // Check if it starts with an allowed path (for nested routes like /library/123)
+  if (ALLOWED_REDIRECT_PATHS.some(allowed => requestedPath.startsWith(allowed + '/'))) {
+    return requestedPath;
+  }
+  return '/dashboard';
+}
+
 function LoginFormInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
+  const redirectTo = getSafeRedirectPath(searchParams.get('redirectTo'));
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

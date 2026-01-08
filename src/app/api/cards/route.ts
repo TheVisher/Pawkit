@@ -227,7 +227,7 @@ export async function POST(request: Request) {
         metadata: cardData.metadata as Prisma.InputJsonValue | undefined,
         status: cardData.status,
         tags: cardData.tags,
-        collections: cardData.collections,
+        // collections field removed - Pawkit membership now uses tags
         pinned: cardData.pinned,
         scheduledDate: cardData.scheduledDate
           ? new Date(cardData.scheduledDate)

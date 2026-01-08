@@ -13,7 +13,7 @@
 
 import { db, createSyncMetadata } from '@/lib/db';
 import type { LocalCard } from '@/lib/db/types';
-import { triggerSync } from './sync-queue';
+import { addToQueue, triggerSync } from './sync-queue';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
 
 /**
@@ -430,15 +430,8 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     // Update directly in Dexie (portable - works from portal or main app)
     await db.cards.update(cardId, updates);
 
-    // Queue for server sync
-    await db.syncQueue.add({
-      entityType: 'card',
-      entityId: cardId,
-      operation: 'update',
-      payload: updates as Record<string, unknown>,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    // Queue for server sync (skip conflict check - metadata is server-authoritative anyway)
+    await addToQueue('card', cardId, 'update', updates as Record<string, unknown>, { skipConflictCheck: true });
 
     console.log('[MetadataService] Updated card:', cardId, {
       title: metadata.title?.substring(0, 30),
@@ -592,7 +585,7 @@ export async function createUrlCard(params: {
     title: url, // Will be updated by metadata fetcher
     content: '',
     workspaceId: workspaceId,
-    collections: collections,
+    // collections field removed - Pawkit membership now uses tags
     tags: tags,
     pinned: false,
     status: 'PENDING',
@@ -606,14 +599,7 @@ export async function createUrlCard(params: {
   await db.cards.add(card);
 
   // Queue for server sync
-  await db.syncQueue.add({
-    entityType: 'card',
-    entityId: cardId,
-    operation: 'create',
-    payload: card as unknown as Record<string, unknown>,
-    retryCount: 0,
-    createdAt: new Date(),
-  });
+  await addToQueue('card', cardId, 'create');
 
   // Queue metadata fetch (will run async)
   queueMetadataFetch(cardId);

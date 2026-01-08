@@ -1,6 +1,6 @@
 /**
  * Password strength validation
- * Requires: 12+ chars, uppercase, lowercase, number
+ * Requires: 12+ chars, uppercase, lowercase, number, special character
  */
 
 export function validatePassword(password: string): {
@@ -20,6 +20,9 @@ export function validatePassword(password: string): {
   }
   if (!/[0-9]/.test(password)) {
     errors.push('Password must contain a number');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(password)) {
+    errors.push('Password must contain a special character (!@#$%^&*...)');
   }
 
   return {

@@ -95,8 +95,7 @@ export function useTauriEvents() {
               title: url, // Will be updated by metadata fetcher
               content: '',
               workspaceId: workspace.id,
-              collections: targetCollections,
-              tags: [],
+              tags: targetCollections,
               pinned: false,
               isFileCard: false,
               status: 'PENDING', // Triggers metadata fetching

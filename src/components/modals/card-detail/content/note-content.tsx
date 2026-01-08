@@ -18,10 +18,13 @@ import type { LocalCard } from '@/lib/db';
 
 interface NoteContentProps {
   card: LocalCard;
+  title: string;
+  setTitle?: (title: string) => void;
+  onTitleBlur?: () => void;
   className?: string;
 }
 
-export function NoteContent({ card, className }: NoteContentProps) {
+export function NoteContent({ card, title, setTitle, onTitleBlur, className }: NoteContentProps) {
   const updateCard = useDataStore((s) => s.updateCard);
 
   // Local state for content
@@ -52,7 +55,14 @@ export function NoteContent({ card, className }: NoteContentProps) {
   return (
     <div className={cn('flex-1 flex flex-col overflow-hidden', className)}>
       {/* Contact photo header - only for contact cards */}
-      {isContactCard && <ContactPhotoHeader card={card} />}
+      {isContactCard && setTitle && onTitleBlur && (
+        <ContactPhotoHeader
+          card={card}
+          title={title}
+          setTitle={setTitle}
+          onTitleBlur={onTitleBlur}
+        />
+      )}
 
       {/* Stats bar */}
       <div className="flex justify-center py-2 text-xs text-text-muted">

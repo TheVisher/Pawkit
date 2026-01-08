@@ -30,7 +30,7 @@ import {
   findDuplicateCardIds,
 } from "@/lib/stores/view-store";
 import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
-import { useCards, useCollections } from "@/lib/hooks/use-live-data";
+import { useDataContext } from "@/lib/contexts/data-context";
 import { useModalStore } from "@/lib/stores/modal-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -80,8 +80,8 @@ export function RightSidebar() {
 
   // Get active card from modal store
   const activeCardId = useModalStore((s) => s.activeCardId);
-  const allCards = useCards(workspace?.id);
-  const allCollections = useCollections(workspace?.id);
+  // Use DataContext for cards/collections - benefits from two-phase loading optimization
+  const { cards: allCards, collections: allCollections } = useDataContext();
   const activeCard = useMemo(
     () => (activeCardId ? allCards.find((c) => c.id === activeCardId) : null),
     [activeCardId, allCards],

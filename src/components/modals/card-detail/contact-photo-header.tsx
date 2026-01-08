@@ -15,6 +15,9 @@ import type { LocalCard } from '@/lib/db';
 
 interface ContactPhotoHeaderProps {
   card: LocalCard;
+  title: string;
+  setTitle: (title: string) => void;
+  onTitleBlur: () => void;
   className?: string;
 }
 
@@ -46,7 +49,7 @@ function darkenColor(hex: string, percent: number): string {
   return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
 }
 
-export function ContactPhotoHeader({ card, className }: ContactPhotoHeaderProps) {
+export function ContactPhotoHeader({ card, title, setTitle, onTitleBlur, className }: ContactPhotoHeaderProps) {
   const openCardPhotoPicker = useModalStore((s) => s.openCardPhotoPicker);
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -62,7 +65,7 @@ export function ContactPhotoHeader({ card, className }: ContactPhotoHeaderProps)
 
   return (
     <div
-      className={cn('relative w-full overflow-hidden flex-shrink-0', className)}
+      className={cn('relative w-full flex-shrink-0', className)}
       style={{ height: '120px' }}
     >
       {/* Gradient background with mask for fade */}
@@ -75,19 +78,38 @@ export function ContactPhotoHeader({ card, className }: ContactPhotoHeaderProps)
         }}
       />
 
-      {/* Photo container - positioned right */}
-      <div className="absolute right-6 top-3 bottom-3 flex items-center">
+      {/* Title on the left */}
+      <div className="absolute left-6 top-0 bottom-0 flex items-center pr-32">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={onTitleBlur}
+          placeholder="Contact Name"
+          className={cn(
+            'bg-transparent border-none outline-none',
+            'text-2xl font-bold text-white',
+            'placeholder:text-white/40',
+            'w-full max-w-md'
+          )}
+          style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}
+        />
+      </div>
+
+      {/* Photo container - positioned right, overflows below gradient */}
+      <div className="absolute right-6 top-3 flex items-start z-10">
         <button
           onClick={handlePhotoClick}
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           className={cn(
-            'relative h-24 w-24 rounded-2xl overflow-hidden',
-            'border-2 border-white/20 shadow-lg',
+            'relative rounded-2xl overflow-hidden',
+            'border-2 border-white/20 shadow-xl',
             'transition-all duration-200',
-            'hover:border-white/40 hover:scale-105',
+            'hover:border-white/40 hover:scale-[1.02]',
             'focus:outline-none focus:ring-2 focus:ring-white/50'
           )}
+          style={{ width: '180px', height: '220px' }}
         >
           {hasImage ? (
             <>
@@ -112,9 +134,9 @@ export function ContactPhotoHeader({ card, className }: ContactPhotoHeaderProps)
             </>
           ) : (
             // Placeholder state
-            <div className="h-full w-full bg-white/10 flex flex-col items-center justify-center gap-1">
-              <User className="h-8 w-8 text-white/50" />
-              <span className="text-xs text-white/50">Add photo</span>
+            <div className="h-full w-full bg-white/10 flex flex-col items-center justify-center gap-2">
+              <User className="h-12 w-12 text-white/50" />
+              <span className="text-sm text-white/50">Add photo</span>
             </div>
           )}
         </button>

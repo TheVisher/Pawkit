@@ -34,7 +34,15 @@ export function ContentRouter({
 }: ContentRouterProps) {
   // Note cards - editor focused
   if (card.type === 'md-note' || card.type === 'text-note' || card.type === 'quick-note') {
-    return <NoteContent card={card} className={className} />;
+    return (
+      <NoteContent
+        card={card}
+        title={title}
+        setTitle={setTitle}
+        onTitleBlur={onTitleBlur}
+        className={className}
+      />
+    );
   }
 
   // YouTube videos - embedded player

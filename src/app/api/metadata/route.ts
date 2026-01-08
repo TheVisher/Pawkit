@@ -1,11 +1,13 @@
 /**
  * Metadata Extraction API
  * Fetches OpenGraph metadata for URLs with resilient fallbacks
+ * Requires authentication to prevent abuse
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { createClient } from '@/lib/supabase/server';
 
 // Force Node.js runtime for fetch
 export const runtime = 'nodejs';
@@ -46,9 +48,23 @@ const FETCH_TIMEOUT = 10000;
 function isPrivateIP(hostname: string): boolean {
   const lowerHost = hostname.toLowerCase();
 
+  // Block hostnames that could resolve to internal IPs
+  const BLOCKED_HOSTNAMES = [
+    'localhost',
+    'localhost.localdomain',
+    'local',
+    'internal',
+  ];
+
+  if (BLOCKED_HOSTNAMES.some(h => lowerHost === h || lowerHost.endsWith('.' + h))) {
+    return true;
+  }
+
   const BLOCKED_PATTERNS = [
-    // IPv4 localhost and loopback
-    '127.', '0.0.0.0', 'localhost',
+    // IPv4 localhost and loopback (entire 127.0.0.0/8 range)
+    '127.',
+    '0.0.0.0',
+    '0.',
     // IPv4 private ranges
     '10.',
     '172.16.', '172.17.', '172.18.', '172.19.',
@@ -58,8 +74,19 @@ function isPrivateIP(hostname: string): boolean {
     '192.168.',
     // AWS/cloud metadata service
     '169.254.',
-    // IPv6 localhost and private
-    '[::1]', 'fe80:', 'fc00:', 'fd00::'
+    // Link-local
+    '224.', '239.',
+    // IPv6 patterns
+    '[::1]',       // localhost
+    '[::',         // shorthand IPv6
+    '[0:',         // IPv6 starting with 0
+    '[fe80:',      // link-local
+    '[fc00:',      // unique local
+    '[fd',         // unique local (fd00::/8)
+    'fe80:',       // link-local without brackets
+    'fc00:',
+    'fd00:',
+    '::1',         // localhost without brackets
   ];
 
   return BLOCKED_PATTERNS.some(pattern => lowerHost.startsWith(pattern));
@@ -67,9 +94,20 @@ function isPrivateIP(hostname: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: 5 requests per minute (metadata fetching is expensive)
-    const identifier = request.headers.get('x-forwarded-for') || 'anonymous';
-    const { success, remaining } = checkRateLimit(identifier, 60000, 5);
+    // Authentication required
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Rate limiting: 30 requests per minute per user (authenticated users get higher limits)
+    const identifier = `metadata:${user.id}`;
+    const { success, remaining } = checkRateLimit(identifier, 60000, 30);
 
     if (!success) {
       return NextResponse.json(
