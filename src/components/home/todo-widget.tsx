@@ -239,7 +239,7 @@ export function TodoWidget() {
 
         {/* Task List */}
         {visibleTasks.length > 0 ? (
-          <div className="flex-1 space-y-1 overflow-y-auto">
+          <div className="flex-1 space-y-1 overflow-y-auto min-h-0">
             {visibleTasks.map((task) => (
               <TodoTaskItem
                 key={task.id}

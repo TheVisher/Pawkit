@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { Coffee, Sun, Sunset, Moon } from 'lucide-react';
+import GridLayout from 'react-grid-layout';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useGreeting } from '@/lib/hooks/use-greeting';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
-import { ContentAreaContextMenu } from '@/components/context-menus';
+import { ContentAreaContextMenu, WidgetContextMenu } from '@/components/context-menus';
 import {
   InlineStats,
   MobileStatsRow,
@@ -17,6 +18,17 @@ import {
   BillsWidget,
 } from '@/components/home';
 import { cn } from '@/lib/utils';
+import {
+  useEnabledWidgets,
+  useEnabledLayout,
+  useWidgetLayoutStore,
+  GRID_CONFIG,
+  type WidgetType,
+} from '@/lib/stores/widget-layout-store';
+
+// Import react-grid-layout styles
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 
 // Time icon mapping
 const timeIcons = {
@@ -26,9 +38,26 @@ const timeIcons = {
   moon: Moon,
 };
 
+// Map widget type to component
+const WIDGET_COMPONENTS: Record<WidgetType, React.ComponentType> = {
+  'daily-log': DailyLogWidget,
+  'scheduled-today': ScheduledTodayWidget,
+  'continue-reading': ContinueReadingWidget,
+  'recent-cards': RecentCardsWidget,
+  'tasks': TodoWidget,
+  'bills': BillsWidget,
+};
+
 export default function HomePage() {
   const user = useAuthStore((s) => s.user);
   const { message, displayName, formattedDate, timeIcon, mounted } = useGreeting(user?.email);
+  const enabledWidgets = useEnabledWidgets();
+  const layout = useEnabledLayout();
+  const setLayout = useWidgetLayoutStore((s) => s.setLayout);
+
+  // Track container width using ResizeObserver for accurate measurement
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   // Collision detection: measure header width and compare to omnibar zone
   const headerRef = useRef<HTMLDivElement>(null);
@@ -36,13 +65,37 @@ export default function HomePage() {
 
   const TimeIcon = timeIcons[timeIcon as keyof typeof timeIcons] || Coffee;
 
+  // Use ResizeObserver for accurate container width measurement
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use contentRect for accurate inner width (excludes padding/border)
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Handle layout changes from drag/resize
+  const handleLayoutChange = useCallback(
+    (newLayout: GridLayout.Layout[]) => {
+      setLayout(newLayout);
+    },
+    [setLayout]
+  );
+
   return (
     <ContentAreaContextMenu>
-      <div className="flex-1">
+      <div className="flex flex-col h-full min-h-0">
         {/* Header with collision-aware offset */}
         <div
           className={cn(
-            'transition-[padding] duration-200',
+            'shrink-0 transition-[padding] duration-200',
             needsOffset && 'md:pt-20'
           )}
         >
@@ -70,37 +123,46 @@ export default function HomePage() {
         {/* Mobile stats row - shows below header on mobile */}
         <MobileStatsRow />
 
-        {/* Page content - 2-column grid on wider screens */}
-        <div className="px-4 md:px-6 pt-4 pb-6 space-y-4">
-          {/* 2-column layout: Daily Log (left) | Scheduled + Continue Reading (right) */}
-          {/* Min heights locked to look good at 1920x1080 - this is the baseline */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 xl:grid-rows-[minmax(180px,1fr)_minmax(180px,1fr)]">
-            {/* Left column - Daily Log spans both rows, min 380px */}
-            <div className="xl:row-span-2 min-h-[380px]">
-              <DailyLogWidget />
-            </div>
-            {/* Right column - Scheduled Today, min 180px */}
-            <div className="min-h-[180px]">
-              <ScheduledTodayWidget />
-            </div>
-            {/* Right column - Continue Reading, min 180px */}
-            <div className="min-h-[180px]">
-              <ContinueReadingWidget />
-            </div>
-          </div>
+        {/* Widget grid with drag-and-drop - fills remaining space */}
+        <div
+          ref={containerRef}
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 md:px-6 py-4"
+        >
+          {containerWidth > 0 && (
+            <GridLayout
+              className="widget-grid"
+              layout={layout}
+              cols={GRID_CONFIG.cols}
+              rowHeight={GRID_CONFIG.rowHeight}
+              width={containerWidth}
+              margin={GRID_CONFIG.margin}
+              containerPadding={GRID_CONFIG.containerPadding}
+              onLayoutChange={handleLayoutChange}
+              draggableHandle=".widget-drag-handle"
+              isResizable={true}
+              isDraggable={true}
+              isBounded={true}
+              compactType="vertical"
+              preventCollision={false}
+            >
+              {enabledWidgets.map((widget) => {
+                const WidgetComponent = WIDGET_COMPONENTS[widget.type];
 
-          {/* Bottom row: Recently Added (1/3) + Tasks (1/3) + Bills (1/3) */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
-            <div className="min-h-[200px]">
-              <RecentCardsWidget />
-            </div>
-            <div className="min-h-[200px]">
-              <TodoWidget />
-            </div>
-            <div className="min-h-[200px]">
-              <BillsWidget />
-            </div>
-          </div>
+                return (
+                  <div key={widget.id} className="widget-container">
+                    <WidgetContextMenu
+                      widgetId={widget.id}
+                      widgetType={widget.type}
+                    >
+                      <div className="h-full w-full widget-drag-handle cursor-move">
+                        <WidgetComponent />
+                      </div>
+                    </WidgetContextMenu>
+                  </div>
+                );
+              })}
+            </GridLayout>
+          )}
         </div>
       </div>
     </ContentAreaContextMenu>

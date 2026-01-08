@@ -396,14 +396,14 @@ export function DailyLogWidget() {
             <div className="animate-pulse text-text-muted text-sm">Loading...</div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col gap-3">
+          <div className="flex-1 flex flex-col gap-2 min-h-0">
             {/* Quick entry - always visible for today */}
             {isToday && (
-              <div className="flex gap-2">
+              <div className="flex gap-2 shrink-0">
                 {/* Textarea - takes available width */}
                 <textarea
                   ref={inputRef}
-                  rows={3}
+                  rows={2}
                   value={quickEntry}
                   onChange={(e) => setQuickEntry(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -430,39 +430,39 @@ export function DailyLogWidget() {
               <button
                 onClick={() => openCardDetail(note.id)}
                 className={cn(
-                  'flex-1 w-full text-left p-3 rounded-lg transition-colors',
+                  'flex-1 w-full text-left p-2 rounded-lg transition-colors min-h-0',
                   'bg-bg-surface-3/50 hover:bg-bg-surface-3',
                   'border border-transparent hover:border-[var(--color-accent)]/30',
-                  'flex flex-col'
+                  'flex flex-col overflow-hidden'
                 )}
               >
                 {hasTimestampedEntries ? (
-                  <div className="flex-1 flex flex-col">
-                    {/* Show newest entries first (content is already stored newest-first), show up to 8 */}
-                    <div className="flex-1 space-y-1.5 overflow-hidden">
-                      {entries.slice(0, 8).map((entry, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-text-muted font-mono text-xs shrink-0 pt-0.5">
+                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                    {/* Show newest entries first (content is already stored newest-first), show up to 5 in compact view */}
+                    <div className="flex-1 space-y-1 overflow-y-auto min-h-0">
+                      {entries.slice(0, 5).map((entry, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs">
+                          <span className="text-text-muted font-mono shrink-0">
                             {entry.time}
                           </span>
                           <span className="text-text-secondary line-clamp-1">{entry.text}</span>
                         </div>
                       ))}
                     </div>
-                    {entries.length > 8 && (
-                      <p className="text-xs text-text-muted mt-1">+{entries.length - 8} more entries</p>
+                    {entries.length > 5 && (
+                      <p className="text-xs text-text-muted mt-1 shrink-0">+{entries.length - 5} more entries</p>
                     )}
                   </div>
                 ) : previewText ? (
-                  <p className="text-sm text-text-secondary line-clamp-3">
-                    {previewText.length > 150 ? previewText.slice(0, 150) + '...' : previewText}
+                  <p className="text-xs text-text-secondary line-clamp-2">
+                    {previewText.length > 100 ? previewText.slice(0, 100) + '...' : previewText}
                   </p>
                 ) : (
-                  <p className="text-sm text-text-muted italic">Empty note</p>
+                  <p className="text-xs text-text-muted italic">Empty note</p>
                 )}
-                <div className="flex items-center gap-1 text-xs text-text-muted pt-2 border-t border-border-subtle/50 mt-auto">
+                <div className="flex items-center gap-1 text-xs text-text-muted pt-1 border-t border-border-subtle/50 mt-auto shrink-0">
                   <Edit3 className="h-3 w-3" />
-                  <span>Click to open full editor</span>
+                  <span>Click to open</span>
                 </div>
               </button>
             ) : !isToday ? (
