@@ -21,7 +21,7 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import type { LocalCard, LocalCollection, LocalWorkspace, LocalCalendarEvent } from '@/lib/db/types';
+import type { LocalCard, LocalCollection, LocalWorkspace, LocalCalendarEvent, LocalReference } from '@/lib/db/types';
 import {
   useIsInDataProvider,
   useCardsFromContext,
@@ -322,4 +322,48 @@ export function useCalendarEvents(workspaceId: string | undefined): LocalCalenda
   );
 
   return isInProvider ? contextEvents : directEvents;
+}
+
+/**
+ * Get outgoing references for a card (@ mentions in this card's content)
+ * Groups by type: dates, cards, pawkits
+ */
+export function useReferences(cardId: string | undefined): LocalReference[] {
+  const references = useLiveQuery(
+    async () => {
+      if (!cardId) return [];
+      return db.references
+        .where('sourceId')
+        .equals(cardId)
+        .filter((r) => !r._deleted)
+        .toArray();
+    },
+    [cardId],
+    [] as LocalReference[]
+  );
+
+  return references;
+}
+
+/**
+ * Get backlinks for a card (other cards that @ mention this card)
+ */
+export function useBacklinks(
+  targetId: string | undefined,
+  targetType: 'card' | 'pawkit' | 'date' = 'card'
+): LocalReference[] {
+  const backlinks = useLiveQuery(
+    async () => {
+      if (!targetId) return [];
+      return db.references
+        .where('[targetId+targetType]')
+        .equals([targetId, targetType])
+        .filter((r) => !r._deleted)
+        .toArray();
+    },
+    [targetId, targetType],
+    [] as LocalReference[]
+  );
+
+  return backlinks;
 }

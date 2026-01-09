@@ -93,7 +93,9 @@ export interface LocalCard extends SyncMetadata {
   pinned: boolean;
 
   // Scheduling
+  /** @deprecated Use scheduledDates[] instead - will be removed after migration */
   scheduledDate?: Date;
+  scheduledDates?: string[];    // Array of ISO date strings (YYYY-MM-DD) for multi-date calendar
   scheduledStartTime?: string;
   scheduledEndTime?: string;
 
@@ -257,7 +259,7 @@ export interface LocalTodo extends SyncMetadata {
 
 export interface SyncQueueItem {
   id?: number;                // Auto-increment
-  entityType: 'card' | 'collection' | 'collectionNote' | 'event' | 'todo' | 'viewSettings' | 'workspace';
+  entityType: 'card' | 'collection' | 'collectionNote' | 'event' | 'todo' | 'viewSettings' | 'workspace' | 'reference';
   entityId: string;
   operation: 'create' | 'update' | 'delete';
   payload?: Record<string, unknown>;
@@ -290,6 +292,21 @@ export interface NoteCardLink {
   targetCardId: string;       // The card being linked to
   linkText: string;
   createdAt: Date;
+}
+
+// =============================================================================
+// @ MENTIONS / REFERENCES (unified @ linking system)
+// =============================================================================
+
+export interface LocalReference extends SyncMetadata {
+  id: string;
+  workspaceId: string;
+  sourceId: string;            // Card ID containing the @ mention
+  targetId: string;            // Card ID, Pawkit slug, or ISO date string (YYYY-MM-DD)
+  targetType: 'card' | 'pawkit' | 'date';
+  linkText: string;            // Display text shown in the mention pill
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // =============================================================================

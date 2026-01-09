@@ -75,6 +75,7 @@ function getApiEndpoint(
     todo: '/api/todos',
     collectionNote: '/api/collection-notes', // Future
     viewSettings: '/api/view-settings', // Future
+    reference: '/api/references',
   };
 
   const baseUrl = baseUrls[entityType];

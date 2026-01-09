@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted, markRestored } from '@/lib/db';
-import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo } from '@/lib/db';
+import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo, LocalReference } from '@/lib/db';
 import { addToQueue, clearAllSyncQueue, resolveConflictOnDelete } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 import { useLayoutCacheStore } from './layout-cache-store';
@@ -97,6 +97,13 @@ interface DataState {
   createTodo: (todo: Omit<LocalTodo, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalTodo>;
   updateTodo: (id: string, updates: Partial<LocalTodo>) => Promise<void>;
   deleteTodo: (id: string) => Promise<void>;
+
+  // Reference actions (@ mentions)
+  createReference: (ref: Omit<LocalReference, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalReference>;
+  deleteReference: (id: string) => Promise<void>;
+  deleteReferencesBySource: (sourceId: string) => Promise<void>;
+  getReferencesForCard: (cardId: string) => Promise<LocalReference[]>;
+  getBacklinksForCard: (cardId: string) => Promise<LocalReference[]>;
 }
 
 
@@ -554,6 +561,75 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     // Queue sync
     await addToQueue('todo', id, 'delete');
+  },
+
+  // ==========================================================================
+  // REFERENCE ACTIONS (@ mentions)
+  // ==========================================================================
+
+  createReference: async (refData) => {
+    const ref: LocalReference = {
+      ...refData,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...createSyncMetadata(),
+    };
+
+    // Write to Dexie
+    await db.references.add(ref);
+
+    // Queue sync
+    await addToQueue('reference', ref.id, 'create');
+
+    return ref;
+  },
+
+  deleteReference: async (id) => {
+    const existing = await db.references.get(id);
+    if (!existing) return;
+
+    const deleted = markDeleted(existing);
+
+    // Soft delete in Dexie
+    await db.references.put(deleted);
+
+    // Queue sync
+    await addToQueue('reference', id, 'delete');
+  },
+
+  deleteReferencesBySource: async (sourceId) => {
+    // Get all references from this source card
+    const refs = await db.references
+      .where('sourceId')
+      .equals(sourceId)
+      .filter((r) => !r._deleted)
+      .toArray();
+
+    // Delete each one
+    for (const ref of refs) {
+      const deleted = markDeleted(ref);
+      await db.references.put(deleted);
+      await addToQueue('reference', ref.id, 'delete');
+    }
+  },
+
+  getReferencesForCard: async (cardId) => {
+    // Get outgoing references (what this card links to)
+    return db.references
+      .where('sourceId')
+      .equals(cardId)
+      .filter((r) => !r._deleted)
+      .toArray();
+  },
+
+  getBacklinksForCard: async (cardId) => {
+    // Get incoming references (what links to this card)
+    return db.references
+      .where('targetId')
+      .equals(cardId)
+      .filter((r) => !r._deleted && r.targetType === 'card')
+      .toArray();
   },
 }));
 

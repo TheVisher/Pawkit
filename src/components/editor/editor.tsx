@@ -10,10 +10,19 @@ import Typography from '@tiptap/extension-typography';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import GlobalDragHandle from 'tiptap-extension-global-drag-handle';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { parseISO } from 'date-fns';
 import { Bold, Italic, Code, Link as LinkIcon, X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
 import { AutoPhoneLink } from '@/lib/tiptap/extensions/auto-phone-link';
+import { PawkitMention } from '@/lib/tiptap/extensions/mention';
+import { createMentionSuggestion } from './mention-suggestion';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { useCalendarStore } from '@/lib/stores/calendar-store';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useReferences } from '@/lib/hooks/use-live-data';
+import { syncReferencesFromContent } from '@/lib/utils/mention-parser';
 
 export interface EditorProps {
   content: string;
@@ -21,6 +30,9 @@ export interface EditorProps {
   placeholder?: string;
   className?: string;
   editable?: boolean;
+  workspaceId?: string;
+  /** Card ID - when provided, enables reference syncing for @ mentions */
+  cardId?: string;
 }
 
 export function Editor({
@@ -29,13 +41,56 @@ export function Editor({
   placeholder = "Type '/' for commands or just start writing...",
   className,
   editable = true,
+  workspaceId,
+  cardId,
 }: EditorProps) {
+  const router = useRouter();
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const setCalendarDate = useCalendarStore((s) => s.setDate);
+
+  // Reference sync dependencies (only used when cardId is provided)
+  const createReference = useDataStore((s) => s.createReference);
+  const deleteReference = useDataStore((s) => s.deleteReference);
+  const updateCard = useDataStore((s) => s.updateCard);
+  const existingRefs = useReferences(cardId);
+
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [isInTable, setIsInTable] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const existingRefsRef = useRef(existingRefs);
+  const syncRefsRef = useRef<((editorInstance: any) => Promise<void>) | null>(null);
+
+  // Keep existingRefs ref in sync
+  useEffect(() => {
+    existingRefsRef.current = existingRefs;
+  }, [existingRefs]);
+
+  // Keep sync function ref in sync
+  useEffect(() => {
+    syncRefsRef.current = async (editorInstance: any) => {
+      if (!cardId || !workspaceId || !editorInstance) return;
+
+      try {
+        const jsonContent = editorInstance.getJSON();
+        await syncReferencesFromContent(
+          cardId,
+          workspaceId,
+          jsonContent,
+          existingRefsRef.current,
+          {
+            createReference,
+            deleteReference,
+            updateCard,
+          }
+        );
+      } catch (err) {
+        console.error('[Editor] Failed to sync references:', err);
+      }
+    };
+  }, [cardId, workspaceId, createReference, deleteReference, updateCard]);
 
   const editor = useEditor({
     immediatelyRender: false, // Required for SSR/Next.js to avoid hydration mismatches
@@ -108,6 +163,9 @@ export function Editor({
         dragHandleWidth: 1000, // Large value to detect hover across full row
         scrollTreshold: 100,
       }),
+      PawkitMention.configure({
+        suggestion: createMentionSuggestion({ workspaceId }),
+      }),
     ],
     content,
     editable,
@@ -170,6 +228,30 @@ export function Editor({
 
         return false;
       },
+      handleDOMEvents: {
+        click: (view, event) => {
+          const target = event.target as HTMLElement;
+          const mentionPill = target.closest('[data-pawkit-mention]') as HTMLElement;
+
+          if (mentionPill) {
+            event.preventDefault();
+
+            const mentionType = mentionPill.getAttribute('data-type');
+            const mentionId = mentionPill.getAttribute('data-id');
+
+            if (mentionType && mentionId) {
+              // Dispatch custom event with mention data
+              window.dispatchEvent(
+                new CustomEvent('pawkit-mention-click', {
+                  detail: { type: mentionType, id: mentionId },
+                })
+              );
+            }
+            return true; // Prevent ProseMirror from handling this click
+          }
+          return false;
+        },
+      },
     },
     onUpdate: ({ editor }) => {
       // Debounced save - triggers 500ms after last keystroke
@@ -195,6 +277,8 @@ export function Editor({
         lastSavedContent.current = currentContent;
         onChange(currentContent);
       }
+      // Sync references after saving (async, fire and forget)
+      syncRefsRef.current?.(editor);
     },
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
@@ -282,6 +366,34 @@ export function Editor({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [editor]);
+
+  // Handle @ mention pill clicks
+  useEffect(() => {
+    const handleMentionEvent = (e: Event) => {
+      const { type, id } = (e as CustomEvent).detail;
+
+      switch (type) {
+        case 'card':
+          openCardDetail(id);
+          break;
+        case 'pawkit':
+          router.push(`/pawkits/${id}`);
+          break;
+        case 'date':
+          try {
+            const date = parseISO(id);
+            setCalendarDate(date);
+            router.push('/calendar');
+          } catch {
+            console.error('Invalid date format:', id);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('pawkit-mention-click', handleMentionEvent);
+    return () => window.removeEventListener('pawkit-mention-click', handleMentionEvent);
+  }, [openCardDetail, router, setCalendarDate]);
 
   const setLink = useCallback(() => {
     if (!editor) return;
@@ -754,6 +866,69 @@ export function Editor({
         .ProseMirror:hover .drag-handle,
         .tiptap:hover .drag-handle {
           opacity: 0.7;
+        }
+
+        /* @ Mention Pills - Squircle style */
+        .tiptap span[data-pawkit-mention],
+        .tiptap .mention-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.125rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+          vertical-align: baseline;
+        }
+
+        .tiptap span[data-pawkit-mention]:hover,
+        .tiptap .mention-pill:hover {
+          transform: translateY(-1px);
+        }
+
+        .tiptap .mention-pill-card {
+          background: hsla(185 70% 42% / 0.15);
+          color: hsl(185 70% 38%);
+          border: 1px solid hsla(185 70% 42% / 0.25);
+        }
+
+        .tiptap .mention-pill-card:hover {
+          background: hsla(185 70% 42% / 0.25);
+        }
+
+        .tiptap .mention-pill-pawkit {
+          background: hsla(280 70% 50% / 0.15);
+          color: hsl(280 70% 45%);
+          border: 1px solid hsla(280 70% 50% / 0.25);
+        }
+
+        .tiptap .mention-pill-pawkit:hover {
+          background: hsla(280 70% 50% / 0.25);
+        }
+
+        .tiptap .mention-pill-date {
+          background: hsla(220 70% 50% / 0.15);
+          color: hsl(220 70% 45%);
+          border: 1px solid hsla(220 70% 50% / 0.25);
+        }
+
+        .tiptap .mention-pill-date:hover {
+          background: hsla(220 70% 50% / 0.25);
+        }
+
+        /* Deleted/broken mention state */
+        .tiptap .mention-deleted {
+          background: hsla(0 60% 50% / 0.1);
+          color: hsl(0 50% 40%);
+          border: 1px solid hsla(0 60% 50% / 0.2);
+          text-decoration: line-through;
+          opacity: 0.7;
+        }
+
+        .tiptap .mention-deleted:hover {
+          opacity: 1;
         }
       `}</style>
     </div>
