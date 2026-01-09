@@ -77,6 +77,8 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
           onChange={handleContentChange}
           placeholder="Type '/' for commands or just start writing..."
           className="note-editor-large"
+          workspaceId={card.workspaceId}
+          cardId={card.id}
         />
       </div>
 

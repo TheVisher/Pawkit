@@ -72,16 +72,27 @@ export function WeekView() {
       });
     });
 
-    // Add scheduled cards
-    cards
-      .filter((card: LocalCard) => card.scheduledDate)
-      .forEach((card: LocalCard) => {
-        const dateKey = format(new Date(card.scheduledDate!), 'yyyy-MM-dd');
+    // Add scheduled cards - support both legacy scheduledDate and new scheduledDates array
+    cards.forEach((card: LocalCard) => {
+      // Get all scheduled dates for this card
+      const scheduledDates: string[] = [];
+
+      // Support new scheduledDates array
+      if (card.scheduledDates && card.scheduledDates.length > 0) {
+        scheduledDates.push(...card.scheduledDates);
+      }
+      // Fallback to legacy scheduledDate (for migration period)
+      else if (card.scheduledDate) {
+        scheduledDates.push(format(new Date(card.scheduledDate), 'yyyy-MM-dd'));
+      }
+
+      // Add card to each scheduled date
+      scheduledDates.forEach((dateKey) => {
         if (!map.has(dateKey)) {
           map.set(dateKey, []);
         }
         map.get(dateKey)!.push({
-          id: card.id,
+          id: `${card.id}-${dateKey}`, // Unique ID for each date occurrence
           title: card.title || card.url || 'Untitled',
           date: dateKey,
           type: 'card',
@@ -91,6 +102,7 @@ export function WeekView() {
           source: { type: 'card', cardId: card.id },
         });
       });
+    });
 
     return map;
   }, [events, cards]);

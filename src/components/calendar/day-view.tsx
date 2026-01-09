@@ -144,13 +144,23 @@ export function DayView() {
         });
       });
 
-    // Add scheduled cards
-    cards
-      .filter((card: LocalCard) => card.scheduledDate)
-      .filter((card: LocalCard) => format(new Date(card.scheduledDate!), 'yyyy-MM-dd') === dateKey)
-      .forEach((card: LocalCard) => {
+    // Add scheduled cards - support both legacy scheduledDate and new scheduledDates array
+    cards.forEach((card: LocalCard) => {
+      // Get all scheduled dates for this card
+      let isScheduledForThisDate = false;
+
+      // Check new scheduledDates array
+      if (card.scheduledDates && card.scheduledDates.includes(dateKey)) {
+        isScheduledForThisDate = true;
+      }
+      // Fallback to legacy scheduledDate (for migration period)
+      else if (card.scheduledDate && format(new Date(card.scheduledDate), 'yyyy-MM-dd') === dateKey) {
+        isScheduledForThisDate = true;
+      }
+
+      if (isScheduledForThisDate) {
         items.push({
-          id: card.id,
+          id: `${card.id}-${dateKey}`, // Unique ID for each date occurrence
           title: card.title || card.url || 'Untitled',
           date: dateKey,
           type: 'card',
@@ -159,7 +169,8 @@ export function DayView() {
           endTime: card.scheduledEndTime,
           source: { type: 'card', cardId: card.id },
         });
-      });
+      }
+    });
 
     return items;
   }, [events, cards, dateKey]);

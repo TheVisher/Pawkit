@@ -13,9 +13,10 @@
  * @see Phase 2 of performance optimization plan
  */
 
-import React, { createContext, useContext, useMemo, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, useRef, ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
+import { runMigrations } from '@/lib/db/migrations';
 import type { LocalCard, LocalCollection, LocalCalendarEvent } from '@/lib/db/types';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 
@@ -46,6 +47,15 @@ interface DataProviderProps {
 export function DataProvider({ children }: DataProviderProps) {
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const workspaceId = currentWorkspace?.id;
+  const migrationRun = useRef(false);
+
+  // Run database migrations on first mount
+  useEffect(() => {
+    if (!migrationRun.current) {
+      migrationRun.current = true;
+      runMigrations().catch(console.error);
+    }
+  }, []);
 
   // ==========================================================================
   // TWO-PHASE CARD LOADING (for faster LCP)

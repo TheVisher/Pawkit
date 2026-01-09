@@ -39,6 +39,7 @@ export type {
   MetadataEntry,
   NoteLink,
   NoteCardLink,
+  LocalReference,
   CachedImage,
 } from './types';
 

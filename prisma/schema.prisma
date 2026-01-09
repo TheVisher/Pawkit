@@ -66,6 +66,7 @@ model Workspace {
   collections    Collection[]
   calendarEvents CalendarEvent[]
   todos          Todo[]
+  references     Reference[]
 
   @@index([userId])
 }
@@ -148,7 +149,9 @@ model Card {
   pinned      Boolean  @default(false)
 
   // Scheduling (for calendar integration)
+  /// @deprecated Use scheduledDates[] instead - will be removed after migration
   scheduledDate      DateTime?
+  scheduledDates     String[] @default([]) // Array of ISO date strings (YYYY-MM-DD) for multi-date calendar
   scheduledStartTime String? // HH:mm format
   scheduledEndTime   String? // HH:mm format
 
@@ -512,6 +515,32 @@ model QuickNoteArchive {
 
   @@unique([userId, workspaceId, weekStart])
   @@index([userId, workspaceId])
+}
+
+/// Reference - @ mention links between cards, Pawkits, and dates
+/// Enables bidirectional linking (backlinks) and unified scheduling
+model Reference {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Source: The card containing the @ mention
+  sourceId String
+
+  // Target: Card ID, Pawkit slug, or ISO date string (YYYY-MM-DD)
+  targetId   String
+  targetType String // 'card' | 'pawkit' | 'date'
+
+  // Display text shown in the mention pill
+  linkText String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sourceId])
+  @@index([targetId, targetType])
+  @@index([workspaceId])
+  @@index([workspaceId, sourceId])
 }
 
 // =============================================================================

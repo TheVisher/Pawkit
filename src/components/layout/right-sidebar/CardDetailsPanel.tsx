@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { Tag, FolderOpen, Link2, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2 } from 'lucide-react';
+import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/tags/tag-input';
@@ -14,6 +14,8 @@ import { useDataStore } from '@/lib/stores/data-store';
 import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
 import { SupertagPanel } from './SupertagPanel';
 import { SupertagSelector } from './SupertagSelector';
+import { ReferencesSection } from './sections/ReferencesSection';
+import { BacklinksSection } from './sections/BacklinksSection';
 import { findSupertagsInTags, getSupertagDefinition, getAllSupertags, getSupertagTemplate } from '@/lib/tags/supertags';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 
@@ -313,14 +315,13 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
 
       <Separator className="bg-border-subtle" />
 
-      {/* Backlinks Section (placeholder for Phase 7.2) */}
-      <div>
-        <div className="flex items-center gap-2 text-text-muted mb-3">
-          <Link2 className="h-5 w-5" />
-          <span className="text-xs font-medium uppercase">Backlinks</span>
-        </div>
-        <p className="text-xs text-text-muted italic">No backlinks yet</p>
-      </div>
+      {/* References Section - outgoing @ mentions */}
+      <ReferencesSection cardId={card.id} workspaceId={card.workspaceId} />
+
+      <Separator className="bg-border-subtle" />
+
+      {/* Backlinks Section - incoming @ mentions */}
+      <BacklinksSection card={card} workspaceId={card.workspaceId} />
 
       <Separator className="bg-border-subtle" />
 

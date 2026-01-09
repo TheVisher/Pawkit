@@ -16,12 +16,13 @@ import type {
   MetadataEntry,
   NoteLink,
   NoteCardLink,
+  LocalReference,
   CachedImage,
   LayoutCacheEntry,
 } from './types';
 
 // Re-export types for convenience
-export type { LocalCard } from './types';
+export type { LocalCard, LocalReference } from './types';
 
 export class PawkitDB extends Dexie {
   // Core entities
@@ -44,6 +45,9 @@ export class PawkitDB extends Dexie {
   // Wiki-links
   noteLinks!: Table<NoteLink>;
   noteCardLinks!: Table<NoteCardLink>;
+
+  // @ Mentions / References
+  references!: Table<LocalReference>;
 
   // Image cache
   imageCache!: Table<CachedImage>;
@@ -124,6 +128,9 @@ export class PawkitDB extends Dexie {
       // Wiki-links for note interconnections
       noteLinks: 'id, sourceNoteId, targetNoteId, [sourceNoteId+targetNoteId]',
       noteCardLinks: 'id, sourceNoteId, targetCardId',
+
+      // @ Mentions / References
+      references: 'id, workspaceId, sourceId, targetId, [sourceId+targetType], [targetId+targetType], [workspaceId+sourceId], createdAt',
 
       // Image cache with LRU support
       imageCache: 'id, cachedAt, lastAccessedAt, size',
