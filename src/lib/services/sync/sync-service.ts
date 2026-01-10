@@ -67,6 +67,13 @@ class SyncService {
     return this.workspaceId;
   }
 
+  /**
+   * Get the last sync time from the store
+   */
+  getLastSyncTime(): Date | null {
+    return useSyncStore.getState().lastSyncTime;
+  }
+
   // ===========================================================================
   // MAIN SYNC METHODS
   // ===========================================================================
