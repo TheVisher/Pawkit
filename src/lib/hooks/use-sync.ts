@@ -163,11 +163,11 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
           clearTimeout(visibilityTimeoutRef.current);
         }
 
-        // Debounce sync by 300ms - fast enough to feel responsive, slow enough to batch
+        // Debounce sync by 1000ms - gives time for updates to accumulate before syncing
         visibilityTimeoutRef.current = setTimeout(() => {
           log.debug('Tab visible, checking for pending items...');
           triggerSync();
-        }, 300);
+        }, 1000);
       }
     };
 

@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db/prisma';
 import { updateCardSchema } from '@/lib/validations/card';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -48,14 +48,10 @@ async function getOwnedCard(cardId: string, userId: string) {
  */
 export async function GET(request: Request, context: RouteContext) {
   try {
-    // 1. Authenticate
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Authenticate (cached per request)
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -100,17 +96,15 @@ export async function GET(request: Request, context: RouteContext) {
  *
  * Update an existing card.
  * Returns 404 if not found or not owned by user.
+ *
+ * Optimized: Combines ownership check with update in a single query.
  */
 export async function PATCH(request: Request, context: RouteContext) {
   try {
-    // 1. Authenticate
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Authenticate (cached per request)
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -127,18 +121,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       );
     }
 
-    // 3. Verify ownership BEFORE parsing body
-    const existingCard = await getOwnedCard(id, user.id);
-
-    if (!existingCard) {
-      // Return 404 to not leak existence
-      return NextResponse.json(
-        { error: 'Card not found' },
-        { status: 404 }
-      );
-    }
-
-    // 4. Parse and validate request body
+    // 3. Parse and validate request body FIRST (no DB access needed)
     const body = await request.json();
     const validationResult = updateCardSchema.safeParse(body);
 
@@ -154,7 +137,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
     const updates = validationResult.data;
 
-    // 5. Build update data
+    // 4. Build update data
     const updateData: Record<string, unknown> = {};
 
     // Only include fields that are explicitly provided
@@ -227,10 +210,19 @@ export async function PATCH(request: Request, context: RouteContext) {
     // Conflict tracking
     if ('conflictWithId' in updates) updateData.conflictWithId = updates.conflictWithId;
 
-    // 6. Check for version conflict if expectedVersion provided
+    // 5. Handle version conflict check if expectedVersion provided
+    // For version conflicts, we need to fetch the card first (required for conflict response)
     if (updates.expectedVersion !== undefined) {
+      const existingCard = await getOwnedCard(id, user.id);
+
+      if (!existingCard) {
+        return NextResponse.json(
+          { error: 'Card not found' },
+          { status: 404 }
+        );
+      }
+
       if (existingCard.version > updates.expectedVersion) {
-        // Version conflict! Server has a newer version than client expected
         return NextResponse.json(
           {
             error: 'Version conflict',
@@ -242,18 +234,47 @@ export async function PATCH(request: Request, context: RouteContext) {
           { status: 409 }
         );
       }
+
+      // Ownership verified, version OK - proceed with update
+      const card = await prisma.card.update({
+        where: { id },
+        data: {
+          ...updateData,
+          version: { increment: 1 },
+        },
+      });
+
+      return NextResponse.json({ card });
     }
 
-    // 7. Update the card with version increment
-    const card = await prisma.card.update({
-      where: { id },
+    // 6. No version check needed - combine ownership check + update in one query
+    // Use updateMany with ownership filter, then fetch the result
+    const result = await prisma.card.updateMany({
+      where: {
+        id,
+        workspace: {
+          userId: user.id,
+        },
+      },
       data: {
         ...updateData,
-        version: { increment: 1 }, // Always increment version on server update
+        version: { increment: 1 },
       },
     });
 
-    // 7. Return updated card
+    // If no rows updated, card doesn't exist or isn't owned by user
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Card not found' },
+        { status: 404 }
+      );
+    }
+
+    // Fetch the updated card to return
+    const card = await prisma.card.findUnique({
+      where: { id },
+    });
+
     return NextResponse.json({ card });
   } catch (error) {
     log.error('PATCH /api/cards/[id] error:', error);
@@ -269,17 +290,15 @@ export async function PATCH(request: Request, context: RouteContext) {
  *
  * Soft delete a card (set deleted: true, deletedAt: now).
  * Returns 404 if not found or not owned by user.
+ *
+ * Optimized: Combines ownership check with delete in a single query.
  */
 export async function DELETE(request: Request, context: RouteContext) {
   try {
-    // 1. Authenticate
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Authenticate (cached per request)
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -296,33 +315,35 @@ export async function DELETE(request: Request, context: RouteContext) {
       );
     }
 
-    // 3. Verify ownership BEFORE deleting
-    const existingCard = await getOwnedCard(id, user.id);
-
-    if (!existingCard) {
-      // Return 404 to not leak existence
-      return NextResponse.json(
-        { error: 'Card not found' },
-        { status: 404 }
-      );
-    }
-
-    // 4. Soft delete the card
-    const card = await prisma.card.update({
-      where: { id },
+    // 3. Soft delete with ownership check in one query
+    const result = await prisma.card.updateMany({
+      where: {
+        id,
+        workspace: {
+          userId: user.id,
+        },
+      },
       data: {
         deleted: true,
         deletedAt: new Date(),
       },
     });
 
-    // 5. Return success
+    // If no rows updated, card doesn't exist or isn't owned by user
+    if (result.count === 0) {
+      return NextResponse.json(
+        { error: 'Card not found' },
+        { status: 404 }
+      );
+    }
+
+    // 4. Return success
     return NextResponse.json({
       success: true,
       card: {
-        id: card.id,
-        deleted: card.deleted,
-        deletedAt: card.deletedAt,
+        id,
+        deleted: true,
+        deletedAt: new Date(),
       },
     });
   } catch (error) {

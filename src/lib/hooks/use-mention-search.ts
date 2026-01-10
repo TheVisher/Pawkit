@@ -2,12 +2,31 @@
  * Mention Search Hook
  *
  * Provides instant search for @ mentions across cards, Pawkits, and dates.
- * Uses chrono-node for natural language date parsing.
+ * Uses chrono-node for natural language date parsing (lazy-loaded).
  */
 
-import { useMemo } from 'react';
-import * as chrono from 'chrono-node';
-import { format, addDays, startOfWeek, addWeeks, addMonths } from 'date-fns';
+import { useMemo, useState, useEffect } from 'react';
+import { format, addDays, startOfWeek, addWeeks } from 'date-fns';
+
+// Lazy-loaded chrono-node module (loaded on first date parse attempt)
+let chronoModule: typeof import('chrono-node') | null = null;
+let chronoLoadPromise: Promise<typeof import('chrono-node')> | null = null;
+
+/**
+ * Load chrono-node lazily
+ */
+async function loadChrono(): Promise<typeof import('chrono-node')> {
+  if (chronoModule) return chronoModule;
+  if (chronoLoadPromise) return chronoLoadPromise;
+
+  chronoLoadPromise = import('chrono-node').then((mod) => {
+    chronoModule = mod;
+    return mod;
+  });
+
+  return chronoLoadPromise;
+}
+
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 import type { MentionType } from '@/lib/tiptap/extensions/mention';
@@ -78,13 +97,15 @@ function getDateShortcuts(): MentionItem[] {
 }
 
 /**
- * Parse date from natural language query using chrono-node
+ * Parse date from natural language query using chrono-node (sync, uses cached module)
+ * Returns null if chrono isn't loaded yet - the hook will trigger a re-render when it loads
  */
 function parseDateFromQuery(query: string): MentionItem | null {
   if (!query.trim()) return null;
+  if (!chronoModule) return null; // Not loaded yet
 
   try {
-    const parsed = chrono.parseDate(query);
+    const parsed = chronoModule.parseDate(query);
     if (parsed) {
       return {
         id: format(parsed, 'yyyy-MM-dd'),
@@ -167,6 +188,16 @@ export function useMentionSearch(
   const cards = useCards(workspaceId);
   const collections = useCollections(workspaceId);
 
+  // Track if chrono is loaded (for re-render trigger)
+  const [chronoLoaded, setChronoLoaded] = useState(!!chronoModule);
+
+  // Load chrono lazily when there's a query that might be a date
+  useEffect(() => {
+    if (query.trim() && !chronoModule) {
+      loadChrono().then(() => setChronoLoaded(true));
+    }
+  }, [query]);
+
   return useMemo(() => {
     const normalized = normalizeQuery(query);
     const isEmpty = !normalized;
@@ -232,7 +263,7 @@ export function useMentionSearch(
       pawkits,
       isEmpty: !hasResults,
     };
-  }, [query, cards, collections, maxResults]);
+  }, [query, cards, collections, maxResults, chronoLoaded]);
 }
 
 export default useMentionSearch;

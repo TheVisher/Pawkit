@@ -15,11 +15,16 @@ const log = createModuleLogger('SyncQueue');
 const MAX_RETRIES = 3;
 
 // Debounce delay for immediate syncs (ms)
-export const QUEUE_DEBOUNCE_MS = 2000;
+export const QUEUE_DEBOUNCE_MS = 3000;
+
+// Debounce timer for triggerSync
+let triggerSyncTimer: ReturnType<typeof setTimeout> | null = null;
+let triggerSyncPromise: Promise<void> | null = null;
 
 /**
  * Manually trigger a sync (e.g., when modal closes)
  * Only syncs if there are pending items - no wasted requests
+ * Debounced to prevent rapid-fire syncs during active editing
  */
 export async function triggerSync(): Promise<void> {
   log.debug('triggerSync called');
@@ -34,14 +39,35 @@ export async function triggerSync(): Promise<void> {
     return;
   }
 
-  const count = await getPendingItemCount();
-  log.debug(`triggerSync: ${count} pending items`);
-
-  if (count > 0) {
-    log.debug('triggerSync: calling processQueue');
-    await processQueue();
-    log.debug('triggerSync: processQueue completed');
+  // If already syncing, wait for it to complete
+  if (triggerSyncPromise) {
+    log.debug('triggerSync: already syncing, waiting...');
+    return triggerSyncPromise;
   }
+
+  // Debounce: clear any pending timer and set a new one
+  if (triggerSyncTimer) {
+    clearTimeout(triggerSyncTimer);
+  }
+
+  return new Promise<void>((resolve) => {
+    triggerSyncTimer = setTimeout(async () => {
+      triggerSyncTimer = null;
+
+      const count = await getPendingItemCount();
+      log.debug(`triggerSync: ${count} pending items`);
+
+      if (count > 0) {
+        log.debug('triggerSync: calling processQueue');
+        triggerSyncPromise = processQueue().then(() => {
+          triggerSyncPromise = null;
+          log.debug('triggerSync: processQueue completed');
+        });
+        await triggerSyncPromise;
+      }
+      resolve();
+    }, 500); // 500ms debounce on triggerSync itself
+  });
 }
 
 /**

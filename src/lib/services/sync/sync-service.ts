@@ -19,7 +19,6 @@ import { pullEntity } from './entity-sync';
 import {
   type BroadcastMessage,
   SYNC_CHANNEL_NAME,
-  METADATA_LAST_SYNC_KEY,
   ENTITY_ORDER,
 } from './types';
 
@@ -104,15 +103,11 @@ class SyncService {
         await pullEntity(entity, this.workspaceId, null);
       }
 
-      // 3. Update last sync time
-      await this.setLastSyncTime(new Date());
-
-      // 4. Notify other tabs
+      // 3. Notify other tabs
       this.broadcast({ type: 'sync-complete' });
 
       useSyncStore.getState().finishSync(true);
-      useToastStore.getState().toast({ type: 'success', message: 'Sync complete' });
-      log.info('Full sync complete');
+      log.info('Initial sync complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       log.error('Full sync failed:', message);
@@ -124,9 +119,11 @@ class SyncService {
   }
 
   /**
-   * Perform a delta sync (only changes since last sync)
-   * NOTE: This now uses push-only to preserve local-first architecture
-   * Full pull only happens on fullSync() - initial load or manual refresh
+   * Smart sync - checks if we need full sync or just push
+   *
+   * Simple logic:
+   * - If local DB is empty → full sync (first load or cache cleared)
+   * - If local DB has data → just push queue (Realtime handles incoming)
    */
   async deltaSync(): Promise<void> {
     if (!this.workspaceId) {
@@ -144,61 +141,37 @@ class SyncService {
       return;
     }
 
-    const lastSync = await this.getLastSyncTime();
+    // Check if we have local data (simple existence check)
+    const cardCount = await db.cards.where('workspaceId').equals(this.workspaceId).count();
 
-    // If no last sync, do full sync (initial load)
-    if (!lastSync) {
-      log.info('No last sync time, performing full sync');
+    if (cardCount === 0) {
+      // No local data - need full sync (first time user or cleared cache)
+      log.info('No local data, performing initial full sync');
       return this.fullSync();
     }
 
-    // LOCAL-FIRST: After initial sync, only push changes (never pull)
-    // This prevents server from overwriting local-only data like daily notes
-    log.info('Starting push-only sync (local-first mode)');
+    // We have local data - Realtime handles incoming, just push any pending changes
+    log.debug('Local data exists, processing queue only');
     return this.pushOnlySync();
   }
 
   /**
    * Push-only sync - pushes local changes to server WITHOUT pulling
-   * Use this for ongoing syncs AFTER initial load
-   * This is the LOCAL-FIRST approach: Zustand/Dexie is source of truth
+   * Realtime handles incoming changes, this just pushes the queue
    */
   async pushOnlySync(): Promise<void> {
-    if (!this.workspaceId) {
-      log.warn('No workspace ID set, skipping sync');
+    if (!this.workspaceId || this.isSyncing || !navigator.onLine) {
       return;
     }
 
-    if (this.isSyncing) {
-      log.debug('Sync already in progress, skipping');
-      return;
-    }
-
-    if (!navigator.onLine) {
-      useSyncStore.getState().goOffline();
-      return;
-    }
-
-    log.info('Starting push-only sync');
     this.isSyncing = true;
-    useSyncStore.getState().startSync();
 
     try {
-      // ONLY process outgoing queue - NO pull from server
+      // Just process the outgoing queue - Realtime handles incoming
       await processQueue();
-
-      // Update last sync time
-      await this.setLastSyncTime(new Date());
-
-      // Notify other tabs
       this.broadcast({ type: 'sync-complete' });
-
-      useSyncStore.getState().finishSync(true);
-      log.info('Push-only sync complete');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      log.error('Push-only sync failed:', message);
-      useSyncStore.getState().finishSync(false, message);
+      log.error('Push sync failed:', error instanceof Error ? error.message : 'Unknown error');
     } finally {
       this.isSyncing = false;
     }
@@ -236,32 +209,6 @@ class SyncService {
     if (navigator.onLine && !this.isSyncing) {
       await processQueue();
     }
-  }
-
-  // ===========================================================================
-  // METADATA METHODS
-  // ===========================================================================
-
-  /**
-   * Get last sync time from metadata
-   */
-  async getLastSyncTime(): Promise<Date | null> {
-    const entry = await db.metadata.get(METADATA_LAST_SYNC_KEY);
-    if (entry?.value) {
-      return new Date(entry.value as string);
-    }
-    return null;
-  }
-
-  /**
-   * Set last sync time in metadata
-   */
-  private async setLastSyncTime(time: Date): Promise<void> {
-    await db.metadata.put({
-      key: METADATA_LAST_SYNC_KEY,
-      value: time.toISOString(),
-    });
-    useSyncStore.getState().setLastSyncTime(time);
   }
 
   // ===========================================================================

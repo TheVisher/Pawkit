@@ -487,6 +487,14 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
               'h-full flex flex-col',
               panelBase,
               // Inset shadows on edges where sidebars are merged (makes sidebars appear elevated)
+              // TEST: Chrome flickering bug when exactly ONE sidebar is anchored (not both, not neither)
+              // Issue: Cards flicker/vanish on hover in Library masonry view. Works fine in Dia browser.
+              // Symptoms: Cards disappear on hover enter/exit, scroll breaks, layout corrupts
+              // Tried: GPU hints (will-change, translateZ), removing inset shadows, adding transform to cards
+              // Hypothesis: Asymmetric inset shadows + backdrop-blur + card hover transforms = Chrome compositor bug
+              // Working states: both sidebars floating, both sidebars anchored
+              // Broken states: left anchored + right floating, left floating + right anchored
+              // Next steps: Test on other machines/browsers, check Chrome DevTools Layers panel, try removing backdrop-blur
               leftMerged && rightMerged
                 ? bothInsetShadow
                 : leftMerged
