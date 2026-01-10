@@ -20,11 +20,16 @@ import {
   ChevronDown,
   Tags,
   RefreshCw,
+  Check,
+  Plus,
+  Pencil,
+  Star,
 } from "lucide-react";
 import { PawkitsTree } from "@/components/pawkits/pawkits-tree";
 import { SidebarContextMenu } from "@/components/context-menus";
 import { useLeftSidebar, useRightSidebarSettings } from "@/lib/stores/ui-store";
-import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
+import { useCurrentWorkspace, useWorkspaces, useWorkspaceStore } from "@/lib/stores/workspace-store";
+import { useAuthStore } from "@/lib/stores/auth-store";
 import { useSyncStore } from "@/lib/stores/sync-store";
 import { getClient } from "@/lib/supabase/client";
 import { fullSync } from "@/lib/services";
@@ -32,6 +37,7 @@ import { retryFailedItems } from "@/lib/services/sync-queue";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePrefetch } from "@/lib/hooks/use-prefetch";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -84,12 +90,74 @@ const SyncMenuItem = memo(function SyncMenuItem({ workspaceId }: { workspaceId?:
 export function LeftSidebar() {
   const [mounted, setMounted] = useState(false);
   const [pawkitsExpanded, setPawkitsExpanded] = useState(true);
+  const [renamingWorkspaceId, setRenamingWorkspaceId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const { toggleSettings } = useRightSidebarSettings();
   const workspace = useCurrentWorkspace();
+  const workspaces = useWorkspaces();
+  const switchWorkspace = useWorkspaceStore((s) => s.switchWorkspace);
+  const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
+  const updateWorkspace = useWorkspaceStore((s) => s.updateWorkspace);
+  const deleteWorkspace = useWorkspaceStore((s) => s.deleteWorkspace);
+  const user = useAuthStore((s) => s.user);
   const { prefetchOnInteraction } = usePrefetch();
+
+  const handleCreateWorkspace = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user?.id) return;
+    const name = `Workspace ${workspaces.length + 1}`;
+    await createWorkspace(name, user.id);
+  };
+
+  const handleRenameWorkspace = async (id: string) => {
+    if (!renameValue.trim()) {
+      setRenamingWorkspaceId(null);
+      return;
+    }
+    await updateWorkspace(id, { name: renameValue.trim() });
+    setRenamingWorkspaceId(null);
+    setRenameValue("");
+  };
+
+  const handleDeleteWorkspace = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const ws = workspaces.find((w) => w.id === id);
+    if (ws?.isDefault) {
+      alert("Cannot delete default workspace. Set another workspace as default first.");
+      return;
+    }
+    if (workspaces.length <= 1) {
+      alert("Cannot delete your only workspace");
+      return;
+    }
+    const confirmed = confirm(`Delete "${ws?.name}"?\n\nThis will permanently delete this workspace and all its contents.`);
+    if (!confirmed) return;
+    await deleteWorkspace(id);
+  };
+
+  const startRename = (e: React.MouseEvent, ws: { id: string; name: string }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setRenamingWorkspaceId(ws.id);
+    setRenameValue(ws.name);
+  };
+
+  const handleSetDefault = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Remove default from current default workspace
+    const currentDefault = workspaces.find((w) => w.isDefault);
+    if (currentDefault && currentDefault.id !== id) {
+      await updateWorkspace(currentDefault.id, { isDefault: false });
+    }
+    // Set new default
+    await updateWorkspace(id, { isDefault: true });
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard SSR hydration pattern
@@ -367,6 +435,84 @@ export function LeftSidebar() {
             align="start"
             className="w-56 bg-bg-surface-1 border-border-subtle"
           >
+            {/* Workspace Switcher */}
+            {workspaces.length >= 1 && (
+              <>
+                <div className="px-2 py-1.5 flex items-center justify-between">
+                  <span className="text-xs font-medium text-text-muted">Workspaces</span>
+                  <button
+                    onClick={handleCreateWorkspace}
+                    className="h-5 w-5 flex items-center justify-center rounded hover:bg-bg-surface-2 text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {workspaces.map((ws) => (
+                  <div key={ws.id} className="group relative">
+                    {renamingWorkspaceId === ws.id ? (
+                      <div className="px-2 py-1">
+                        <Input
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRenameWorkspace(ws.id);
+                            if (e.key === "Escape") setRenamingWorkspaceId(null);
+                          }}
+                          onBlur={() => handleRenameWorkspace(ws.id)}
+                          autoFocus
+                          className="h-7 text-sm bg-bg-surface-2 border-border-subtle"
+                        />
+                      </div>
+                    ) : (
+                      <DropdownMenuItem
+                        onClick={() => switchWorkspace(ws.id)}
+                        className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary pr-12"
+                      >
+                        <div className="mr-2 h-4 w-4 flex items-center justify-center shrink-0">
+                          {ws.id === workspace?.id && (
+                            <Check className="h-3.5 w-3.5 text-[var(--color-accent)]" />
+                          )}
+                        </div>
+                        <span className="truncate">{ws.name}</span>
+                      </DropdownMenuItem>
+                    )}
+                    {/* Hover actions - order: pencil, trash, star (star always far right) */}
+                    {renamingWorkspaceId !== ws.id && (
+                      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0">
+                        <button
+                          onClick={(e) => startRename(e, ws)}
+                          className="h-5 w-5 flex items-center justify-center rounded hover:bg-bg-surface-3 text-text-muted hover:text-text-primary transition-colors"
+                          title="Rename"
+                        >
+                          <Pencil className="h-2.5 w-2.5" />
+                        </button>
+                        {workspaces.length > 1 && (
+                          <button
+                            onClick={(e) => handleDeleteWorkspace(e, ws.id)}
+                            className="h-5 w-5 flex items-center justify-center rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-2.5 w-2.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={(e) => !ws.isDefault && handleSetDefault(e, ws.id)}
+                          className={`h-5 w-5 flex items-center justify-center rounded transition-colors ${
+                            ws.isDefault
+                              ? "text-yellow-400 cursor-default"
+                              : "text-text-muted hover:text-yellow-400 hover:bg-yellow-500/20"
+                          }`}
+                          title={ws.isDefault ? "Default workspace" : "Set as default"}
+                        >
+                          <Star className={`h-2.5 w-2.5 ${ws.isDefault ? "fill-yellow-400" : ""}`} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <DropdownMenuSeparator className="bg-border-subtle" />
+              </>
+            )}
             <SyncMenuItem workspaceId={workspace?.id} />
             <DropdownMenuItem
               onClick={() => router.push("/trash")}
