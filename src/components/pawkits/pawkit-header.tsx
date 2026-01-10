@@ -115,6 +115,7 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                                     src={collection.coverImage!}
                                     alt=""
                                     fill
+                                    sizes="100vw"
                                     className="object-cover"
                                     style={{
                                         objectPosition: `center ${collection.coverImagePosition ?? 50}%`

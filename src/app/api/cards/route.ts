@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db/prisma';
 import { Prisma } from '@/generated/prisma';
 import {
@@ -32,14 +32,10 @@ const log = createModuleLogger('CardsAPI');
  */
 export async function GET(request: Request) {
   try {
-    // 1. Authenticate
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Authenticate (cached per request)
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -133,14 +129,10 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    // 1. Authenticate
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Authenticate (cached per request)
+    const user = await getAuthUser();
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

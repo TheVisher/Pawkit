@@ -5,6 +5,8 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
+import type { User } from '@supabase/supabase-js';
 
 export async function createClient() {
   const cookieStore = await cookies();
@@ -51,3 +53,37 @@ export function createAdminClient() {
     }
   );
 }
+
+/**
+ * Get authenticated user with request-level caching
+ *
+ * Uses React's cache() to deduplicate getUser() calls within the same request.
+ * This prevents multiple Supabase round-trips when the same API route
+ * or its dependencies need to check auth multiple times.
+ *
+ * @returns User if authenticated, null otherwise
+ */
+export const getAuthUser = cache(async (): Promise<User | null> => {
+  const supabase = await createClient();
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return null;
+  }
+
+  return user;
+});
+
+/**
+ * Require authenticated user or throw
+ * Convenience wrapper for routes that require auth
+ *
+ * @throws Error if not authenticated
+ */
+export const requireAuth = cache(async (): Promise<User> => {
+  const user = await getAuthUser();
+  if (!user) {
+    throw new Error('Unauthorized');
+  }
+  return user;
+});

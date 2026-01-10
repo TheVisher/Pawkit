@@ -117,6 +117,7 @@ export function ContactPhotoHeader({ card, title, setTitle, onTitleBlur, classNa
                 src={card.image!}
                 alt={card.title || 'Contact photo'}
                 fill
+                sizes="180px"
                 className="object-cover"
                 style={{ objectPosition: `center ${imagePosition}%` }}
                 onError={() => setImageError(true)}

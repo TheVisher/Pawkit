@@ -233,6 +233,7 @@ export function CardPhotoPickerModal() {
                   src={previewImage!}
                   alt="Preview"
                   fill
+                  sizes="128px"
                   className="object-cover"
                   style={{ objectPosition: `center ${imagePosition}%` }}
                   onError={() => setImageError(true)}

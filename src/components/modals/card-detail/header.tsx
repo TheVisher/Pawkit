@@ -97,6 +97,7 @@ export function CardDetailHeader({
               src={card.image!}
               alt={card.title || 'Card thumbnail'}
               fill
+              sizes="(max-width: 768px) 100vw, 600px"
               className={cn(
                 "object-cover transition-transform duration-300",
                 imageHovered && onImageClick && "scale-[1.02]"
