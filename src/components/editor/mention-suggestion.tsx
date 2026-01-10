@@ -24,7 +24,7 @@ export function createMentionSuggestion(
 ): Partial<SuggestionOptions<MentionItem>> {
   return {
     char: '@',
-    allowSpaces: false, // Space dismisses the dropdown
+    allowSpaces: true, // Allow spaces for natural language date parsing
 
     items: ({ query }) => {
       // Return empty array - actual items are fetched in the dropdown component
