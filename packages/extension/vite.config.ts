@@ -5,6 +5,7 @@ import path from 'path'
 
 const isServiceWorker = process.env.BUILD_TARGET === 'service-worker'
 const isContentScript = process.env.BUILD_TARGET === 'content-script'
+const isPawkitBridge = process.env.BUILD_TARGET === 'pawkit-bridge'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -31,7 +32,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      emptyOutDir: !isServiceWorker && !isContentScript, // Don't clear on second/third build
+      emptyOutDir: !isServiceWorker && !isContentScript && !isPawkitBridge, // Don't clear on subsequent builds
       rollupOptions: isServiceWorker
         ? {
             // Service worker build - IIFE format with inlined deps
@@ -51,6 +52,17 @@ export default defineConfig(({ mode }) => {
             },
             output: {
               entryFileNames: 'content-script.js',
+              format: 'iife'
+            }
+          }
+        : isPawkitBridge
+        ? {
+            // Pawkit bridge content script - runs on getpawkit.com for auth
+            input: {
+              'pawkit-bridge': path.resolve(__dirname, 'src/content/pawkit-bridge.ts')
+            },
+            output: {
+              entryFileNames: 'pawkit-bridge.js',
               format: 'iife'
             }
           }

@@ -59,7 +59,7 @@ function Options() {
           <CardHeader>
             <CardTitle>Authentication Status</CardTitle>
             <CardDescription>
-              The extension uses your Pawkit login session
+              Keep getpawkit.com open in a tab while using the extension
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -124,9 +124,9 @@ function Options() {
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <ol className="list-decimal list-inside space-y-2">
               <li>Log in to <a href={PAWKIT_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">getpawkit.com</a> in your browser</li>
+              <li>Keep the Pawkit tab open (the extension communicates through it)</li>
               <li>Click the extension icon on any page to save it to Pawkit</li>
               <li>Right-click any page or link and select "Save page to Pawkit"</li>
-              <li>Add optional notes before saving</li>
             </ol>
           </CardContent>
         </Card>

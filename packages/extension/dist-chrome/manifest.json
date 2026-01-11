@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pawkit Web Clipper",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Save web pages, articles, and links to your Pawkit collections",
   "icons": {
     "16": "icons/icon-16.png",
@@ -36,6 +36,11 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content-script.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://getpawkit.com/*", "https://www.getpawkit.com/*"],
+      "js": ["pawkit-bridge.js"],
       "run_at": "document_idle"
     }
   ],
