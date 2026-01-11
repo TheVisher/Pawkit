@@ -1,0 +1,50 @@
+{
+  "name": "@pawkit/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pawkit Web Clipper Browser Extension",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build",
+    "build:firefox": "pnpm build && cp manifest.json dist/manifest.json && mkdir -p dist-firefox && cp -r dist/* dist-firefox/",
+    "build:chrome": "pnpm build && cp manifest-chrome.json dist/manifest.json && mkdir -p dist-chrome && cp -r dist/* dist-chrome/",
+    "build:all": "pnpm build:firefox && pnpm build:chrome",
+    "package:firefox": "cd dist-firefox && zip -r ../pawkit-firefox.zip .",
+    "package:chrome": "cd dist-chrome && zip -r ../pawkit-chrome.zip .",
+    "package:all": "pnpm build:all && pnpm package:firefox && pnpm package:chrome",
+    "preview": "vite preview",
+    "dev:firefox": "pnpm build:firefox && web-ext run --source-dir=./dist-firefox",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "webextension-polyfill": "^0.10.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.1",
+    "lucide-react": "^0.344.0",
+    "sonner": "^1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@types/webextension-polyfill": "^0.10.7",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "@typescript-eslint/parser": "^7.0.2",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.4",
+    "vite-plugin-static-copy": "^1.0.1",
+    "web-ext": "^7.11.0"
+  }
+}
