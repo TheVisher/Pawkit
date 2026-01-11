@@ -226,13 +226,8 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (!card) return;
 
     // Use tag-based Pawkit assignment (adds ancestor tags)
+    // Note: addCardToPawkit handles queuing with skipConflictCheck=true
     await addCardToPawkit(cardId, collectionSlug, card.workspaceId);
-
-    // Queue sync for the updated tags
-    const updatedCard = await db.cards.get(cardId);
-    if (updatedCard) {
-      await addToQueue('card', cardId, 'update', { tags: updatedCard.tags });
-    }
   },
 
   // Remove card from Pawkit using tag-based architecture
@@ -242,13 +237,8 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (!card) return;
 
     // Use tag-based Pawkit removal (removes ancestor tags)
+    // Note: removeCardFromPawkit handles queuing with skipConflictCheck=true
     await removeCardFromPawkit(cardId, collectionSlug, card.workspaceId);
-
-    // Queue sync for the updated tags
-    const updatedCard = await db.cards.get(cardId);
-    if (updatedCard) {
-      await addToQueue('card', cardId, 'update', { tags: updatedCard.tags });
-    }
   },
 
   // ==========================================================================
