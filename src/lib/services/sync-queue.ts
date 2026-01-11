@@ -351,7 +351,8 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
     // Success - remove from queue and mark as synced
     await db.syncQueue.delete(item.id!);
 
-    if (operation !== 'delete') {
+    // Skip marking as synced for delete operations (entity no longer exists)
+    if (operation !== 'delete' && operation !== 'permanent-delete') {
       // For cards, update the version from server response to prevent future conflicts
       if (entityType === 'card' && (operation === 'create' || operation === 'update')) {
         try {

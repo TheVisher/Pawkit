@@ -79,6 +79,11 @@ export function useRealtimeSync() {
       }
 
       // Subscribe to card changes for this workspace
+      // NOTE: We don't use a filter here because Supabase Realtime only sends
+      // the primary key (id) in DELETE events by default (replica identity = DEFAULT).
+      // A workspaceId filter would cause DELETE events to be filtered out.
+      // Instead, we check workspaceId in the handler for INSERT/UPDATE, and for
+      // DELETE events we check if the card exists locally.
       const channel = supabase
         .channel(`cards:${workspaceId}`)
         .on(
@@ -87,7 +92,7 @@ export function useRealtimeSync() {
             event: '*', // Listen to INSERT, UPDATE, DELETE
             schema: 'public',
             table: 'Card',
-            filter: `workspaceId=eq.${workspaceId}`,
+            // No filter - handle workspace filtering in the handler
           },
           (payload: RealtimePostgresChangesPayload<CardPayload>) => {
             handleCardChange(payload);
@@ -136,7 +141,10 @@ async function handleCardChange(
     return;
   }
 
-  if (record?.workspaceId !== currentWorkspace.id) {
+  // For DELETE events, Supabase only sends the primary key (id) by default,
+  // so workspaceId won't be available. We handle this in handleDelete by
+  // checking if the card exists locally (which means it's for our workspace).
+  if (eventType !== 'DELETE' && record?.workspaceId !== currentWorkspace.id) {
     log.debug(`Event for different workspace, ignoring`);
     return;
   }
@@ -150,6 +158,7 @@ async function handleCardChange(
         await handleUpdate(newRecord as CardPayload);
         break;
       case 'DELETE':
+        // For DELETE, we pass the old record which may only have the id
         await handleDelete(oldRecord as CardPayload);
         break;
     }
