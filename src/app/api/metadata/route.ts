@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUserFromRequest } from '@/lib/supabase/server';
 
 // Force Node.js runtime for fetch
 export const runtime = 'nodejs';
@@ -94,11 +94,10 @@ function isPrivateIP(hostname: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    // Authentication required
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Authentication required (supports both cookies and Bearer token)
+    const user = await getAuthUserFromRequest(request);
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }

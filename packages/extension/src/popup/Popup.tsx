@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import browser from 'webextension-polyfill'
-import { Loader2, Settings, ExternalLink, CheckCircle2, ImageIcon, X, ChevronDown, Library, FolderOpen } from 'lucide-react'
+import { Loader2, Settings, ExternalLink, CheckCircle2, ImageIcon, X, ChevronDown, Library, FolderOpen, LogIn, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import type { SaveCardMessage, SaveCardResponse, Collection, GetCollectionsResponse } from '@/shared/types'
+import type { SaveCardMessage, SaveCardResponse, Collection, GetCollectionsResponse, CheckAuthResponse } from '@/shared/types'
 
 export function Popup() {
   const [title, setTitle] = useState('')
@@ -17,16 +17,18 @@ export function Popup() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [savedCardId, setSavedCardId] = useState<string | null>(null)
-  const [hasToken, setHasToken] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [collections, setCollections] = useState<Collection[]>([])
   const [selectedCollectionSlug, setSelectedCollectionSlug] = useState<string | null>(null)
   const [loadingCollections, setLoadingCollections] = useState(false)
 
   useEffect(() => {
-    // Get current tab info and token status
     const initializePopup = async () => {
       try {
+        // Get current tab info
         const [tab] = await browser.tabs.query({
           active: true,
           currentWindow: true
@@ -36,20 +38,23 @@ export function Popup() {
           setTitle(tab.title || '')
           setUrl(tab.url || '')
 
-          // Set favicon
           if (tab.url) {
             const domain = new URL(tab.url).hostname
             setFavicon(`https://www.google.com/s2/favicons?domain=${domain}&sz=32`)
           }
         }
 
-        // Check if user is authenticated (cookie-based auth)
-        const authResponse = await browser.runtime.sendMessage({ type: 'CHECK_AUTH' })
-        const isAuthenticated = authResponse.ok === true
-        setHasToken(isAuthenticated)
+        // Check if user is authenticated
+        setCheckingAuth(true)
+        const authResponse = await browser.runtime.sendMessage({ type: 'CHECK_AUTH' }) as CheckAuthResponse
+        const authenticated = authResponse.ok === true
+        setIsAuthenticated(authenticated)
+        if (authResponse.user?.email) {
+          setUserEmail(authResponse.user.email)
+        }
 
         // Fetch collections if authenticated
-        if (isAuthenticated) {
+        if (authenticated) {
           setLoadingCollections(true)
           try {
             const collectionsResponse = await browser.runtime.sendMessage({ type: 'GET_COLLECTIONS' }) as GetCollectionsResponse
@@ -63,28 +68,35 @@ export function Popup() {
           }
         }
 
-        // Check for selected image from storage (set by content script)
+        // Check for selected image from storage
         const storage = await browser.storage.local.get('selectedImage')
         if (storage.selectedImage) {
-          console.log('[Popup] Found selected image in storage:', storage.selectedImage)
           setSelectedImage(storage.selectedImage)
-          // Clear it from storage after loading
           await browser.storage.local.remove('selectedImage')
         }
       } catch (error) {
         console.error('Failed to initialize popup:', error)
+      } finally {
+        setCheckingAuth(false)
       }
     }
 
     initializePopup()
 
-    // Listen for storage changes (when content script saves selected image)
+    // Listen for storage changes
     const handleStorageChange = (changes: { [key: string]: browser.Storage.StorageChange }) => {
       if (changes.selectedImage?.newValue) {
-        console.log('[Popup] Image selected via storage:', changes.selectedImage.newValue)
         setSelectedImage(changes.selectedImage.newValue)
-        // Clear from storage
         browser.storage.local.remove('selectedImage')
+      }
+      // Re-check auth when session changes
+      if (changes.pawkit_session) {
+        browser.runtime.sendMessage({ type: 'CHECK_AUTH' }).then((response: CheckAuthResponse) => {
+          setIsAuthenticated(response.ok === true)
+          if (response.user?.email) {
+            setUserEmail(response.user.email)
+          }
+        })
       }
     }
 
@@ -94,26 +106,42 @@ export function Popup() {
     }
   }, [])
 
+  const handleLogin = async () => {
+    try {
+      await browser.runtime.sendMessage({ type: 'INITIATE_LOGIN' })
+      // Close popup - user will login in the opened tab
+      window.close()
+    } catch (err) {
+      console.error('Failed to initiate login:', err)
+      setError('Failed to open login page')
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await browser.runtime.sendMessage({ type: 'LOGOUT' })
+      setIsAuthenticated(false)
+      setUserEmail(null)
+      setCollections([])
+    } catch (err) {
+      console.error('Failed to logout:', err)
+    }
+  }
+
   const handleStartImagePicker = async () => {
     try {
       setError('')
 
-      // Get current tab
       const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
       if (!tab?.id) {
         setError('Cannot access current tab')
         return
       }
 
-      // Send message to content script (auto-injected on all pages)
       await browser.tabs.sendMessage(tab.id, { type: 'START_IMAGE_PICKER' })
-
-      // Close popup so user can interact with the page
-      // When they select an image, the content script will store it and trigger popup reopen
       window.close()
     } catch (err) {
       console.error('Failed to start image picker:', err)
-      // Content script may not be loaded on special pages (chrome://, about:, etc.)
       setError('Cannot pick image on this page (browser internal pages are not supported)')
     }
   }
@@ -124,8 +152,8 @@ export function Popup() {
       return
     }
 
-    if (!hasToken) {
-      setError('Not logged in. Please log in to Pawkit in your browser.')
+    if (!isAuthenticated) {
+      setError('Please log in first')
       return
     }
 
@@ -153,11 +181,9 @@ export function Popup() {
 
       if (response.ok) {
         setSaved(true)
-        setSavedCardId(response.data?.id || null)
-        // Clear notes and image after successful save
+        setSavedCardId(response.data?.card?.id || null)
         setNotes('')
         setSelectedImage(null)
-        // Service worker will notify content scripts to refresh the page
       } else {
         setError(response.error || 'Failed to save card')
       }
@@ -173,37 +199,83 @@ export function Popup() {
   }
 
   const openSavedCard = async () => {
-    // Navigate to the collection the card was saved to, or library if none
     const targetPath = selectedCollectionSlug
       ? `/pawkits/${selectedCollectionSlug}`
       : '/library'
     const targetUrl = `https://getpawkit.com${targetPath}`
 
-    // Find existing Pawkit tab
     const tabs = await browser.tabs.query({})
-    const pawkitTab = tabs.find(tab =>
-      tab.url?.includes('getpawkit.com')
-    )
+    const pawkitTab = tabs.find(tab => tab.url?.includes('getpawkit.com'))
 
     if (pawkitTab?.id) {
-      // Check if already on the target page
       const currentPath = pawkitTab.url ? new URL(pawkitTab.url).pathname : ''
       if (currentPath === targetPath) {
-        // Already on the right page, just switch to it
         await browser.tabs.update(pawkitTab.id, { active: true })
       } else {
-        // Navigate to the target collection
         await browser.tabs.update(pawkitTab.id, { active: true, url: targetUrl })
       }
 
-      // Focus the window containing the tab
       if (pawkitTab.windowId) {
         await browser.windows.update(pawkitTab.windowId, { focused: true })
       }
     } else {
-      // Open new tab to the target collection if none exists
       await browser.tabs.create({ url: targetUrl })
     }
+  }
+
+  // Show loading state while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="w-96 h-32 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  // Show login screen if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="w-96">
+        <Card className="border-0 rounded-none shadow-none">
+          <CardHeader className="pb-2 pt-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img src={browser.runtime.getURL('icons/icon-48.png')} alt="Pawkit" className="w-5 h-5" />
+                <span className="font-medium">Pawkit Web Clipper</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={openOptions}
+                title="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-4 pb-4">
+            <div className="text-center py-4">
+              <div className="text-muted-foreground text-sm mb-4">
+                Log in to Pawkit to start saving pages, articles, and links.
+              </div>
+              <Button
+                onClick={handleLogin}
+                className="w-full bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9358ef]"
+              >
+                <LogIn className="mr-2 h-4 w-4" />
+                Log in to Pawkit
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground text-center">
+              You'll be redirected to getpawkit.com to log in.
+              Once logged in, return here to save content.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -213,25 +285,36 @@ export function Popup() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {favicon && <img src={favicon} alt="" className="w-4 h-4" />}
-              <span className="text-xs text-muted-foreground truncate max-w-[280px]">
+              <span className="text-xs text-muted-foreground truncate max-w-[240px]">
                 {url ? new URL(url).hostname : ''}
               </span>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={openOptions}
-              title="Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </div>
-          {!hasToken && (
-            <div className="text-xs text-muted-foreground bg-destructive/10 border border-destructive/20 rounded p-2 mt-2">
-              Not logged in. Please log in to Pawkit in your browser first.
+            <div className="flex items-center gap-1">
+              {userEmail && (
+                <span className="text-xs text-muted-foreground truncate max-w-[100px]" title={userEmail}>
+                  {userEmail}
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleLogout}
+                title="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={openOptions}
+                title="Settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
-          )}
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-2 pt-0 pb-3">
@@ -369,7 +452,7 @@ export function Popup() {
           {/* Save button */}
           <Button
             onClick={handleSave}
-            disabled={loading || !hasToken}
+            disabled={loading}
             className="w-full bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9358ef]"
           >
             {loading ? (
