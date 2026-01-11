@@ -302,11 +302,30 @@ export function getSystemTagsForCard(_card: LocalCard): SystemTag[] {
 }
 
 /**
+ * Get the effective scheduled date for a card
+ * Handles both old scheduledDate (Date) and new scheduledDates (string[]) formats
+ */
+function getEffectiveScheduledDate(card: LocalCard): Date | string | null {
+  // New format: scheduledDates is an array of ISO date strings (YYYY-MM-DD)
+  if (card.scheduledDates && card.scheduledDates.length > 0) {
+    // Return the earliest date for schedule tag purposes
+    return card.scheduledDates[0];
+  }
+  // Old format: scheduledDate is a Date object
+  if (card.scheduledDate) {
+    return card.scheduledDate;
+  }
+  return null;
+}
+
+/**
  * Check if a card's schedule tags need updating
  * Returns the new tags array if update needed, or null if no update needed
  */
 export function getUpdatedScheduleTagsIfNeeded(card: LocalCard): string[] | null {
-  if (!card.scheduledDate) {
+  const scheduledDate = getEffectiveScheduledDate(card);
+
+  if (!scheduledDate) {
     // No scheduled date - remove any schedule tags if present
     const hasScheduleTags = (card.tags || []).some(t => isScheduleTag(t));
     if (hasScheduleTags) {
@@ -316,7 +335,7 @@ export function getUpdatedScheduleTagsIfNeeded(card: LocalCard): string[] | null
   }
 
   const currentScheduleTag = (card.tags || []).find(t => isScheduleTag(t));
-  const correctScheduleTag = getScheduleTagForDate(card.scheduledDate);
+  const correctScheduleTag = getScheduleTagForDate(scheduledDate);
 
   // If the tag is already correct, no update needed
   if (currentScheduleTag === correctScheduleTag) {
@@ -324,5 +343,5 @@ export function getUpdatedScheduleTagsIfNeeded(card: LocalCard): string[] | null
   }
 
   // Update needed - return new tags
-  return updateScheduleTags(card.tags || [], card.scheduledDate);
+  return updateScheduleTags(card.tags || [], scheduledDate);
 }
