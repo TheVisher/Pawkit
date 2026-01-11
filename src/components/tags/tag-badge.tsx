@@ -1,5 +1,11 @@
 'use client';
 
+// TODO: Fix sub-Pawkit tags showing with random numbers appended (e.g., "shoes-176812931..." instead of "shoes")
+// Parent Pawkit tags display correctly as just their slug, but child/nested Pawkits get numbers.
+// Even manually renaming the sub-Pawkit doesn't fix it - the issue is likely in how the slug
+// is generated for nested collections, possibly using the collection ID instead of just the name.
+// Check: src/lib/migrations/tag-architecture-migration.ts and collection creation logic.
+
 import { X, Clock, Check, CalendarDays, AlertTriangle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTagColor, getTagStyle } from '@/lib/utils/tag-colors';
