@@ -114,6 +114,23 @@ export async function apiGet<T = unknown>(
 }
 
 /**
+ * Fetch metadata for a URL using the V2 API
+ */
+export async function fetchMetadata(url: string): Promise<{
+  ok: boolean
+  data?: {
+    title: string | null
+    description: string | null
+    image: string | null
+    favicon: string | null
+    domain: string
+  }
+  error?: string
+}> {
+  return apiViaBridge('POST', '/metadata', { url })
+}
+
+/**
  * Fetch user's workspaces and return the default one
  */
 export async function fetchDefaultWorkspace(): Promise<{ ok: boolean; data?: Workspace; error?: string }> {
@@ -167,6 +184,7 @@ export async function checkAuth(): Promise<{ ok: boolean; error?: string }> {
 
 /**
  * Save a card to Pawkit
+ * Automatically fetches metadata if not provided
  */
 export async function saveCard(payload: CardPayload): Promise<{ ok: boolean; data?: unknown; error?: string }> {
   // Get workspace ID
@@ -178,18 +196,36 @@ export async function saveCard(payload: CardPayload): Promise<{ ok: boolean; dat
     }
   }
 
-  // Transform meta.ogImage to image field for API
   const { meta, ...rest } = payload
+
+  // Fetch metadata from API if not provided by extension
+  let image = meta?.ogImage
+  let description = meta?.description
+  let favicon = meta?.favicon
+  let fetchedTitle: string | null = null
+
+  if (!image && payload.url) {
+    console.log('[Extension] Fetching metadata for:', payload.url)
+    const metadataResult = await fetchMetadata(payload.url)
+    if (metadataResult.ok && metadataResult.data) {
+      image = metadataResult.data.image || undefined
+      description = metadataResult.data.description || undefined
+      favicon = metadataResult.data.favicon || undefined
+      fetchedTitle = metadataResult.data.title
+      console.log('[Extension] Metadata fetched:', { image: !!image, description: !!description })
+    }
+  }
 
   return apiPost('/cards', {
     ...rest,
+    // Use fetched title if the provided title is just the URL
+    title: (rest.title === payload.url && fetchedTitle) ? fetchedTitle : rest.title,
     workspaceId,
     type: 'url',
     source: { type: 'webext' },
-    // Pass pre-fetched metadata directly as top-level fields
-    image: meta?.ogImage,
-    description: meta?.description,
-    favicon: meta?.favicon
+    image,
+    description,
+    favicon
   })
 }
 

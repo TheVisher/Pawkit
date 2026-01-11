@@ -22,8 +22,50 @@ browser.runtime.onMessage.addListener((message, _sender) => {
     browser.storage.local.remove('selectedImage')
     return Promise.resolve({ ok: true })
   }
+  if (message.type === 'GET_PAGE_META') {
+    return Promise.resolve(getPageMetadata())
+  }
   return undefined
 })
+
+/**
+ * Extract metadata from the current page (og:image, description, etc.)
+ */
+function getPageMetadata() {
+  const getMeta = (property: string): string | null => {
+    // Try property attribute first (og:, twitter:)
+    let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement
+    if (el?.content) return el.content
+
+    // Try name attribute (description, etc.)
+    el = document.querySelector(`meta[name="${property}"]`) as HTMLMetaElement
+    if (el?.content) return el.content
+
+    return null
+  }
+
+  // Get og:image or twitter:image
+  const ogImage = getMeta('og:image') || getMeta('twitter:image') || getMeta('twitter:image:src')
+
+  // Get description
+  const description = getMeta('og:description') || getMeta('twitter:description') || getMeta('description')
+
+  // Get favicon - try various sources
+  let favicon: string | null = null
+  const iconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement
+    || document.querySelector('link[rel="shortcut icon"]') as HTMLLinkElement
+    || document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement
+
+  if (iconLink?.href) {
+    favicon = iconLink.href
+  }
+
+  return {
+    ogImage: ogImage ? new URL(ogImage, window.location.href).href : null,
+    description,
+    favicon
+  }
+}
 
 function startImagePicker() {
   if (isPickerActive) return
