@@ -22,7 +22,7 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
   const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 
   const hasImage = card.image && !imageError;
-  const isNote = card.type === 'md-note' || card.type === 'quick-note';
+  const isNote = card.type === 'md-note' || card.type === 'text-note';
   const isDraggable = !!card.url || isNote;
 
   let domain = '';

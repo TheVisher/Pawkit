@@ -11,7 +11,7 @@ import type { LocalViewSettings } from '@/lib/db';
 export type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
 export type SortOrder = 'asc' | 'desc';
 // Content type filters - matches V1 categories
-export type ContentType = 'bookmarks' | 'notes' | 'quick-notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
+export type ContentType = 'bookmarks' | 'notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
 export type CardSize = 'small' | 'medium' | 'large' | 'xl';
 export type SubPawkitSize = 'compact' | 'normal' | 'large';
 export type PawkitOverviewSize = 'small' | 'medium' | 'large';
@@ -40,12 +40,7 @@ const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma
 function getCardContentType(card: { type: string; url: string; domain?: string }): ContentType {
   const url = card.url?.toLowerCase() || '';
 
-  // Quick Notes (separate from full notes)
-  if (card.type === 'quick-note') {
-    return 'quick-notes';
-  }
-
-  // Notes (full notes)
+  // Notes
   if (['md-note', 'text-note', 'note'].includes(card.type)) {
     return 'notes';
   }
@@ -128,7 +123,7 @@ export function cardMatchesReadingFilter(
   if (filter === 'all') return true;
 
   // Notes don't have reading status, so show them in 'all' mode only
-  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) {
+  if (['md-note', 'text-note'].includes(card.type)) {
     return false; // Exclude notes when filtering by reading status
   }
 
@@ -155,7 +150,7 @@ export function cardMatchesLinkStatusFilter(
   if (filter === 'all') return true;
 
   // Notes don't have link status, so show them in 'all' mode only
-  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) {
+  if (['md-note', 'text-note'].includes(card.type)) {
     return false; // Exclude notes when filtering by link status
   }
 

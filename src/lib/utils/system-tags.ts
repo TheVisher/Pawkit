@@ -277,7 +277,7 @@ export function isOverdue(scheduledDate: Date | string | undefined): boolean {
  * Check if a card is a note type (doesn't have reading time)
  */
 function isNoteCard(type: string): boolean {
-  return type === 'md-note' || type === 'text-note' || type === 'quick-note';
+  return type === 'md-note' || type === 'text-note';
 }
 
 

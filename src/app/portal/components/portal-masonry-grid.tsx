@@ -18,11 +18,6 @@ const CONTENT_PADDING = 48;
  * Same algorithm as main app's masonry-grid.tsx
  */
 function estimateHeight(card: LocalCard, cardWidth: number): number {
-  // Quick notes are compact
-  if (card.type === 'quick-note') {
-    return 80;
-  }
-
   // For cards with images, use aspect ratio
   const thumbnailHeight = card.image
     ? cardWidth / DEFAULT_ASPECT_RATIO

@@ -74,32 +74,6 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
 
     switch (column) {
       case 'name':
-        if (card.type === 'quick-note') {
-          const plainContent = card.content?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || '';
-          return (
-            <div className="flex items-center gap-3 min-w-0" onClick={(e) => e.stopPropagation()}>
-              <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-[var(--bg-surface-3)] flex-shrink-0 border-l-2 border-l-[var(--color-accent)]">
-                <ListRowIcon card={card} />
-              </span>
-              <div className="flex-1 min-w-0">
-                <EditableCell
-                  value={plainContent}
-                  cardId={card.id}
-                  field="content"
-                  onSave={(cardId, field, value) => {
-                    const htmlContent = `<p>${value.replace(/\n/g, '</p><p>')}</p>`;
-                    handleSaveCell(cardId, field, htmlContent);
-                  }}
-                  isEditing={isEditing(card.id, 'name')}
-                  onStartEdit={() => handleStartEdit(card.id, 'name')}
-                  onCancelEdit={handleCancelEdit}
-                  placeholder="Empty note"
-                  multiline
-                />
-              </div>
-            </div>
-          );
-        }
         return (
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-[var(--bg-surface-3)] flex-shrink-0">

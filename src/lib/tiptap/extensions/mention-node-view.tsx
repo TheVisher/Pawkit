@@ -137,7 +137,7 @@ export function MentionNodeView({ node }: NodeViewProps) {
         const card = previewData.card;
         if (!card) return null;
 
-        const isNote = ['md-note', 'text-note', 'quick-note'].includes(card.type);
+        const isNote = ['md-note', 'text-note'].includes(card.type);
         const contentSnippet = card.content
           ? card.content.replace(/<[^>]*>/g, '').slice(0, 100)
           : null;

@@ -1,4 +1,4 @@
-import { Globe, FileText, StickyNote } from 'lucide-react';
+import { Globe, FileText } from 'lucide-react';
 
 /**
  * Card Detail Types & Helpers
@@ -18,8 +18,6 @@ export function getCardIcon(type: string) {
     case 'md-note':
     case 'text-note':
       return FileText;
-    case 'quick-note':
-      return StickyNote;
     default:
       return Globe;
   }

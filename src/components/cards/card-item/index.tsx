@@ -2,7 +2,6 @@
 
 import { memo } from 'react';
 import type { LocalCard } from '@/lib/db';
-import { QuickNoteCard } from '../quick-note-card';
 import { GridCard } from './grid-card';
 import { ListCard } from './list-card';
 import { type CardDisplaySettings, DEFAULT_CARD_DISPLAY } from './types';
@@ -50,11 +49,6 @@ export const CardItem = memo(function CardItem({
   onSystemTagClick,
   priority = false,
 }: CardItemProps) {
-  // Use specialized QuickNoteCard for quick-note types in grid mode
-  if (variant === 'grid' && card.type === 'quick-note') {
-    return <QuickNoteCard card={card} onClick={onClick} uniformHeight={uniformHeight} />;
-  }
-
   // Grid view
   if (variant === 'grid') {
     return (

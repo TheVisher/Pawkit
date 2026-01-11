@@ -11,7 +11,6 @@ import type {
   LocalCollection,
   LocalCollectionNote,
   LocalCalendarEvent,
-  LocalTodo,
   SyncQueueItem,
   MetadataEntry,
   NoteLink,
@@ -36,7 +35,6 @@ export class PawkitDB extends Dexie {
 
   // Organization entities
   calendarEvents!: Table<LocalCalendarEvent>;
-  todos!: Table<LocalTodo>;
 
   // Sync & utility
   syncQueue!: Table<SyncQueueItem>;
@@ -109,14 +107,6 @@ export class PawkitDB extends Dexie {
         '[workspaceId+date]',
         '[workspaceId+_deleted]',
         'recurrenceParentId',
-      ].join(', '),
-
-      todos: [
-        'id',
-        'workspaceId',
-        '[workspaceId+completed]',
-        '[workspaceId+dueDate]',
-        '[workspaceId+_deleted]',
       ].join(', '),
 
       // Sync queue - auto-increment primary key
@@ -283,14 +273,13 @@ export async function getPendingSyncItems() {
  * Get items that need syncing
  */
 export async function getUnsyncedItems(workspaceId: string) {
-  const [cards, collections, events, todos] = await Promise.all([
+  const [cards, collections, events] = await Promise.all([
     db.cards.where('workspaceId').equals(workspaceId).filter(c => !c._synced).toArray(),
     db.collections.where('workspaceId').equals(workspaceId).filter(c => !c._synced).toArray(),
     db.calendarEvents.where('workspaceId').equals(workspaceId).filter(e => !e._synced).toArray(),
-    db.todos.where('workspaceId').equals(workspaceId).filter(t => !t._synced).toArray(),
   ]);
 
-  return { cards, collections, events, todos };
+  return { cards, collections, events };
 }
 
 // =============================================================================

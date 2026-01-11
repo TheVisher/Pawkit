@@ -19,7 +19,6 @@ import {
   Inbox,
   FolderMinus,
   TagsIcon,
-  StickyNote,
   Circle,
   Clock,
   CheckCircle2,
@@ -35,7 +34,6 @@ export type CardSize = "small" | "medium" | "large" | "xl";
 export type ContentType =
   | "bookmarks"
   | "notes"
-  | "quick-notes"
   | "video"
   | "images"
   | "docs"
@@ -71,7 +69,6 @@ export const CONTENT_FILTERS: {
 }[] = [
   { id: "bookmarks", label: "Bookmarks", icon: Bookmark },
   { id: "notes", label: "Notes", icon: FileText },
-  { id: "quick-notes", label: "Quick Notes", icon: StickyNote },
   { id: "video", label: "Video", icon: Video },
   { id: "images", label: "Images", icon: Image },
   { id: "docs", label: "Docs", icon: FileSpreadsheet },

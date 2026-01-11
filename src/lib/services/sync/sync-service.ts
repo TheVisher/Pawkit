@@ -273,7 +273,6 @@ class SyncService {
         db.collections,
         db.cards,
         db.calendarEvents,
-        db.todos,
         db.syncQueue,
         db.metadata,
         db.viewSettings,
@@ -286,7 +285,6 @@ class SyncService {
         await db.collections.clear();
         await db.cards.clear();
         await db.calendarEvents.clear();
-        await db.todos.clear();
         await db.syncQueue.clear();
         await db.metadata.clear();
         await db.viewSettings.clear();

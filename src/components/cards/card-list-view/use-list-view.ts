@@ -195,13 +195,9 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
 
   const handleRowClick = useCallback(
     (card: LocalCard) => {
-      if (card.type === 'quick-note') {
-        handleStartEdit(card.id, 'name');
-      } else {
-        openCardDetail(card.id);
-      }
+      openCardDetail(card.id);
     },
-    [openCardDetail, handleStartEdit]
+    [openCardDetail]
   );
 
   // DnD monitor for row reordering

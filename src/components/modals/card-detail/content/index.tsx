@@ -33,7 +33,7 @@ export function ContentRouter({
   className,
 }: ContentRouterProps) {
   // Note cards - editor focused
-  if (card.type === 'md-note' || card.type === 'text-note' || card.type === 'quick-note') {
+  if (card.type === 'md-note' || card.type === 'text-note') {
     return (
       <NoteContent
         card={card}

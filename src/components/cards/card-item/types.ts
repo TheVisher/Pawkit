@@ -1,4 +1,4 @@
-import { Globe, FileText, StickyNote } from 'lucide-react';
+import { Globe, FileText } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 import type { SystemTag } from '@/lib/utils/system-tags';
 
@@ -109,8 +109,6 @@ export function getCardIcon(type: string) {
     case 'md-note':
     case 'text-note':
       return FileText;
-    case 'quick-note':
-      return StickyNote;
     default:
       return Globe;
   }
@@ -143,5 +141,5 @@ export function getTextPreview(html: string, maxLength: number = 200): string {
  * Check if card is a note type
  */
 export function isNoteCard(type: string): boolean {
-  return type === 'md-note' || type === 'text-note' || type === 'quick-note';
+  return type === 'md-note' || type === 'text-note';
 }

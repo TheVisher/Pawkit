@@ -247,7 +247,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         if (card.domain?.toLowerCase().includes(lowerQuery)) return true;
         if (card.tags?.some(t => t.toLowerCase().includes(lowerQuery))) return true;
 
-        if (card.type === 'md-note' || card.type === 'text-note' || card.type === 'quick-note') {
+        if (card.type === 'md-note' || card.type === 'text-note') {
           const plainText = stripHtml(card.content || '');
           if (plainText.toLowerCase().includes(lowerQuery)) return true;
         }

@@ -107,7 +107,6 @@ export const MIN_COLUMN_WIDTH = 60;
 
 export function getCardType(card: LocalCard): string {
   switch (card.type) {
-    case 'quick-note': return 'Quick Note';
     case 'md-note': return 'Note';
     case 'text-note': return 'Note';
     case 'note': return 'Note';
@@ -119,7 +118,6 @@ export function getCardType(card: LocalCard): string {
 
 export function getCardIcon(card: LocalCard) {
   switch (card.type) {
-    case 'quick-note': return FileText;
     case 'md-note': return FileText;
     case 'text-note': return FileText;
     case 'note': return FileText;

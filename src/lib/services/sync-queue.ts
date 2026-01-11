@@ -98,7 +98,6 @@ function getApiEndpoint(
     collection: '/api/collections',
     card: '/api/cards',
     event: '/api/events',
-    todo: '/api/todos',
     collectionNote: '/api/collection-notes', // Future
     viewSettings: '/api/view-settings', // Future
     reference: '/api/references',
@@ -399,8 +398,6 @@ async function getLocalEntity(
       return db.cards.get(entityId) as Promise<Record<string, unknown> | undefined>;
     case 'event':
       return db.calendarEvents.get(entityId) as Promise<Record<string, unknown> | undefined>;
-    case 'todo':
-      return db.todos.get(entityId) as Promise<Record<string, unknown> | undefined>;
     case 'collectionNote':
       return db.collectionNotes.get(entityId) as Promise<Record<string, unknown> | undefined>;
     case 'viewSettings':
@@ -466,9 +463,6 @@ async function markEntitySynced(entityType: EntityType, entityId: string): Promi
       break;
     case 'event':
       await db.calendarEvents.update(entityId, updates);
-      break;
-    case 'todo':
-      await db.todos.update(entityId, updates);
       break;
     case 'collectionNote':
       await db.collectionNotes.update(entityId, updates);
