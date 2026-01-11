@@ -201,9 +201,15 @@ async function handleUpdate(serverCard: CardPayload): Promise<void> {
     .first();
 
   if (queueItem) {
-    // We have pending local changes - don't overwrite
-    // The sync queue will handle conflict detection when it pushes
-    log.debug(`Card ${serverCard.id} has pending local changes, skipping realtime update`);
+    // We have pending local changes - don't overwrite the content
+    // BUT we MUST update the version so the queue can detect conflicts properly
+    // Otherwise the queue will send a stale expectedVersion and get a 409
+    if (serverCard.version && serverCard.version > localCard.version) {
+      log.debug(`Card ${serverCard.id} has pending changes, updating version only (${localCard.version} -> ${serverCard.version})`);
+      await db.cards.update(serverCard.id, {
+        version: serverCard.version,
+      });
+    }
     return;
   }
 
