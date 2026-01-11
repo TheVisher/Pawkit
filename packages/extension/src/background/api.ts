@@ -8,26 +8,54 @@
 import browser from 'webextension-polyfill'
 import type { CardPayload, Collection, CollectionApiResponse, Workspace } from '@/shared/types'
 
-const API_BASE = 'https://www.getpawkit.com/api'
-const COOKIE_DOMAIN = 'www.getpawkit.com'
+/**
+ * Find a tab on getpawkit.com to use as a bridge for authenticated requests
+ */
+async function findPawkitTab(): Promise<number | null> {
+  try {
+    const tabs = await browser.tabs.query({ url: ['https://getpawkit.com/*', 'https://www.getpawkit.com/*'] })
+    if (tabs.length > 0 && tabs[0].id) {
+      return tabs[0].id
+    }
+    return null
+  } catch (error) {
+    console.error('Failed to find Pawkit tab:', error)
+    return null
+  }
+}
 
 /**
- * Get all cookies for getpawkit.com and format as Cookie header
+ * Make an API request via the content script bridge
+ * This works because the content script runs in the page context where cookies are available
  */
-async function getCookieHeader(): Promise<string> {
-  try {
-    const cookies = await browser.cookies.getAll({ domain: COOKIE_DOMAIN })
-    if (cookies.length === 0) {
-      // Try without www
-      const altCookies = await browser.cookies.getAll({ domain: 'getpawkit.com' })
-      if (altCookies.length > 0) {
-        return altCookies.map(c => `${c.name}=${c.value}`).join('; ')
-      }
+async function apiViaBridge<T>(
+  method: 'GET' | 'POST',
+  path: string,
+  body?: unknown
+): Promise<{ ok: boolean; data?: T; error?: string }> {
+  const tabId = await findPawkitTab()
+
+  if (!tabId) {
+    return {
+      ok: false,
+      error: 'Please open getpawkit.com in a tab and log in first.'
     }
-    return cookies.map(c => `${c.name}=${c.value}`).join('; ')
+  }
+
+  try {
+    const response = await browser.tabs.sendMessage(tabId, {
+      type: 'API_REQUEST',
+      method,
+      path,
+      body
+    })
+    return response as { ok: boolean; data?: T; error?: string }
   } catch (error) {
-    console.error('Failed to get cookies:', error)
-    return ''
+    console.error('Bridge request failed:', error)
+    return {
+      ok: false,
+      error: 'Failed to communicate with Pawkit tab. Please refresh getpawkit.com and try again.'
+    }
   }
 }
 
@@ -60,118 +88,29 @@ export async function clearWorkspace(): Promise<void> {
 
 /**
  * Make authenticated POST request to Pawkit API
- * Manually sends cookies via Cookie header (browser extensions can't use credentials: include)
+ * Uses content script bridge on getpawkit.com for cookie-based auth
  */
 export async function apiPost<T = unknown>(
   path: string,
   body: CardPayload | FormData | Record<string, unknown>,
   isForm = false
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
-  try {
-    const cookieHeader = await getCookieHeader()
-    const headers: HeadersInit = {
-      'Cookie': cookieHeader
-    }
-    let requestBody: string | FormData
-
-    if (isForm) {
-      requestBody = body as FormData
-    } else {
-      headers['Content-Type'] = 'application/json'
-      requestBody = JSON.stringify(body)
-    }
-
-    const response = await fetch(`${API_BASE}${path}`, {
-      method: 'POST',
-      headers,
-      body: requestBody
-    })
-
-    if (response.status === 401) {
-      return {
-        ok: false,
-        error: 'Not logged in. Please log in to Pawkit in your browser first.'
-      }
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      let errorMessage = `API error: ${response.status} ${response.statusText}`
-
-      try {
-        const errorJson = JSON.parse(errorText)
-        errorMessage = errorJson.message || errorJson.error || errorMessage
-      } catch {
-        // Use default error message if response is not JSON
-      }
-
-      return {
-        ok: false,
-        error: errorMessage
-      }
-    }
-
-    const data = await response.json()
-
-    return {
-      ok: true,
-      data
-    }
-  } catch (error) {
-    console.error('API request failed:', error)
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'Network request failed'
-    }
+  // FormData not supported via bridge - would need different handling
+  if (isForm) {
+    return { ok: false, error: 'Form uploads not supported' }
   }
+
+  return apiViaBridge<T>('POST', path, body)
 }
 
 /**
  * Make authenticated GET request to Pawkit API
- * Manually sends cookies via Cookie header (browser extensions can't use credentials: include)
+ * Uses content script bridge on getpawkit.com for cookie-based auth
  */
 export async function apiGet<T = unknown>(
   path: string
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
-  try {
-    const cookieHeader = await getCookieHeader()
-    const response = await fetch(`${API_BASE}${path}`, {
-      method: 'GET',
-      headers: {
-        'Cookie': cookieHeader
-      }
-    })
-
-    if (response.status === 401) {
-      return {
-        ok: false,
-        error: 'Not logged in. Please log in to Pawkit in your browser first.'
-      }
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      let errorMessage = `API error: ${response.status}`
-
-      try {
-        const errorJson = JSON.parse(errorText)
-        errorMessage = errorJson.message || errorJson.error || errorMessage
-      } catch {
-        // Use default error message
-      }
-
-      return { ok: false, error: errorMessage }
-    }
-
-    const data = await response.json()
-    return { ok: true, data }
-  } catch (error) {
-    console.error('API GET request failed:', error)
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'Network request failed'
-    }
-  }
+  return apiViaBridge<T>('GET', path)
 }
 
 /**

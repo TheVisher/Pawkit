@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build",
+    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build && BUILD_TARGET=pawkit-bridge vite build",
     "build:firefox": "pnpm build && cp manifest.json dist/manifest.json && mkdir -p dist-firefox && cp -r dist/* dist-firefox/",
     "build:chrome": "pnpm build && cp manifest-chrome.json dist/manifest.json && mkdir -p dist-chrome && cp -r dist/* dist-chrome/",
     "build:all": "pnpm build:firefox && pnpm build:chrome",
