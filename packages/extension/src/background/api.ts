@@ -9,6 +9,27 @@ import browser from 'webextension-polyfill'
 import type { CardPayload, Collection, CollectionApiResponse, Workspace } from '@/shared/types'
 
 const API_BASE = 'https://www.getpawkit.com/api'
+const COOKIE_DOMAIN = 'www.getpawkit.com'
+
+/**
+ * Get all cookies for getpawkit.com and format as Cookie header
+ */
+async function getCookieHeader(): Promise<string> {
+  try {
+    const cookies = await browser.cookies.getAll({ domain: COOKIE_DOMAIN })
+    if (cookies.length === 0) {
+      // Try without www
+      const altCookies = await browser.cookies.getAll({ domain: 'getpawkit.com' })
+      if (altCookies.length > 0) {
+        return altCookies.map(c => `${c.name}=${c.value}`).join('; ')
+      }
+    }
+    return cookies.map(c => `${c.name}=${c.value}`).join('; ')
+  } catch (error) {
+    console.error('Failed to get cookies:', error)
+    return ''
+  }
+}
 
 /**
  * Get stored workspace from browser.storage
@@ -39,7 +60,7 @@ export async function clearWorkspace(): Promise<void> {
 
 /**
  * Make authenticated POST request to Pawkit API
- * Uses cookies for authentication (credentials: include)
+ * Manually sends cookies via Cookie header (browser extensions can't use credentials: include)
  */
 export async function apiPost<T = unknown>(
   path: string,
@@ -47,7 +68,10 @@ export async function apiPost<T = unknown>(
   isForm = false
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   try {
-    const headers: HeadersInit = {}
+    const cookieHeader = await getCookieHeader()
+    const headers: HeadersInit = {
+      'Cookie': cookieHeader
+    }
     let requestBody: string | FormData
 
     if (isForm) {
@@ -60,8 +84,7 @@ export async function apiPost<T = unknown>(
     const response = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
       headers,
-      body: requestBody,
-      credentials: 'include' // Include cookies for auth
+      body: requestBody
     })
 
     if (response.status === 401) {
@@ -105,15 +128,18 @@ export async function apiPost<T = unknown>(
 
 /**
  * Make authenticated GET request to Pawkit API
- * Uses cookies for authentication (credentials: include)
+ * Manually sends cookies via Cookie header (browser extensions can't use credentials: include)
  */
 export async function apiGet<T = unknown>(
   path: string
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   try {
+    const cookieHeader = await getCookieHeader()
     const response = await fetch(`${API_BASE}${path}`, {
       method: 'GET',
-      credentials: 'include' // Include cookies for auth
+      headers: {
+        'Cookie': cookieHeader
+      }
     })
 
     if (response.status === 401) {
