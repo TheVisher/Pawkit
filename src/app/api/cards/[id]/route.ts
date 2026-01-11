@@ -288,10 +288,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 /**
  * DELETE /api/cards/[id]
  *
- * Soft delete a card (set deleted: true, deletedAt: now).
- * Returns 404 if not found or not owned by user.
+ * Delete a card. Supports two modes:
+ * - Soft delete (default): Sets deleted: true, deletedAt: now (triggers UPDATE event)
+ * - Permanent delete (?permanent=true): Actually removes the row (triggers DELETE event)
  *
- * Optimized: Combines ownership check with delete in a single query.
+ * Returns 404 if not found or not owned by user.
  */
 export async function DELETE(request: Request, context: RouteContext) {
   try {
@@ -305,8 +306,10 @@ export async function DELETE(request: Request, context: RouteContext) {
       );
     }
 
-    // 2. Get card ID from params
+    // 2. Get card ID from params and check for permanent delete flag
     const { id } = await context.params;
+    const url = new URL(request.url);
+    const permanent = url.searchParams.get('permanent') === 'true';
 
     if (!id) {
       return NextResponse.json(
@@ -315,7 +318,35 @@ export async function DELETE(request: Request, context: RouteContext) {
       );
     }
 
-    // 3. Soft delete with ownership check in one query
+    if (permanent) {
+      // PERMANENT DELETE - actually remove the row from the database
+      // This triggers a DELETE event in Supabase Realtime, syncing to other devices
+      const result = await prisma.card.deleteMany({
+        where: {
+          id,
+          workspace: {
+            userId: user.id,
+          },
+        },
+      });
+
+      if (result.count === 0) {
+        return NextResponse.json(
+          { error: 'Card not found' },
+          { status: 404 }
+        );
+      }
+
+      log.info(`Permanently deleted card ${id}`);
+      return NextResponse.json({
+        success: true,
+        permanent: true,
+        card: { id },
+      });
+    }
+
+    // SOFT DELETE - mark as deleted but keep the row
+    // This triggers an UPDATE event in Supabase Realtime
     const result = await prisma.card.updateMany({
       where: {
         id,
@@ -337,7 +368,13 @@ export async function DELETE(request: Request, context: RouteContext) {
       );
     }
 
-    // 4. Return success
+    // Increment version in a separate query (updateMany doesn't support increment)
+    // This ensures Supabase Realtime UPDATE events are picked up by other devices
+    await prisma.card.update({
+      where: { id },
+      data: { version: { increment: 1 } },
+    });
+
     return NextResponse.json({
       success: true,
       card: {

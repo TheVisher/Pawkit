@@ -226,7 +226,9 @@ async function handleUpdate(serverCard: CardPayload): Promise<void> {
 }
 
 /**
- * Handle DELETE - a card was deleted on another device
+ * Handle DELETE - a card was permanently deleted on another device
+ * Note: A DELETE event from Postgres means the row was actually removed,
+ * not just soft-deleted. For soft deletes, we receive UPDATE events.
  */
 async function handleDelete(serverCard: CardPayload): Promise<void> {
   if (!serverCard?.id) return;
@@ -249,13 +251,10 @@ async function handleDelete(serverCard: CardPayload): Promise<void> {
     return;
   }
 
-  log.info(`Deleting card from server: ${serverCard.id}`);
+  log.info(`Permanently deleting card from server: ${serverCard.id}`);
 
-  // Soft delete locally
-  await db.cards.update(serverCard.id, {
-    _deleted: true,
-    _deletedAt: new Date(),
-  });
+  // Hard delete from local IndexedDB since the server row is actually gone
+  await db.cards.delete(serverCard.id);
   // useLiveQuery will auto-update any observing components
 }
 

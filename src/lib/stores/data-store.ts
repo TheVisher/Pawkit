@@ -213,9 +213,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Actually remove from IndexedDB (useLiveQuery will auto-update any observing components)
     await db.cards.delete(id);
 
-    // Note: We don't queue a sync here because the card should already
-    // be marked as deleted on the server. If needed, handle server-side
-    // permanent deletion separately.
+    // Queue permanent delete for server sync
+    // This triggers a DELETE event in Supabase Realtime, syncing to other devices
+    await addToQueue('card', id, 'permanent-delete');
   },
 
   // Add card to Pawkit using tag-based architecture
@@ -270,8 +270,12 @@ export const useDataStore = create<DataState>((set, get) => ({
       .filter((c) => c._deleted === true)
       .toArray();
 
-    // Permanently delete all trashed cards
-    await Promise.all(trashedCards.map((card) => db.cards.delete(card.id)));
+    // Permanently delete all trashed cards and queue for server sync
+    await Promise.all(trashedCards.map(async (card) => {
+      await db.cards.delete(card.id);
+      // Queue permanent delete - triggers DELETE event in Supabase Realtime
+      await addToQueue('card', card.id, 'permanent-delete');
+    }));
   },
 
   purgeOldTrash: async (workspaceId, maxAgeDays = 30) => {
@@ -289,8 +293,12 @@ export const useDataStore = create<DataState>((set, get) => ({
       })
       .toArray();
 
-    // Permanently delete old trashed cards
-    await Promise.all(oldTrashedCards.map((card) => db.cards.delete(card.id)));
+    // Permanently delete old trashed cards and queue for server sync
+    await Promise.all(oldTrashedCards.map(async (card) => {
+      await db.cards.delete(card.id);
+      // Queue permanent delete - triggers DELETE event in Supabase Realtime
+      await addToQueue('card', card.id, 'permanent-delete');
+    }));
 
     return oldTrashedCards.length;
   },

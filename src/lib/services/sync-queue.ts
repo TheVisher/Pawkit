@@ -113,6 +113,10 @@ function getApiEndpoint(
       return { url: `${baseUrl}/${entityId}`, method: 'PATCH' };
     case 'delete':
       return { url: `${baseUrl}/${entityId}`, method: 'DELETE' };
+    case 'permanent-delete':
+      // Permanent delete actually removes the row from the database
+      // This triggers a DELETE event in Supabase Realtime for cross-device sync
+      return { url: `${baseUrl}/${entityId}?permanent=true`, method: 'DELETE' };
     default:
       throw new Error(`Unknown operation: ${operation}`);
   }
@@ -512,6 +516,11 @@ export async function addToQueue(
       await db.syncQueue.delete(existing.id!);
       return;
     }
+    if (existing.operation === 'create' && operation === 'permanent-delete') {
+      // Never synced, just delete the queue item
+      await db.syncQueue.delete(existing.id!);
+      return;
+    }
     if (existing.operation === 'update' && operation === 'delete') {
       // Replace update with delete
       await db.syncQueue.update(existing.id!, {
@@ -524,6 +533,22 @@ export async function addToQueue(
       // Merge payloads
       await db.syncQueue.update(existing.id!, {
         payload: { ...existing.payload, ...payload },
+      });
+      return;
+    }
+    if (existing.operation === 'delete' && operation === 'permanent-delete') {
+      // Upgrade soft delete to permanent delete
+      await db.syncQueue.update(existing.id!, {
+        operation: 'permanent-delete',
+        payload: undefined,
+      });
+      return;
+    }
+    if (existing.operation === 'update' && operation === 'permanent-delete') {
+      // Replace update with permanent delete
+      await db.syncQueue.update(existing.id!, {
+        operation: 'permanent-delete',
+        payload: undefined,
       });
       return;
     }
