@@ -53,6 +53,14 @@ export interface GetCollectionsMessage {
   type: 'GET_COLLECTIONS'
 }
 
+export interface InitiateLoginMessage {
+  type: 'INITIATE_LOGIN'
+}
+
+export interface LogoutMessage {
+  type: 'LOGOUT'
+}
+
 export interface Collection {
   id: string
   name: string
@@ -82,14 +90,18 @@ export type Message =
   | ImagePickerCancelledMessage
   | ReopenPopupMessage
   | GetCollectionsMessage
+  | InitiateLoginMessage
+  | LogoutMessage
 
 export interface SaveCardResponse {
   ok: boolean
   data?: {
-    id: string
-    title: string
-    url: string
-    [key: string]: unknown
+    card: {
+      id: string
+      title: string
+      url: string
+      [key: string]: unknown
+    }
   }
   error?: string
 }
@@ -97,4 +109,7 @@ export interface SaveCardResponse {
 export interface CheckAuthResponse {
   ok: boolean
   error?: string
+  user?: {
+    email: string | null
+  }
 }

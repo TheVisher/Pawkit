@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getAuthUser } from '@/lib/supabase/server';
+import { getAuthUserFromRequest } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db/prisma';
 import { Prisma } from '@/generated/prisma';
 import {
@@ -32,8 +32,8 @@ const log = createModuleLogger('CardsAPI');
  */
 export async function GET(request: Request) {
   try {
-    // 1. Authenticate (cached per request)
-    const user = await getAuthUser();
+    // 1. Authenticate (supports both cookies and Bearer token)
+    const user = await getAuthUserFromRequest(request);
 
     if (!user) {
       return NextResponse.json(
@@ -129,8 +129,8 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
-    // 1. Authenticate (cached per request)
-    const user = await getAuthUser();
+    // 1. Authenticate (supports both cookies and Bearer token)
+    const user = await getAuthUserFromRequest(request);
 
     if (!user) {
       return NextResponse.json(

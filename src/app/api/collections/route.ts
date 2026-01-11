@@ -6,7 +6,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, getAuthUserFromRequest } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db/prisma';
 import { Prisma } from '@/generated/prisma';
 import {
@@ -29,14 +29,10 @@ import {
  */
 export async function GET(request: Request) {
   try {
-    // 1. Authenticate
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // 1. Authenticate (supports both cookies and Bearer token)
+    const user = await getAuthUserFromRequest(request);
 
-    if (authError || !user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

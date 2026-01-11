@@ -1,69 +1,92 @@
 /**
  * Content script that runs on getpawkit.com
- * Acts as a bridge for making authenticated API requests
- * Since this runs in the page context, cookies are sent automatically
+ *
+ * V2.1: Automatically grabs session tokens and sends to extension
+ *
+ * This script runs in the page context where cookies are available.
+ * It calls /api/auth/extension to get the session tokens and sends
+ * them to the background script for storage.
+ *
+ * The extension can then make direct API calls without needing this bridge.
  */
 
 import browser from 'webextension-polyfill'
 
 const API_BASE = 'https://www.getpawkit.com/api'
 
-// Listen for messages from the extension
-browser.runtime.onMessage.addListener((message, _sender) => {
-  if (message.type === 'API_REQUEST') {
-    return handleApiRequest(message)
+/**
+ * Fetch session tokens and send to extension
+ */
+async function syncSession(): Promise<void> {
+  try {
+    // Call the auth endpoint (cookies will be sent automatically in this context)
+    const response = await fetch(`${API_BASE}/auth/extension`, {
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        // User not logged in - notify extension to clear any stored session
+        await browser.runtime.sendMessage({
+          type: 'SESSION_UPDATE',
+          authenticated: false,
+        })
+        console.log('[Pawkit Bridge] User not authenticated')
+        return
+      }
+      throw new Error(`API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data.authenticated && data.session) {
+      // Send session to background script for storage
+      await browser.runtime.sendMessage({
+        type: 'SESSION_UPDATE',
+        authenticated: true,
+        session: {
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_at: data.session.expires_at,
+          user: data.session.user,
+        },
+      })
+      console.log('[Pawkit Bridge] Session synced successfully')
+    } else {
+      await browser.runtime.sendMessage({
+        type: 'SESSION_UPDATE',
+        authenticated: false,
+      })
+      console.log('[Pawkit Bridge] No valid session found')
+    }
+  } catch (error) {
+    console.error('[Pawkit Bridge] Failed to sync session:', error)
+  }
+}
+
+/**
+ * Handle messages from extension (for manual session refresh)
+ */
+browser.runtime.onMessage.addListener((message) => {
+  if (message.type === 'SYNC_SESSION') {
+    // Manually triggered session sync
+    return syncSession().then(() => ({ ok: true }))
   }
   return undefined
 })
 
-async function handleApiRequest(message: {
-  type: string
-  method: 'GET' | 'POST'
-  path: string
-  body?: unknown
-}): Promise<{ ok: boolean; data?: unknown; error?: string }> {
-  try {
-    const options: RequestInit = {
-      method: message.method,
-      credentials: 'include', // This works in content scripts on same-origin
-      headers: {}
-    }
+// Sync session on page load
+// Use a small delay to ensure page is fully loaded
+setTimeout(() => {
+  syncSession()
+}, 500)
 
-    if (message.body && message.method === 'POST') {
-      options.headers = { 'Content-Type': 'application/json' }
-      options.body = JSON.stringify(message.body)
-    }
-
-    const response = await fetch(`${API_BASE}${message.path}`, options)
-
-    if (response.status === 401) {
-      return {
-        ok: false,
-        error: 'Not logged in. Please log in to Pawkit in your browser first.'
-      }
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      let errorMessage = `API error: ${response.status}`
-      try {
-        const errorJson = JSON.parse(errorText)
-        errorMessage = errorJson.message || errorJson.error || errorMessage
-      } catch {
-        // Use default error message
-      }
-      return { ok: false, error: errorMessage }
-    }
-
-    const data = await response.json()
-    return { ok: true, data }
-  } catch (error) {
-    console.error('API request failed:', error)
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : 'Network request failed'
-    }
+// Also sync when the page becomes visible (tab activated)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    syncSession()
   }
-}
+})
 
-console.log('Pawkit bridge content script loaded')
+console.log('[Pawkit Bridge] Content script loaded')

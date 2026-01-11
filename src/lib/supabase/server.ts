@@ -87,3 +87,48 @@ export const requireAuth = cache(async (): Promise<User> => {
   }
   return user;
 });
+
+/**
+ * Get authenticated user from request with Bearer token support
+ *
+ * This function supports both:
+ * 1. Cookie-based auth (standard web app)
+ * 2. Bearer token auth (browser extension)
+ *
+ * Use this in API routes that need to support extension authentication.
+ *
+ * @param request - The incoming request object
+ * @returns User if authenticated via cookies or Bearer token, null otherwise
+ */
+export async function getAuthUserFromRequest(request: Request): Promise<User | null> {
+  // First try cookie auth (standard flow)
+  const cookieUser = await getAuthUser();
+  if (cookieUser) {
+    return cookieUser;
+  }
+
+  // Try Bearer token auth (for browser extension)
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+
+    try {
+      // Create a Supabase client and validate the token
+      const { createClient: createSupabaseClient } = await import('@supabase/supabase-js');
+      const supabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { data: { user }, error } = await supabase.auth.getUser(token);
+
+      if (!error && user) {
+        return user;
+      }
+    } catch (err) {
+      console.error('[Auth] Bearer token validation failed:', err);
+    }
+  }
+
+  return null;
+}

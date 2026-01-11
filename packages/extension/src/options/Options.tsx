@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import browser from 'webextension-polyfill'
-import { Loader2, CheckCircle2, LogIn, ExternalLink } from 'lucide-react'
+import { Loader2, CheckCircle2, LogIn, ExternalLink, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -9,8 +9,17 @@ import '../popup/index.css'
 
 const PAWKIT_URL = 'https://www.getpawkit.com'
 
+interface CheckAuthResponse {
+  ok: boolean
+  error?: string
+  user?: {
+    email: string | null
+  }
+}
+
 function Options() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -23,8 +32,11 @@ function Options() {
     setError('')
 
     try {
-      const response = await browser.runtime.sendMessage({ type: 'CHECK_AUTH' })
+      const response = await browser.runtime.sendMessage({ type: 'CHECK_AUTH' }) as CheckAuthResponse
       setIsAuthenticated(response.ok)
+      if (response.user?.email) {
+        setUserEmail(response.user.email)
+      }
       if (!response.ok && response.error) {
         setError(response.error)
       }
@@ -39,6 +51,24 @@ function Options() {
 
   const handleOpenPawkit = () => {
     window.open(PAWKIT_URL, '_blank')
+  }
+
+  const handleLogin = async () => {
+    try {
+      await browser.runtime.sendMessage({ type: 'INITIATE_LOGIN' })
+    } catch (err) {
+      console.error('Failed to initiate login:', err)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await browser.runtime.sendMessage({ type: 'LOGOUT' })
+      setIsAuthenticated(false)
+      setUserEmail(null)
+    } catch (err) {
+      console.error('Failed to logout:', err)
+    }
   }
 
   return (
@@ -59,7 +89,7 @@ function Options() {
           <CardHeader>
             <CardTitle>Authentication Status</CardTitle>
             <CardDescription>
-              Keep getpawkit.com open in a tab while using the extension
+              Log in once and save pages from anywhere
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -74,18 +104,29 @@ function Options() {
                   <CheckCircle2 className="h-5 w-5" />
                   <span className="font-medium">You are logged in</span>
                 </div>
+                {userEmail && (
+                  <p className="text-sm text-muted-foreground">
+                    Signed in as <span className="font-medium">{userEmail}</span>
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground">
-                  You can now save pages to Pawkit using the extension.
+                  You can now save pages to Pawkit from any website.
                 </p>
-                <Button variant="outline" onClick={handleOpenPawkit}>
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Open Pawkit
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleOpenPawkit}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Pawkit
+                  </Button>
+                  <Button variant="ghost" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Please log in to Pawkit in your browser to use the extension.
+                  Log in to Pawkit to start saving pages, articles, and links.
                 </p>
 
                 {error && (
@@ -95,7 +136,7 @@ function Options() {
                 )}
 
                 <Button
-                  onClick={handleOpenPawkit}
+                  onClick={handleLogin}
                   className="w-full bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9358ef]"
                   size="lg"
                 >
@@ -123,11 +164,14 @@ function Options() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <ol className="list-decimal list-inside space-y-2">
-              <li>Log in to <a href={PAWKIT_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">getpawkit.com</a> in your browser</li>
-              <li>Keep the Pawkit tab open (the extension communicates through it)</li>
+              <li>Click "Log in to Pawkit" above (or log in at <a href={PAWKIT_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">getpawkit.com</a>)</li>
+              <li>Once logged in, come back here and click "Check again" if needed</li>
               <li>Click the extension icon on any page to save it to Pawkit</li>
-              <li>Right-click any page or link and select "Save page to Pawkit"</li>
+              <li>Or right-click any page or link and select "Save to Pawkit"</li>
             </ol>
+            <p className="mt-4 pt-4 border-t border-border">
+              <strong>Tip:</strong> You can also pick a custom thumbnail from any page and add notes before saving.
+            </p>
           </CardContent>
         </Card>
 
@@ -138,9 +182,12 @@ function Options() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             <p>
-              Pawkit Web Clipper uses your existing login session from getpawkit.com.
-              There's no need for separate authentication - just log in once and the
-              extension will work automatically.
+              Pawkit Web Clipper securely stores your login session. Once you log in,
+              you can save pages from anywhere without needing to keep Pawkit open.
+              Your session stays active until you log out.
+            </p>
+            <p className="mt-2">
+              Version 1.2.0
             </p>
           </CardContent>
         </Card>
