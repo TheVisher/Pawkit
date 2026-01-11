@@ -17,6 +17,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Pawkit",
   description: "Your local-first bookmark manager",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/favicon.svg?v=3", type: "image/svg+xml" },
+      { url: "/icons/favicon-96x96.png?v=3", sizes: "96x96", type: "image/png" }
+    ],
+    apple: "/icons/apple-touch-icon.png?v=3"
+  }
 };
 
 export default function RootLayout({
