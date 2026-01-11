@@ -52,6 +52,11 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const [leftHovered, setLeftHovered] = useState(false);
   const [rightHovered, setRightHovered] = useState(false);
 
+  // Track screen size for responsive margin adjustments
+  // Sidebars are hidden on mobile/tablet, so margins should be 0
+  const [isDesktop, setIsDesktop] = useState(false); // lg breakpoint (1024px) for left sidebar
+  const [isLargeDesktop, setIsLargeDesktop] = useState(false); // xl breakpoint (1280px) for right sidebar
+
   // Scroll state for omnibar collapse
   const [isScrolled, setIsScrolled] = useState(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
@@ -101,7 +106,20 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const isCardModalOpen = Boolean(activeCardId);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard SSR hydration pattern
     setMounted(true);
+  }, []);
+
+  // Track window size for responsive margin adjustments
+  useEffect(() => {
+    const updateScreenSize = () => {
+      setIsDesktop(window.innerWidth >= 1024); // lg breakpoint
+      setIsLargeDesktop(window.innerWidth >= 1280); // xl breakpoint
+    };
+
+    updateScreenSize();
+    window.addEventListener('resize', updateScreenSize);
+    return () => window.removeEventListener('resize', updateScreenSize);
   }, []);
 
   useEffect(() => {
@@ -421,12 +439,13 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           className="h-full flex flex-col"
           style={{
             // Animate padding for smooth full-screen transition
-            paddingTop: isFullScreen ? 0 : 16,
-            paddingLeft: isFullScreen ? 0 : 16,
-            paddingRight: isFullScreen ? 0 : 16,
-            paddingBottom: isFullScreen 
-              ? 'var(--mobile-nav-height)' 
-              : 'calc(16px + var(--mobile-nav-height))',
+            // On mobile (< lg), use 0 padding since sidebars are hidden
+            paddingTop: isDesktop ? (isFullScreen ? 0 : 16) : 0,
+            paddingLeft: isDesktop ? (isFullScreen ? 0 : 16) : 0,
+            paddingRight: isDesktop ? (isFullScreen ? 0 : 16) : 0,
+            paddingBottom: isDesktop
+              ? (isFullScreen ? 'var(--mobile-nav-height)' : 'calc(16px + var(--mobile-nav-height))')
+              : 'var(--mobile-nav-height)',
             transition: 'padding 300ms ease-out, background-color 300ms ease-out',
             backgroundColor: 'var(--bg-gradient-base)',
             backgroundImage: 'var(--bg-gradient-image)',
@@ -513,11 +532,13 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
             )}
             style={{
               // Left margin: account for left sidebar when it's in flow (open, not just hovered)
-              marginLeft: leftInFlow ? (leftMerged ? 325 : 341) : 0,
+              // Only apply on desktop (lg+) since sidebar is hidden on mobile/tablet
+              marginLeft: isDesktop && leftInFlow ? (leftMerged ? 325 : 341) : 0,
               // Right margin: account for right sidebar when it's in flow
               // When merged: sidebar width (flush, container padding provides offset when not fullscreen)
               // When not merged: sidebar width + 16px gap
-              marginRight: rightInFlow ? (rightMerged ? rightSidebarWidth : rightSidebarWidth + 16) : 0,
+              // Only apply on large desktop (xl+) since right sidebar is hidden below that
+              marginRight: isLargeDesktop && rightInFlow ? (rightMerged ? rightSidebarWidth : rightSidebarWidth + 16) : 0,
               transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
             }}
           >

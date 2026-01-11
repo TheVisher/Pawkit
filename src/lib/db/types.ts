@@ -261,7 +261,7 @@ export interface SyncQueueItem {
   id?: number;                // Auto-increment
   entityType: 'card' | 'collection' | 'collectionNote' | 'event' | 'todo' | 'viewSettings' | 'workspace' | 'reference';
   entityId: string;
-  operation: 'create' | 'update' | 'delete';
+  operation: 'create' | 'update' | 'delete' | 'permanent-delete';
   payload?: Record<string, unknown>;
   retryCount: number;
   lastError?: string;
