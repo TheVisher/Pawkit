@@ -16,6 +16,8 @@ import {
 import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useCollections } from '@/lib/hooks/use-live-data';
+import { slugify } from '@/lib/utils';
 import type { LocalCollection } from '@/lib/db';
 
 interface PawkitContextMenuProps {
@@ -29,17 +31,26 @@ export function PawkitContextMenu({ collection, children }: PawkitContextMenuPro
   const createCollection = useDataStore((s) => s.createCollection);
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const toast = useToastStore((s) => s.toast);
+  const collections = useCollections(currentWorkspace?.id);
 
   const handleCreateChild = async () => {
     if (!currentWorkspace) return;
 
     const name = prompt('New Pawkit name:');
     if (name?.trim()) {
-      const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const slug = slugify(name);
+
+      // Check if slug already exists in this workspace
+      const exists = collections.find(c => c.slug === slug && !c._deleted);
+      if (exists) {
+        toast({ type: 'error', message: 'A Pawkit with this name already exists' });
+        return;
+      }
+
       await createCollection({
         workspaceId: currentWorkspace.id,
         name: name.trim(),
-        slug: `${slug}-${Date.now()}`,
+        slug,
         parentId: collection.id,
         position: 0,
         isPrivate: false,
