@@ -38,7 +38,7 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
 
   // Check if card is a note type (has editor)
   const isNoteCard = useMemo(
-    () => ['md-note', 'text-note', 'quick-note'].includes(card.type),
+    () => ['md-note', 'text-note'].includes(card.type),
     [card.type]
   );
 

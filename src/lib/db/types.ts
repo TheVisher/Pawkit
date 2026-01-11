@@ -61,7 +61,7 @@ export interface LocalCard extends SyncMetadata {
   workspaceId: string;
 
   // Content
-  type: string;               // url, md-note, text-note, quick-note, file
+  type: string;               // url, md-note, text-note, file
   url: string;                // URL for bookmarks, "" for notes
   title?: string;
   description?: string;
@@ -238,28 +238,13 @@ export interface LocalCalendarEvent extends SyncMetadata {
   updatedAt: Date;
 }
 
-export interface LocalTodo extends SyncMetadata {
-  id: string;
-  workspaceId: string;
-
-  text: string;
-  completed: boolean;
-  completedAt?: Date;
-  dueDate?: Date;
-  priority?: 'high' | 'medium' | 'low';
-  linkedCardId?: string;
-
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 // =============================================================================
 // SYNC & UTILITY ENTITIES
 // =============================================================================
 
 export interface SyncQueueItem {
   id?: number;                // Auto-increment
-  entityType: 'card' | 'collection' | 'collectionNote' | 'event' | 'todo' | 'viewSettings' | 'workspace' | 'reference';
+  entityType: 'card' | 'collection' | 'collectionNote' | 'event' | 'viewSettings' | 'workspace' | 'reference';
   entityId: string;
   operation: 'create' | 'update' | 'delete' | 'permanent-delete';
   payload?: Record<string, unknown>;

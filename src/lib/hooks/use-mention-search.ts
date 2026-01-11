@@ -127,7 +127,7 @@ function parseDateFromQuery(query: string): MentionItem | null {
  * Convert card to mention item
  */
 function cardToMentionItem(card: LocalCard): MentionItem {
-  const isNote = ['md-note', 'text-note', 'quick-note'].includes(card.type);
+  const isNote = ['md-note', 'text-note'].includes(card.type);
 
   return {
     id: card.id,
@@ -238,7 +238,7 @@ export function useMentionSearch(
 
     // Separate notes and bookmarks
     const notes = matchingCards
-      .filter(c => ['md-note', 'text-note', 'quick-note'].includes(c.type))
+      .filter(c => ['md-note', 'text-note'].includes(c.type))
       .slice(0, maxResults)
       .map(cardToMentionItem);
 

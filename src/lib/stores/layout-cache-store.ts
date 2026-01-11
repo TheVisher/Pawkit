@@ -233,8 +233,6 @@ export function generateCardContentHash(card: {
     card.image || '',  // URL change = new image = potentially new aspect ratio
     card.title || '',  // Full title - affects line wrapping/height
     (card.tags || []).join(','),  // Tag list affects footer height
-    // For quick-notes, content affects height significantly
-    card.type === 'quick-note' ? (card.content || '') : '',
     // AspectRatio affects image height calculations - invalidate if it changes
     String(card.aspectRatio || 0),
   ];

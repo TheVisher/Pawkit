@@ -43,7 +43,6 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   const toast = useToastStore((s) => s.toast);
 
   const isBookmark = card.type === 'url' && card.url;
-  const isQuickNote = card.type === 'quick-note';
   const isPinned = card.pinned;
   const isRead = card.isRead;
   const hasArticle = !!card.articleContent;
@@ -110,14 +109,12 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent>
-        {/* Edit - not shown for quick notes (they edit inline by clicking) */}
-        {!isQuickNote && (
-          <ContextMenuItem onClick={handleEdit}>
-            <Pencil className="size-4" />
-            Edit
-            <ContextMenuShortcut>E</ContextMenuShortcut>
-          </ContextMenuItem>
-        )}
+        {/* Edit */}
+        <ContextMenuItem onClick={handleEdit}>
+          <Pencil className="size-4" />
+          Edit
+          <ContextMenuShortcut>E</ContextMenuShortcut>
+        </ContextMenuItem>
 
         {/* Bookmark-specific actions */}
         {isBookmark && (
@@ -135,8 +132,7 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
           </>
         )}
 
-        {/* Separator only if there were items above */}
-        {(!isQuickNote || isBookmark) && <ContextMenuSeparator />}
+        <ContextMenuSeparator />
 
         {/* Pin/Unpin */}
         <ContextMenuItem onClick={handleTogglePin}>

@@ -9,7 +9,6 @@ import type {
   LocalCollection,
   LocalCard,
   LocalCalendarEvent,
-  LocalTodo,
   SyncMetadata,
 } from '@/lib/db';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -19,7 +18,6 @@ import {
   type ServerCollection,
   type ServerCard,
   type ServerEvent,
-  type ServerTodo,
   ENTITY_ENDPOINTS,
   ENTITY_TYPE_MAP,
 } from './types';
@@ -185,25 +183,6 @@ function serverEventToLocal(server: ServerEvent): LocalCalendarEvent {
 }
 
 /**
- * Convert server todo to local format
- */
-function serverTodoToLocal(server: ServerTodo): LocalTodo {
-  return {
-    id: server.id,
-    workspaceId: server.workspaceId,
-    text: server.text,
-    completed: server.completed,
-    completedAt: server.completedAt ? new Date(server.completedAt) : undefined,
-    dueDate: server.dueDate ? new Date(server.dueDate) : undefined,
-    priority: server.priority,
-    linkedCardId: server.linkedCardId,
-    createdAt: new Date(server.createdAt),
-    updatedAt: new Date(server.updatedAt),
-    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
-  };
-}
-
-/**
  * Upsert items to local database with conflict resolution
  */
 export async function upsertItems(
@@ -248,11 +227,6 @@ export async function upsertItems(
     case 'events': {
       const localItems = (filteredItems as ServerEvent[]).map(serverEventToLocal);
       await db.calendarEvents.bulkPut(localItems);
-      break;
-    }
-    case 'todos': {
-      const localItems = (filteredItems as ServerTodo[]).map(serverTodoToLocal);
-      await db.todos.bulkPut(localItems);
       break;
     }
   }

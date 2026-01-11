@@ -26,7 +26,7 @@ interface BacklinkItemProps {
 }
 
 function BacklinkItem({ reference, sourceCard, onClick }: BacklinkItemProps) {
-  const isNote = sourceCard && ['md-note', 'text-note', 'quick-note'].includes(sourceCard.type);
+  const isNote = sourceCard && ['md-note', 'text-note'].includes(sourceCard.type);
 
   if (!sourceCard) {
     // Source card was deleted - don't show orphaned backlinks

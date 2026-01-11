@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted, markRestored } from '@/lib/db';
-import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo, LocalReference } from '@/lib/db';
+import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalReference } from '@/lib/db';
 import { addToQueue, clearAllSyncQueue, resolveConflictOnDelete, triggerSync } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 import { useLayoutCacheStore } from './layout-cache-store';
@@ -13,7 +13,6 @@ import { getUpdatedScheduleTagsIfNeeded } from '@/lib/utils/system-tags';
 import {
   addCardToPawkit,
   removeCardFromPawkit,
-  moveCardToPawkit,
 } from '@/lib/migrations/tag-architecture-migration';
 
 // Type declaration for debug helpers exposed on window
@@ -51,15 +50,11 @@ function isLocalOnlyUpdate(updates: Partial<LocalCard>): boolean {
 }
 
 interface DataState {
-  // State (cards/collections removed - use useLiveQuery hooks from use-live-data.ts)
-  events: LocalCalendarEvent[];
-  todos: LocalTodo[];
+  // State (cards/collections use useLiveQuery hooks from use-live-data.ts)
   isLoading: boolean;
   error: string | null;
 
   // Setters
-  setEvents: (events: LocalCalendarEvent[]) => void;
-  setTodos: (todos: LocalTodo[]) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -86,17 +81,10 @@ interface DataState {
   loadAll: (workspaceId: string) => Promise<void>;
   clearData: () => void;
 
-  // Event actions
-  loadEvents: (workspaceId: string) => Promise<void>;
+  // Event actions (write to Dexie - reads come from DataContext's useLiveQuery)
   createEvent: (event: Omit<LocalCalendarEvent, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCalendarEvent>;
   updateEvent: (id: string, updates: Partial<LocalCalendarEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
-
-  // Todo actions
-  loadTodos: (workspaceId: string) => Promise<void>;
-  createTodo: (todo: Omit<LocalTodo, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalTodo>;
-  updateTodo: (id: string, updates: Partial<LocalTodo>) => Promise<void>;
-  deleteTodo: (id: string) => Promise<void>;
 
   // Reference actions (@ mentions)
   createReference: (ref: Omit<LocalReference, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalReference>;
@@ -108,15 +96,11 @@ interface DataState {
 
 
 export const useDataStore = create<DataState>((set, get) => ({
-  // Initial state (cards/collections removed - use useLiveQuery from use-live-data.ts)
-  events: [],
-  todos: [],
+  // Initial state
   isLoading: false,
   error: null,
 
   // Setters
-  setEvents: (events) => set({ events }),
-  setTodos: (todos) => set({ todos }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
 
@@ -400,11 +384,6 @@ export const useDataStore = create<DataState>((set, get) => ({
         );
       }
 
-      // Load events and todos (these still use Zustand state)
-      await Promise.all([
-        get().loadEvents(workspaceId),
-        get().loadTodos(workspaceId),
-      ]);
       set({ isLoading: false });
     } catch (error) {
       set({ error: (error as Error).message, isLoading: false });
@@ -412,29 +391,14 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   clearData: () => {
-    set({ events: [], todos: [], error: null });
+    set({ error: null });
   },
 
   // ==========================================================================
-  // EVENT ACTIONS
+  // EVENT ACTIONS (write to Dexie, reads via DataContext's useLiveQuery)
   // ==========================================================================
-
-  loadEvents: async (workspaceId) => {
-    try {
-      const events = await db.calendarEvents
-        .where('workspaceId')
-        .equals(workspaceId)
-        .filter((e) => !e._deleted)
-        .toArray();
-      set({ events });
-    } catch (error) {
-      set({ error: (error as Error).message });
-    }
-  },
 
   createEvent: async (eventData) => {
-    const { events } = get();
-
     const event: LocalCalendarEvent = {
       ...eventData,
       id: crypto.randomUUID(),
@@ -443,11 +407,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       ...createSyncMetadata(),
     };
 
-    // Write to Dexie
+    // Write to Dexie (useLiveQuery in DataContext will auto-update)
     await db.calendarEvents.add(event);
-
-    // Update Zustand state
-    set({ events: [...events, event] });
 
     // Queue sync
     await addToQueue('event', event.id, 'create');
@@ -465,13 +426,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       updatedAt: new Date(),
     });
 
-    // Write to Dexie
+    // Write to Dexie (useLiveQuery in DataContext will auto-update)
     await db.calendarEvents.put(updated);
-
-    // Update Zustand state
-    set({
-      events: get().events.map((e) => (e.id === id ? updated : e)),
-    });
 
     // Queue sync
     await addToQueue('event', id, 'update', updates as Record<string, unknown>);
@@ -483,96 +439,11 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     const deleted = markDeleted(existing);
 
-    // Soft delete in Dexie
+    // Soft delete in Dexie (useLiveQuery in DataContext will auto-update)
     await db.calendarEvents.put(deleted);
-
-    // Remove from Zustand state
-    set({
-      events: get().events.filter((e) => e.id !== id),
-    });
 
     // Queue sync
     await addToQueue('event', id, 'delete');
-  },
-
-  // ==========================================================================
-  // TODO ACTIONS
-  // ==========================================================================
-
-  loadTodos: async (workspaceId) => {
-    try {
-      const todos = await db.todos
-        .where('workspaceId')
-        .equals(workspaceId)
-        .filter((t) => !t._deleted)
-        .toArray();
-      set({ todos });
-    } catch (error) {
-      set({ error: (error as Error).message });
-    }
-  },
-
-  createTodo: async (todoData) => {
-    const { todos } = get();
-
-    const todo: LocalTodo = {
-      ...todoData,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...createSyncMetadata(),
-    };
-
-    // Write to Dexie
-    await db.todos.add(todo);
-
-    // Update Zustand state
-    set({ todos: [...todos, todo] });
-
-    // Queue sync
-    await addToQueue('todo', todo.id, 'create');
-
-    return todo;
-  },
-
-  updateTodo: async (id, updates) => {
-    const existing = await db.todos.get(id);
-    if (!existing) return;
-
-    const updated = markModified({
-      ...existing,
-      ...updates,
-      updatedAt: new Date(),
-    });
-
-    // Write to Dexie
-    await db.todos.put(updated);
-
-    // Update Zustand state
-    set({
-      todos: get().todos.map((t) => (t.id === id ? updated : t)),
-    });
-
-    // Queue sync
-    await addToQueue('todo', id, 'update', updates as Record<string, unknown>);
-  },
-
-  deleteTodo: async (id) => {
-    const existing = await db.todos.get(id);
-    if (!existing) return;
-
-    const deleted = markDeleted(existing);
-
-    // Soft delete in Dexie
-    await db.todos.put(deleted);
-
-    // Remove from Zustand state
-    set({
-      todos: get().todos.filter((t) => t.id !== id),
-    });
-
-    // Queue sync
-    await addToQueue('todo', id, 'delete');
   },
 
   // ==========================================================================
@@ -646,7 +517,7 @@ export const useDataStore = create<DataState>((set, get) => ({
 }));
 
 // =============================================================================
-// SELECTORS (cards/collections removed - use useLiveQuery hooks from use-live-data.ts)
+// SELECTORS
 // =============================================================================
 
 export const selectIsLoading = (state: DataState) => state.isLoading;

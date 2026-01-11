@@ -3,7 +3,6 @@
 import { useMemo, memo, useRef } from 'react';
 import { CardItem, type CardDisplaySettings } from './card-item';
 import type { SystemTag } from '@/lib/utils/system-tags';
-import { QuickNoteCard } from './quick-note-card';
 import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -92,19 +91,15 @@ const MasonryCard = memo(
     return (
       <CardContextMenu card={card} currentCollection={currentCollection}>
         <div className="w-full">
-          {card.type === 'quick-note' ? (
-            <QuickNoteCard card={card} onClick={onClick} />
-          ) : (
-            <CardItem
-              card={card}
-              variant="grid"
-              onClick={onClick}
-              displaySettings={displaySettings}
-              onTagClick={onTagClick}
-              onSystemTagClick={onSystemTagClick}
-              priority={priority}
-            />
-          )}
+          <CardItem
+            card={card}
+            variant="grid"
+            onClick={onClick}
+            displaySettings={displaySettings}
+            onTagClick={onTagClick}
+            onSystemTagClick={onSystemTagClick}
+            priority={priority}
+          />
         </div>
       </CardContextMenu>
     );

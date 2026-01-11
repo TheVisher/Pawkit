@@ -6,7 +6,6 @@ import { DragOverlay, useDndMonitor, type Modifier } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CardItem, type CardDisplaySettings } from './card-item';
 import type { SystemTag } from '@/lib/utils/system-tags';
-import { QuickNoteCard } from './quick-note-card';
 import { MasonryGrid } from './masonry-grid';
 import { CardListView, type CardGroup } from './card-list-view';
 import { CardContextMenu } from '@/components/context-menus';
@@ -59,31 +58,6 @@ const SortableGridCard = memo(function SortableGridCard({
     id: card.id,
     data: { type: 'Card', card },
   });
-
-  // Quick notes get compact display - use uniformHeight in grid view to stretch
-  if (card.type === 'quick-note') {
-    return (
-      <CardContextMenu card={card} currentCollection={currentCollection}>
-        <div
-          ref={setNodeRef}
-          className="aspect-[4/5] overflow-hidden"
-          style={{
-            opacity: isDraggingThis ? 0.3 : 1,
-            cursor: isDraggingThis ? 'grabbing' : 'grab',
-            boxShadow: isDropTarget
-              ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
-              : 'none',
-            borderRadius: '1rem',
-            transition: 'box-shadow 150ms ease',
-          }}
-          {...attributes}
-          {...listeners}
-        >
-          <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} uniformHeight />
-        </div>
-      </CardContextMenu>
-    );
-  }
 
   return (
     <CardContextMenu card={card} currentCollection={currentCollection}>
@@ -271,18 +245,14 @@ export function CardGrid({
             {activeDragItem && (
               <div
                 style={{
-                  width: activeDragItem.type === 'quick-note' ? minWidth * 0.8 : minWidth * 0.6,
+                  width: minWidth * 0.6,
                   opacity: 0.85,
                   transform: 'rotate(-2deg)',
                   pointerEvents: 'none',
                   filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
                 }}
               >
-                {activeDragItem.type === 'quick-note' ? (
-                  <QuickNoteCard card={activeDragItem} isDragging />
-                ) : (
-                  <CardItem card={activeDragItem} variant="grid" displaySettings={displaySettings} />
-                )}
+                <CardItem card={activeDragItem} variant="grid" displaySettings={displaySettings} />
               </div>
             )}
           </DragOverlay>,

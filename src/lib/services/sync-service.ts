@@ -20,6 +20,5 @@ export type {
   ServerCollection,
   ServerCard,
   ServerEvent,
-  ServerTodo,
   BroadcastMessage,
 } from './sync/index';

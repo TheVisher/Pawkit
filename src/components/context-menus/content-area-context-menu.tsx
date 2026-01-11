@@ -11,7 +11,6 @@ import {
 import {
   Link,
   FileText,
-  StickyNote,
   ClipboardPaste,
 } from 'lucide-react';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -37,23 +36,6 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
     openAddCard('note');
   };
 
-  const handleAddQuickNote = async () => {
-    if (!currentWorkspace) return;
-
-    await createCard({
-      workspaceId: currentWorkspace.id,
-      type: 'quick-note',
-      title: '',
-      url: '',
-      content: '',
-      status: 'READY',
-      pinned: false,
-      isFileCard: false,
-      tags: [],
-    });
-    toast({ type: 'success', message: 'Quick note created' });
-  };
-
   const handlePaste = async () => {
     if (!currentWorkspace) return;
 
@@ -76,10 +58,10 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
         });
         toast({ type: 'success', message: 'Bookmark created from clipboard' });
       } else if (trimmed) {
-        // Create a quick note with the pasted content
+        // Create a note from clipboard text
         await createCard({
           workspaceId: currentWorkspace.id,
-          type: 'quick-note',
+          type: 'md-note',
           title: '',
           url: '',
           content: `<p>${trimmed}</p>`,
@@ -88,7 +70,7 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
           isFileCard: false,
           tags: [],
         });
-        toast({ type: 'success', message: 'Quick note created from clipboard' });
+        toast({ type: 'success', message: 'Note created from clipboard' });
       }
     } catch {
       toast({ type: 'error', message: 'Could not read clipboard' });
@@ -108,10 +90,6 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
         <ContextMenuItem onClick={handleAddNote}>
           <FileText className="size-4" />
           Add note
-        </ContextMenuItem>
-        <ContextMenuItem onClick={handleAddQuickNote}>
-          <StickyNote className="size-4" />
-          Add quick note
         </ContextMenuItem>
 
         <ContextMenuSeparator />

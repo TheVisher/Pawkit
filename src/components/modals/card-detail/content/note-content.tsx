@@ -2,7 +2,7 @@
 
 /**
  * Note Content Component
- * Editor-focused layout for note cards (md-note, text-note, quick-note)
+ * Editor-focused layout for note cards (md-note, text-note)
  * The note content IS the primary content - editor takes center stage
  */
 

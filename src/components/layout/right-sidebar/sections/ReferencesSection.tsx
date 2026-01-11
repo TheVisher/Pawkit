@@ -154,7 +154,7 @@ export function ReferencesSection({ cardId, workspaceId }: ReferencesSectionProp
               Cards
             </div>
             {grouped.cards.map((ref) => {
-              const isNote = ref.card && ['md-note', 'text-note', 'quick-note'].includes(ref.card.type);
+              const isNote = ref.card && ['md-note', 'text-note'].includes(ref.card.type);
               return (
                 <ReferenceItem
                   key={ref.id}

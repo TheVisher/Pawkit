@@ -14,7 +14,6 @@ export const CardType = z.enum([
   'url',
   'md-note',
   'text-note',
-  'quick-note',
   'file',
 ]);
 

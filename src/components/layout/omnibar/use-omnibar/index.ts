@@ -91,7 +91,6 @@ export function useOmnibar(isCompact: boolean) {
         openAddCard('bookmark');
         break;
       case 'note':
-      case 'quick-note':
         openAddCard('note');
         break;
       case 'upload':

@@ -1,6 +1,6 @@
 /**
  * Smart detection of action items / todos in text content
- * Used by QuickNotes to suggest adding items to the Todos list
+ * Used by notes to suggest adding items to the Todos list
  */
 
 const TODO_PATTERNS = [

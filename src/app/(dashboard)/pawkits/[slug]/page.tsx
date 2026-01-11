@@ -70,7 +70,7 @@ function getDateLabel(date: Date, dateGrouping: DateGrouping): string {
 
 // Helper to get content type label
 function getContentTypeLabel(card: LocalCard): string {
-    if (['md-note', 'text-note', 'quick-note'].includes(card.type)) return 'Notes';
+    if (['md-note', 'text-note'].includes(card.type)) return 'Notes';
     if (card.type === 'file') return 'Files';
     if (card.type === 'url') return 'Bookmarks';
     return 'Other';
