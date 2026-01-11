@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted, markRestored } from '@/lib/db';
 import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo, LocalReference } from '@/lib/db';
-import { addToQueue, clearAllSyncQueue, resolveConflictOnDelete } from '@/lib/services/sync-queue';
+import { addToQueue, clearAllSyncQueue, resolveConflictOnDelete, triggerSync } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 import { useLayoutCacheStore } from './layout-cache-store';
 import { getUpdatedScheduleTagsIfNeeded } from '@/lib/utils/system-tags';
@@ -141,8 +141,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.add(card);
 
-    // Queue sync (addToQueue handles merging duplicate updates)
+    // Queue sync and trigger immediately (create is a discrete action)
     await addToQueue('card', card.id, 'create');
+    triggerSync();
 
     // Queue metadata fetch for URL cards (fire-and-forget)
     if (isUrlCard) {
@@ -192,8 +193,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Clear from layout cache
     useLayoutCacheStore.getState().removeHeight(id);
 
-    // Queue sync
+    // Queue sync and trigger immediately (delete is a discrete action)
     await addToQueue('card', id, 'delete');
+    triggerSync();
   },
 
   restoreCard: async (id) => {
@@ -205,17 +207,19 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Update in Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.put(restored);
 
-    // Queue sync (restore = update with _deleted: false)
+    // Queue sync (restore = update with _deleted: false) and trigger immediately
     await addToQueue('card', id, 'update', { _deleted: false });
+    triggerSync();
   },
 
   permanentDeleteCard: async (id) => {
     // Actually remove from IndexedDB (useLiveQuery will auto-update any observing components)
     await db.cards.delete(id);
 
-    // Queue permanent delete for server sync
+    // Queue permanent delete for server sync and trigger immediately
     // This triggers a DELETE event in Supabase Realtime, syncing to other devices
     await addToQueue('card', id, 'permanent-delete');
+    triggerSync();
   },
 
   // Add card to Pawkit using tag-based architecture
@@ -266,6 +270,11 @@ export const useDataStore = create<DataState>((set, get) => ({
       // Queue permanent delete - triggers DELETE event in Supabase Realtime
       await addToQueue('card', card.id, 'permanent-delete');
     }));
+
+    // Trigger sync immediately for all queued deletes
+    if (trashedCards.length > 0) {
+      triggerSync();
+    }
   },
 
   purgeOldTrash: async (workspaceId, maxAgeDays = 30) => {
@@ -289,6 +298,11 @@ export const useDataStore = create<DataState>((set, get) => ({
       // Queue permanent delete - triggers DELETE event in Supabase Realtime
       await addToQueue('card', card.id, 'permanent-delete');
     }));
+
+    // Trigger sync immediately for all queued deletes
+    if (oldTrashedCards.length > 0) {
+      triggerSync();
+    }
 
     return oldTrashedCards.length;
   },
