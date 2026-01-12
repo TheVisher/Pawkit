@@ -6,6 +6,7 @@ import type { SystemTag } from '@/lib/utils/system-tags';
 import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useUIStore, selectMuuriLayoutVersion } from '@/lib/stores/ui-store';
 import { MuuriGridComponent, MuuriItemWrapper, type MuuriGridRef } from './muuri-grid';
 
 // Card size configurations - min column widths
@@ -154,6 +155,7 @@ export function MasonryGrid({
   onReorder,
 }: MasonryGridProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const muuriLayoutVersion = useUIStore(selectMuuriLayoutVersion);
   const gridRef = useRef<MuuriGridRef>(null);
 
   // Get minimum card width based on size setting
@@ -179,6 +181,7 @@ export function MasonryGrid({
       onOrderChange={onReorder}
       layoutDuration={300}
       layoutEasing="ease-out"
+      layoutVersion={muuriLayoutVersion}
     >
       {(calculatedWidth) =>
         cards.map((card, index) => (

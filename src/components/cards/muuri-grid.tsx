@@ -167,6 +167,8 @@ export type MuuriGridProps = {
   onOrderChange?: (newOrder: string[]) => void;
   // Callback to notify parent of calculated item width
   onItemWidthCalculated?: (width: number) => void;
+  // External trigger for relayout (increment to force refresh + layout)
+  layoutVersion?: number;
 };
 
 export type MuuriGridRef = {
@@ -202,6 +204,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       onLayoutEnd,
       onOrderChange,
       onItemWidthCalculated,
+      layoutVersion,
     },
     ref
   ) {
@@ -504,6 +507,24 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
 
       return () => cancelAnimationFrame(rafId);
     }, [calculatedItemWidth]);
+
+    // Re-layout when layoutVersion changes (external trigger for content size changes)
+    // Used when card content changes affect dimensions (e.g., thumbnail add/remove)
+    useEffect(() => {
+      if (!gridRef.current || !isInitializedRef.current || layoutVersion === undefined) return;
+      // Skip initial render (version 0)
+      if (layoutVersion === 0) return;
+
+      // Use RAF to ensure React has applied the new dimensions to DOM
+      const rafId = requestAnimationFrame(() => {
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
+      });
+
+      return () => cancelAnimationFrame(rafId);
+    }, [layoutVersion]);
 
     // Cleanup on unmount
     useEffect(() => {

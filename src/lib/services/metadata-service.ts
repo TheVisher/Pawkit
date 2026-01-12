@@ -15,7 +15,7 @@ import { db, createSyncMetadata } from '@/lib/db';
 import type { LocalCard } from '@/lib/db/types';
 import { addToQueue, triggerSync } from './sync-queue';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
-import { fetchMetadata, validateUrl, type MetadataResult } from '@/lib/metadata';
+import { validateUrl, type MetadataResult } from '@/lib/metadata';
 import { queueImagePersistence, needsPersistence } from '@/lib/metadata/image-persistence';
 
 /**
@@ -331,9 +331,12 @@ function processArticleQueue(): void {
 }
 
 /**
- * Fetch metadata for a single card
- * Uses the local fetchMetadata function from @/lib/metadata
- * with site-specific handlers and generic OG/Twitter/JSON-LD fallback
+ * Fetch metadata for a single card via the /api/metadata endpoint
+ *
+ * IMPORTANT: We MUST use the API route (server-side) because:
+ * - Cross-origin sites like Reddit, Twitter, Instagram don't have CORS headers
+ * - Direct browser fetch() to these sites fails due to CORS policy
+ * - The API route runs on Node.js server where CORS doesn't apply
  */
 async function fetchMetadataForCard(cardId: string): Promise<void> {
   try {
@@ -357,9 +360,20 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
       throw new Error(validation.error || 'Invalid URL');
     }
 
-    // Use local fetchMetadata with site-specific handlers
-    // This is a direct function call, no network roundtrip to our API
-    const metadata: MetadataResult = await fetchMetadata(card.url);
+    // Fetch via API route to avoid CORS issues
+    // The API route runs server-side where cross-origin requests work
+    const response = await fetch('/api/metadata', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: card.url }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    const metadata = await response.json() as MetadataResult;
 
     // Update card with metadata directly in Dexie (works from portal or main app)
     const updates: Partial<LocalCard> = {

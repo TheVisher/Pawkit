@@ -3,8 +3,14 @@
  * Fetches OpenGraph metadata for URLs with resilient fallbacks
  * Requires authentication to prevent abuse
  *
- * This API route is primarily for the browser extension.
- * The main app uses the local fetchMetadata function directly.
+ * IMPORTANT: This API route MUST be used for metadata fetching because:
+ * - Cross-origin sites (Reddit, Twitter, Instagram, etc.) don't have CORS headers
+ * - Direct browser fetch() to these sites fails due to CORS policy
+ * - This route runs on the server where CORS doesn't apply
+ *
+ * Used by:
+ * - Browser extension
+ * - Main app's metadata-service.ts (client-side)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -64,7 +70,7 @@ export async function POST(request: NextRequest) {
     // This handles YouTube, Reddit, TikTok, Amazon, and generic OG/Twitter/JSON-LD
     const metadata = await fetchMetadata(url);
 
-    // Return in the same format as before (without internal fields like 'source' and 'shouldPersistImage')
+    // Return full metadata including source and shouldPersistImage for the client
     return NextResponse.json({
       title: metadata.title,
       description: metadata.description,
@@ -72,6 +78,8 @@ export async function POST(request: NextRequest) {
       images: metadata.images,
       favicon: metadata.favicon,
       domain: metadata.domain,
+      source: metadata.source,
+      shouldPersistImage: metadata.shouldPersistImage,
     });
   } catch (error) {
     console.error('[Metadata API] Error:', error);

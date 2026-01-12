@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useUIStore } from '@/lib/stores/ui-store';
 import { useCard } from '@/lib/hooks/use-live-data';
 import { useToastStore } from '@/lib/stores/toast-store';
 
@@ -28,6 +29,7 @@ export function EditThumbnailModal() {
   const { isEditThumbnailOpen, editThumbnailCardId, closeEditThumbnail } = useModalStore();
   const card = useCard(editThumbnailCardId || '');
   const updateCard = useDataStore((state) => state.updateCard);
+  const triggerMuuriLayout = useUIStore((state) => state.triggerMuuriLayout);
   const toast = useToastStore((s) => s.toast);
 
   const [urlInput, setUrlInput] = useState('');
@@ -59,7 +61,19 @@ export function EditThumbnailModal() {
 
     try {
       const newImage = urlInput.trim() || undefined;
+      const hadImage = !!card?.image;
+      const willHaveImage = !!newImage;
+
       await updateCard(editThumbnailCardId, { image: newImage });
+
+      // Trigger Muuri relayout if image was added or removed
+      // (adding/removing image changes card height significantly)
+      if (hadImage !== willHaveImage) {
+        // Small delay to allow the card to re-render with new dimensions
+        setTimeout(() => {
+          triggerMuuriLayout();
+        }, 100);
+      }
 
       toast({
         type: 'success',

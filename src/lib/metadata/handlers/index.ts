@@ -11,6 +11,7 @@ import { handleYouTube, extractYouTubeVideoId, isYouTubeUrl } from './youtube';
 import { handleReddit, isRedditUrl } from './reddit';
 import { fetchAmazonMetadata, isAmazonUrl, getAmazonDomains } from './amazon';
 import { fetchEcommerceMetadata, isEcommerceUrl, getEcommerceDomains } from './ecommerce';
+import { fetchTikTokMetadata, isTikTokUrl } from './tiktok';
 
 /**
  * Registry of site-specific metadata handlers
@@ -29,9 +30,9 @@ handlers.set('youtube', handleYouTube);
 handlers.set('reddit', handleReddit);
 handlers.set('amazon', fetchAmazonMetadata);
 handlers.set('ecommerce', fetchEcommerceMetadata);
+handlers.set('tiktok', fetchTikTokMetadata);
 
 // Future handlers to be implemented:
-// handlers.set('tiktok', handleTikTok);
 // handlers.set('twitter', handleTwitter);
 // handlers.set('instagram', handleInstagram);
 // handlers.set('github', handleGitHub);
@@ -47,6 +48,9 @@ export { fetchAmazonMetadata, isAmazonUrl, getAmazonDomains };
 
 // Re-export E-commerce utilities
 export { fetchEcommerceMetadata, isEcommerceUrl, getEcommerceDomains };
+
+// Re-export TikTok utilities
+export { fetchTikTokMetadata, isTikTokUrl };
 
 /**
  * Get the handler for a specific site type
