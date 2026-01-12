@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { getTagStyle } from '@/lib/utils/tag-colors';
 import { TagInput } from '@/components/tags/tag-input';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useCardDetailSidebar, usePendingNoteText } from '@/lib/stores/ui-store';
+import { useCardDetailSidebar, usePendingNoteText, useUIStore } from '@/lib/stores/ui-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
 import { SupertagPanel } from './SupertagPanel';
@@ -78,12 +78,21 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
     window.dispatchEvent(new CustomEvent('editor-redo'));
   }, []);
 
+  // Get triggerMuuriLayout to refresh grid when tag count changes
+  const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
+
   // Handle tag changes with template auto-apply
   const handleTagsChange = useCallback((newTags: string[]) => {
     const oldTags = card.tags || [];
 
     // Update tags
     updateCard(card.id, { tags: newTags });
+
+    // Trigger Muuri layout refresh after a short delay to allow React to re-render
+    // This ensures the masonry grid recalculates when card footer height changes
+    setTimeout(() => {
+      triggerMuuriLayout();
+    }, 100);
 
     // Check for supertag template application
     const result = checkSupertagAddition(oldTags, newTags, card.content);
@@ -100,7 +109,7 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
         updateCard(card.id, { content: result.template });
       }
     }
-  }, [card.id, card.tags, card.content, updateCard]);
+  }, [card.id, card.tags, card.content, updateCard, triggerMuuriLayout]);
 
   const handleCopyUrl = async () => {
     if (!card.url) return;
@@ -240,6 +249,9 @@ function DetailsTabContent({
   handleContentChange,
   updateCard,
 }: DetailsTabContentProps) {
+  // Get triggerMuuriLayout for Pawkit tag changes
+  const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
+
   return (
     <div className="space-y-4">
       {/* Quick Actions for URL cards */}
@@ -463,6 +475,8 @@ function DetailsTabContent({
                             onClick={() => {
                               const newTags = (card.tags || []).filter(t => t !== collectionSlug);
                               updateCard(card.id, { tags: newTags });
+                              // Trigger layout refresh after React re-renders
+                              setTimeout(() => triggerMuuriLayout(), 100);
                             }}
                             className="opacity-60 hover:opacity-100 hover:text-red-400 transition-opacity"
                           >
@@ -484,6 +498,8 @@ function DetailsTabContent({
                           onClick={() => {
                             const newTags = [...(card.tags || []), collection.slug];
                             updateCard(card.id, { tags: newTags });
+                            // Trigger layout refresh after React re-renders
+                            setTimeout(() => triggerMuuriLayout(), 100);
                           }}
                           className="px-2 py-1 text-xs rounded-md bg-bg-surface-1 text-text-secondary border border-border-subtle hover:bg-bg-surface-2 hover:text-text-primary hover:border-[var(--color-accent)]/30 transition-colors"
                         >

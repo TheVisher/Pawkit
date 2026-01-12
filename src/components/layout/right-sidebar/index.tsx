@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useRightSidebar, useRightSidebarSettings, useCardDetailSidebar } from "@/lib/stores/ui-store";
+import { useRightSidebar, useRightSidebarSettings, useCardDetailSidebar, useUIStore } from "@/lib/stores/ui-store";
 import {
   useViewStore,
   useCardDisplaySettings,
@@ -276,6 +276,36 @@ export function RightSidebar() {
     hasMountedRef.current = true;
     setMounted(true);
   }, []);
+
+  // Trigger Muuri layout refresh when display settings change
+  // This ensures the masonry grid recalculates card positions when dimensions change
+  const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
+  const prevDisplaySettingsRef = useRef({ showMetadataFooter, showTitles, showTags, cardPadding, cardSpacing });
+
+  useEffect(() => {
+    // Skip on initial mount
+    if (!hasMountedRef.current) return;
+
+    const prev = prevDisplaySettingsRef.current;
+    const settingsChanged =
+      prev.showMetadataFooter !== showMetadataFooter ||
+      prev.showTitles !== showTitles ||
+      prev.showTags !== showTags ||
+      prev.cardPadding !== cardPadding ||
+      prev.cardSpacing !== cardSpacing;
+
+    if (settingsChanged) {
+      // Update ref for next comparison
+      prevDisplaySettingsRef.current = { showMetadataFooter, showTitles, showTags, cardPadding, cardSpacing };
+
+      // Delay to allow React to re-render cards with new settings before Muuri recalculates
+      const timer = setTimeout(() => {
+        triggerMuuriLayout();
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showMetadataFooter, showTitles, showTags, cardPadding, cardSpacing, triggerMuuriLayout]);
 
   // Save settings when they change (debounced)
   const handleSettingChange = useCallback(() => {

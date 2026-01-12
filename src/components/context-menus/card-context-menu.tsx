@@ -35,6 +35,7 @@ import {
 import { useDataStore } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useUIStore } from '@/lib/stores/ui-store';
 import { updateReadTag } from '@/lib/utils/system-tags';
 import type { LocalCard } from '@/lib/db';
 import { AddToPawkitSubmenu } from './add-to-pawkit-submenu';
@@ -55,6 +56,7 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const openEditThumbnail = useModalStore((s) => s.openEditThumbnail);
   const toast = useToastStore((s) => s.toast);
+  const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
 
   // State for re-extract confirmation dialog
   const [showReextractDialog, setShowReextractDialog] = useState(false);
@@ -130,6 +132,8 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
       await updateCard(card.id, { isRead: true, manuallyMarkedUnread: false, tags: newTags });
       toast({ type: 'success', message: 'Marked as read' });
     }
+    // Trigger Muuri layout refresh after tag change
+    setTimeout(() => triggerMuuriLayout(), 100);
   };
 
   const handleRemoveFromCollection = async () => {
