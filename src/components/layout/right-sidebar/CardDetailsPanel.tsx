@@ -534,8 +534,11 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
         isFileCard: false,
       });
 
-      // Store the exported note ID on the card
-      await updateCard(card.id, { exportedNoteId: newNote.id });
+      // Store the exported note ID and snapshot of what was exported
+      await updateCard(card.id, {
+        exportedNoteId: newNote.id,
+        lastExportedNotes: notesContent,
+      });
 
       toast({
         type: 'success',
@@ -584,15 +587,34 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
     setIsUpdating(true);
     try {
-      // Append new notes content to the existing note
+      // Calculate delta - only content that's new since last export
+      let deltaContent = notesContent;
+      const lastExported = card.lastExportedNotes;
+
+      if (lastExported && notesContent.startsWith(lastExported)) {
+        // Notes were appended - extract just the new part
+        deltaContent = notesContent.slice(lastExported.length).trim();
+
+        // If no new content after the delta extraction
+        if (!deltaContent || deltaContent === '<p></p>') {
+          toast({
+            type: 'info',
+            message: 'No new notes to add',
+          });
+          setIsUpdating(false);
+          return;
+        }
+      }
+
+      // Append delta to the exported note
       const existingContent = exportedNote.content || '';
       const separator = existingContent && existingContent !== '<p></p>' ? '<p></p>' : '';
-      const newContent = existingContent ? `${existingContent}${separator}${notesContent}` : notesContent;
+      const newContent = existingContent ? `${existingContent}${separator}${deltaContent}` : deltaContent;
 
       await updateCard(card.exportedNoteId, { content: newContent });
 
-      // Clear the notes tab after successful update to prevent re-adding same content
-      await updateCard(card.id, { notes: undefined });
+      // Update the snapshot of what's been exported
+      await updateCard(card.id, { lastExportedNotes: notesContent });
 
       toast({
         type: 'success',
@@ -607,10 +629,12 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsUpdating(false);
     }
-  }, [card.notes, card.exportedNoteId, card.id, noteExists, exportedNote, updateCard, toast]);
+  }, [card.notes, card.exportedNoteId, card.id, card.lastExportedNotes, noteExists, exportedNote, updateCard, toast]);
 
   const hasNotes = card.notes && card.notes !== '<p></p>';
-  const canUpdate = hasNotes && card.exportedNoteId && noteExists;
+  // Can update if: has notes, has exported note, note exists, AND there's new content
+  const hasNewContent = hasNotes && (!card.lastExportedNotes || card.notes !== card.lastExportedNotes);
+  const canUpdate = hasNotes && card.exportedNoteId && noteExists && hasNewContent;
 
   return (
     <div className="flex flex-col h-full">
