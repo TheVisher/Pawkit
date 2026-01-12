@@ -33,6 +33,12 @@ interface ModalStore {
   cardPhotoCardId: string | null;
   openCardPhotoPicker: (cardId: string) => void;
   closeCardPhotoPicker: () => void;
+
+  // Edit Thumbnail Modal (for bookmark cards)
+  isEditThumbnailOpen: boolean;
+  editThumbnailCardId: string | null;
+  openEditThumbnail: (cardId: string) => void;
+  closeEditThumbnail: () => void;
 }
 
 export const useModalStore = create<ModalStore>((set) => ({
@@ -68,4 +74,10 @@ export const useModalStore = create<ModalStore>((set) => ({
   cardPhotoCardId: null,
   openCardPhotoPicker: (cardId) => set({ isCardPhotoPickerOpen: true, cardPhotoCardId: cardId }),
   closeCardPhotoPicker: () => set({ isCardPhotoPickerOpen: false, cardPhotoCardId: null }),
+
+  // Edit Thumbnail Modal
+  isEditThumbnailOpen: false,
+  editThumbnailCardId: null,
+  openEditThumbnail: (cardId) => set({ isEditThumbnailOpen: true, editThumbnailCardId: cardId }),
+  closeEditThumbnail: () => set({ isEditThumbnailOpen: false, editThumbnailCardId: null }),
 }));
