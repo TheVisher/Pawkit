@@ -22,7 +22,7 @@ export const SIDEBAR_WIDTHS: Record<string, number> = {
   settings: 480,
   'split-view': 600,
   'calendar-schedule': 600,
-  'card-detail': 380,
+  'card-detail': 480,
 };
 
 // Helper to get current sidebar width based on mode

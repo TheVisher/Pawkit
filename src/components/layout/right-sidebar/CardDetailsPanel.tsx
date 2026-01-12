@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles } from 'lucide-react';
+import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/tags/tag-input';
@@ -22,6 +22,7 @@ import { BacklinksSection } from './sections/BacklinksSection';
 import { findSupertagsInTags, getSupertagDefinition, getAllSupertags, getSupertagTemplate } from '@/lib/tags/supertags';
 import { NotesEditor } from '@/components/editor';
 import type { LocalCard, LocalCollection } from '@/lib/db';
+import { useToastStore } from '@/lib/stores/toast-store';
 
 type CardDetailTab = 'details' | 'notes' | 'chat';
 
@@ -466,7 +467,10 @@ interface NotesTabContentProps {
 
 function NotesTabContent({ card }: NotesTabContentProps) {
   const updateCard = useDataStore((s) => s.updateCard);
+  const createCard = useDataStore((s) => s.createCard);
+  const toast = useToastStore((s) => s.toast);
   const { pendingNoteText, clearPendingNoteText } = usePendingNoteText();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Handle pending note text from article selection
   useEffect(() => {
@@ -497,6 +501,46 @@ function NotesTabContent({ card }: NotesTabContentProps) {
     updateCard(card.id, { notes: isEmpty ? undefined : html });
   }, [card.id, updateCard]);
 
+  // Export notes to a standalone note card
+  const handleExportToNote = useCallback(async () => {
+    const notesContent = card.notes;
+    if (!notesContent || notesContent === '<p></p>') {
+      toast({
+        type: 'warning',
+        message: 'No notes to export',
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      await createCard({
+        type: 'md-note',
+        title: `Notes on: ${card.title}`,
+        content: notesContent,
+        workspaceId: card.workspaceId,
+        tags: [],
+        url: '',
+        status: 'READY',
+        pinned: false,
+        isFileCard: false,
+      });
+
+      toast({
+        type: 'success',
+        message: 'Note created from your annotations',
+      });
+    } catch (error) {
+      console.error('Failed to export notes:', error);
+      toast({
+        type: 'error',
+        message: 'Failed to create note',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [card.notes, card.title, card.workspaceId, createCard, toast]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header with tip */}
@@ -515,10 +559,27 @@ function NotesTabContent({ card }: NotesTabContentProps) {
         />
       </div>
 
-      {/* Footer hint */}
-      <p className="text-[10px] text-text-muted mt-2 text-center">
-        Auto-saves as you type
-      </p>
+      {/* Footer with auto-save hint and export button */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-subtle">
+        <p className="text-[10px] text-text-muted">
+          Auto-saves as you type
+        </p>
+        <button
+          onClick={handleExportToNote}
+          disabled={isExporting || !card.notes || card.notes === '<p></p>'}
+          className={cn(
+            'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all',
+            'bg-bg-surface-2 border border-border-subtle',
+            'hover:bg-bg-surface-3 hover:border-[var(--color-accent)]/30 hover:text-[var(--color-accent)]',
+            'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-bg-surface-2 disabled:hover:border-border-subtle disabled:hover:text-text-muted',
+            'text-text-secondary'
+          )}
+          title="Export notes to a new standalone note"
+        >
+          <NotebookPen className="h-3.5 w-3.5" />
+          <span>{isExporting ? 'Creating...' : 'Export to Note'}</span>
+        </button>
+      </div>
     </div>
   );
 }
