@@ -398,6 +398,8 @@ async function getLocalEntity(
       return db.cards.get(entityId) as Promise<Record<string, unknown> | undefined>;
     case 'event':
       return db.calendarEvents.get(entityId) as Promise<Record<string, unknown> | undefined>;
+    case 'reference':
+      return db.references.get(entityId) as Promise<Record<string, unknown> | undefined>;
     case 'collectionNote':
       return db.collectionNotes.get(entityId) as Promise<Record<string, unknown> | undefined>;
     case 'viewSettings':
@@ -463,6 +465,9 @@ async function markEntitySynced(entityType: EntityType, entityId: string): Promi
       break;
     case 'event':
       await db.calendarEvents.update(entityId, updates);
+      break;
+    case 'reference':
+      await db.references.update(entityId, updates);
       break;
     case 'collectionNote':
       await db.collectionNotes.update(entityId, updates);
