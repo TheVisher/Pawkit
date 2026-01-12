@@ -8,6 +8,47 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import type { SaveCardMessage, SaveCardResponse, Collection, GetCollectionsResponse, CheckAuthResponse } from '@/shared/types'
 
+/**
+ * Check if the URL is a TikTok feed page where we need to extract the video URL
+ * Feed pages like /foryou, /following don't have the video ID in the URL
+ */
+function isTikTokFeedPage(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (!parsed.hostname.includes('tiktok.com')) return false
+
+    // These are feed pages that don't contain the video ID
+    const feedPaths = ['/foryou', '/following', '/explore', '/live']
+    const pathname = parsed.pathname.toLowerCase()
+
+    // Check if it's a feed page
+    if (feedPaths.some(path => pathname === path || pathname.startsWith(path + '?') || pathname.startsWith(path + '/'))) {
+      return true
+    }
+
+    // Also handle the root page which shows the For You feed
+    if (pathname === '/' || pathname === '') {
+      return true
+    }
+
+    // Check if it's NOT a direct video link (which already has the correct URL)
+    // Direct video links have the pattern /@username/video/videoId
+    if (pathname.includes('/video/')) {
+      return false
+    }
+
+    // User profile pages showing videos should also extract the specific video URL
+    // These are like /@username without /video/
+    if (pathname.match(/^\/@[\w.-]+\/?$/)) {
+      return true
+    }
+
+    return false
+  } catch {
+    return false
+  }
+}
+
 export function Popup() {
   const [title, setTitle] = useState('')
   const [url, setUrl] = useState('')
@@ -35,11 +76,31 @@ export function Popup() {
         })
 
         if (tab) {
-          setTitle(tab.title || '')
-          setUrl(tab.url || '')
+          let pageTitle = tab.title || ''
+          let pageUrl = tab.url || ''
 
-          if (tab.url) {
-            const domain = new URL(tab.url).hostname
+          // Check if we're on TikTok - need to extract the actual video URL
+          if (tab.url && tab.id && isTikTokFeedPage(tab.url)) {
+            try {
+              const response = await browser.tabs.sendMessage(tab.id, { type: 'GET_TIKTOK_VIDEO_URL' }) as { url: string | null; title: string | null }
+              if (response?.url) {
+                pageUrl = response.url
+                // Use extracted title if available, otherwise fall back to tab title
+                if (response.title) {
+                  pageTitle = response.title
+                }
+              }
+            } catch (err) {
+              console.warn('Failed to get TikTok video URL:', err)
+              // Fall back to page URL
+            }
+          }
+
+          setTitle(pageTitle)
+          setUrl(pageUrl)
+
+          if (pageUrl) {
+            const domain = new URL(pageUrl).hostname
             setFavicon(`https://www.google.com/s2/favicons?domain=${domain}&sz=32`)
           }
         }

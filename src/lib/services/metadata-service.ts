@@ -17,6 +17,7 @@ import { addToQueue, triggerSync } from './sync-queue';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
 import { validateUrl, type MetadataResult } from '@/lib/metadata';
 import { queueImagePersistence, needsPersistence } from '@/lib/metadata/image-persistence';
+import { useUIStore } from '@/lib/stores/ui-store';
 
 /**
  * Notify the portal that data has changed (for real-time updates)
@@ -418,6 +419,16 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
 
     // Notify portal about the update (main app uses useLiveQuery, auto-updates)
     await notifyPortal();
+
+    // Trigger Muuri layout refresh if an image was added
+    // This handles the case where card was created without a thumbnail,
+    // then metadata fetch adds one - the card height changes and Muuri needs to reflow
+    // Use setTimeout to allow React to re-render the card with new dimensions first
+    if (metadata.image && !card.image) {
+      setTimeout(() => {
+        useUIStore.getState().triggerMuuriLayout();
+      }, 100);
+    }
 
     // Queue aspect ratio extraction if we have an image
     // This happens async after save - user sees card immediately, aspectRatio updates when ready

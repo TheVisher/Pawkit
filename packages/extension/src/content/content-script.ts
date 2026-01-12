@@ -25,6 +25,9 @@ browser.runtime.onMessage.addListener((message, _sender) => {
   if (message.type === 'GET_PAGE_META') {
     return Promise.resolve(getPageMetadata())
   }
+  if (message.type === 'GET_TIKTOK_VIDEO_URL') {
+    return Promise.resolve(getTikTokVideoUrl())
+  }
   return undefined
 })
 
@@ -65,6 +68,113 @@ function getPageMetadata() {
     description,
     favicon
   }
+}
+
+/**
+ * Extract the currently visible TikTok video URL
+ * TikTok shows videos in a feed but each has a unique /@username/video/id URL
+ */
+function getTikTokVideoUrl(): { url: string | null; title: string | null } {
+  // First check if there's already a canonical URL in meta tags (for direct video pages)
+  const canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement
+  if (canonicalLink?.href && canonicalLink.href.includes('/video/')) {
+    return { url: canonicalLink.href, title: null }
+  }
+
+  // Check og:url meta tag
+  const ogUrl = document.querySelector('meta[property="og:url"]') as HTMLMetaElement
+  if (ogUrl?.content && ogUrl.content.includes('/video/')) {
+    return { url: ogUrl.content, title: null }
+  }
+
+  // For feed pages (foryou, following), find the currently visible/playing video
+  // TikTok uses data attributes and specific class patterns for video items
+
+  // Strategy 1: Look for video containers with video URLs
+  // TikTok video links typically have the pattern /@username/video/videoId
+  const videoLinkPattern = /\/@[\w.-]+\/video\/\d+/
+
+  // Find all anchor elements that contain video links
+  const videoLinks = document.querySelectorAll('a[href*="/video/"]')
+
+  // Find the most visible video in the viewport
+  let bestMatch: { element: Element; url: string; visibility: number } | null = null
+
+  videoLinks.forEach(link => {
+    const href = (link as HTMLAnchorElement).href
+    if (!videoLinkPattern.test(href)) return
+
+    // Get the video container (usually a parent element)
+    const container = link.closest('[data-e2e="recommend-list-item-container"]')
+      || link.closest('[class*="DivItemContainer"]')
+      || link.closest('[class*="tiktok-"]')?.parentElement
+      || link
+
+    const rect = container.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+
+    // Calculate how much of the element is visible in the viewport
+    const visibleTop = Math.max(0, rect.top)
+    const visibleBottom = Math.min(viewportHeight, rect.bottom)
+    const visibleHeight = Math.max(0, visibleBottom - visibleTop)
+    const visibility = visibleHeight / Math.max(rect.height, 1)
+
+    // Check if element is centered in viewport (likely the active video)
+    const elementCenter = rect.top + rect.height / 2
+    const viewportCenter = viewportHeight / 2
+    const distanceFromCenter = Math.abs(elementCenter - viewportCenter)
+
+    // Prefer elements that are both visible and centered
+    const score = visibility * 100 - distanceFromCenter / 10
+
+    if (!bestMatch || score > bestMatch.visibility) {
+      bestMatch = { element: container, url: href, visibility: score }
+    }
+  })
+
+  if (bestMatch) {
+    // Try to extract the title from the video container
+    let title: string | null = null
+    const titleElement = (bestMatch as { element: Element; url: string; visibility: number }).element.querySelector('[data-e2e="video-desc"]')
+      || (bestMatch as { element: Element; url: string; visibility: number }).element.querySelector('[class*="DivVideoTitle"]')
+      || (bestMatch as { element: Element; url: string; visibility: number }).element.querySelector('h1')
+
+    if (titleElement?.textContent) {
+      title = titleElement.textContent.trim().slice(0, 200) // Limit title length
+    }
+
+    return { url: (bestMatch as { element: Element; url: string; visibility: number }).url, title }
+  }
+
+  // Strategy 2: Check for swiper/carousel active slide (TikTok's vertical video player)
+  const activeSlide = document.querySelector('[class*="swiper-slide-active"]')
+    || document.querySelector('[class*="active"]')
+
+  if (activeSlide) {
+    const slideLink = activeSlide.querySelector('a[href*="/video/"]') as HTMLAnchorElement
+    if (slideLink?.href && videoLinkPattern.test(slideLink.href)) {
+      return { url: slideLink.href, title: null }
+    }
+  }
+
+  // Strategy 3: Look for currently playing video element and find associated link
+  const playingVideo = document.querySelector('video:not([paused])')
+    || document.querySelector('video[autoplay]')
+    || document.querySelector('video')
+
+  if (playingVideo) {
+    // Walk up the DOM to find a parent with a video link
+    let parent = playingVideo.parentElement
+    while (parent && parent !== document.body) {
+      const videoLink = parent.querySelector('a[href*="/video/"]') as HTMLAnchorElement
+      if (videoLink?.href && videoLinkPattern.test(videoLink.href)) {
+        return { url: videoLink.href, title: null }
+      }
+      parent = parent.parentElement
+    }
+  }
+
+  return { url: null, title: null }
 }
 
 function startImagePicker() {
