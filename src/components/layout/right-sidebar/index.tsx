@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useRightSidebar, useRightSidebarSettings } from "@/lib/stores/ui-store";
+import { useRightSidebar, useRightSidebarSettings, useCardDetailSidebar } from "@/lib/stores/ui-store";
 import {
   useViewStore,
   useCardDisplaySettings,
@@ -73,8 +73,9 @@ export function RightSidebar() {
     "filters",
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
+  const { isOpen, isAnchored, toggleAnchored, setOpen, setExpandedMode, expandedMode } = useRightSidebar();
   const { isSettingsMode, toggleSettings } = useRightSidebarSettings();
+  const { isCardDetailMode, cardDetailTab, setTab: setCardDetailTab } = useCardDetailSidebar();
   const { theme, setTheme } = useTheme();
   const workspace = useCurrentWorkspace();
 
@@ -96,6 +97,7 @@ export function RightSidebar() {
   );
 
   // Handle transition between filters and card details view
+  // Also expand sidebar when card detail opens
   useEffect(() => {
     const targetMode = activeCardId ? "card-details" : "filters";
 
@@ -109,7 +111,14 @@ export function RightSidebar() {
     } else if (!hasMountedRef.current) {
       setDisplayMode(targetMode);
     }
-  }, [activeCardId, displayMode]);
+
+    // Expand sidebar when card detail opens, collapse when it closes
+    if (activeCardId && expandedMode !== 'card-detail' && expandedMode !== 'settings') {
+      setExpandedMode('card-detail');
+    } else if (!activeCardId && expandedMode === 'card-detail') {
+      setExpandedMode(null);
+    }
+  }, [activeCardId, displayMode, expandedMode, setExpandedMode]);
 
   // Handle view transitions with animation
   useEffect(() => {

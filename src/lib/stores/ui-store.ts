@@ -12,8 +12,9 @@ type CardSize = 'small' | 'medium' | 'large';
 type ModalType = 'card-detail' | 'create-card' | 'create-collection' | 'settings' | 'task' | null;
 
 // Right sidebar expansion modes (extensible for future features)
-type RightSidebarExpandedMode = 'settings' | 'split-view' | 'calendar-schedule' | null;
+type RightSidebarExpandedMode = 'settings' | 'split-view' | 'calendar-schedule' | 'card-detail' | null;
 type SettingsTab = 'appearance' | 'account' | 'data' | null;
+type CardDetailTab = 'details' | 'notes' | 'chat';
 
 // Width configuration for each expansion mode
 export const SIDEBAR_WIDTHS: Record<string, number> = {
@@ -21,6 +22,7 @@ export const SIDEBAR_WIDTHS: Record<string, number> = {
   settings: 480,
   'split-view': 600,
   'calendar-schedule': 600,
+  'card-detail': 380,
 };
 
 // Helper to get current sidebar width based on mode
@@ -39,6 +41,7 @@ interface UIState {
   // Right sidebar expansion (persisted)
   rightSidebarExpandedMode: RightSidebarExpandedMode;
   settingsTab: SettingsTab;
+  cardDetailTab: CardDetailTab;
 
   // Right sidebar section expanded states (persisted)
   // Section IDs: 'tags', 'sort-by', 'group-by', 'content-type', 'card-display', 'advanced-filters', 'quick-filter', 'reading-status'
@@ -71,6 +74,7 @@ interface UIState {
   setRightSidebarExpandedMode: (mode: RightSidebarExpandedMode) => void;
   toggleSettingsMode: () => void;
   setSettingsTab: (tab: SettingsTab) => void;
+  setCardDetailTab: (tab: CardDetailTab) => void;
   setSidebarSectionExpanded: (sectionId: string, expanded: boolean) => void;
   toggleSidebarSection: (sectionId: string) => void;
   togglePawkitExpanded: (id: string) => void;
@@ -93,6 +97,7 @@ export const useUIStore = create<UIState>()(
       rightSidebarAnchored: false,
       rightSidebarExpandedMode: null,
       settingsTab: null,
+      cardDetailTab: 'details',
       sidebarSectionStates: {},
       expandedPawkitIds: [],
       cardSize: 'medium',
@@ -135,6 +140,8 @@ export const useUIStore = create<UIState>()(
         })),
 
       setSettingsTab: (tab) => set({ settingsTab: tab }),
+
+      setCardDetailTab: (tab) => set({ cardDetailTab: tab }),
 
       // Sidebar section actions
       setSidebarSectionExpanded: (sectionId, expanded) =>
@@ -215,6 +222,7 @@ export const selectLeftSidebarAnchored = (state: UIState) => state.leftSidebarAn
 export const selectRightSidebarAnchored = (state: UIState) => state.rightSidebarAnchored;
 export const selectRightSidebarExpandedMode = (state: UIState) => state.rightSidebarExpandedMode;
 export const selectSettingsTab = (state: UIState) => state.settingsTab;
+export const selectCardDetailTab = (state: UIState) => state.cardDetailTab;
 export const selectSidebarSectionStates = (state: UIState) => state.sidebarSectionStates;
 export const selectExpandedPawkitIds = (state: UIState) => state.expandedPawkitIds;
 export const selectCardSize = (state: UIState) => state.cardSize;
@@ -260,6 +268,17 @@ export function useRightSidebarSettings() {
       settingsTab: state.settingsTab,
       toggleSettings: state.toggleSettingsMode,
       setTab: state.setSettingsTab,
+    }))
+  );
+}
+
+export function useCardDetailSidebar() {
+  return useUIStore(
+    useShallow((state) => ({
+      isCardDetailMode: state.rightSidebarExpandedMode === 'card-detail',
+      cardDetailTab: state.cardDetailTab,
+      setTab: state.setCardDetailTab,
+      setExpandedMode: state.setRightSidebarExpandedMode,
     }))
   );
 }
