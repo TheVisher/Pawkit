@@ -591,6 +591,9 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
       await updateCard(card.exportedNoteId, { content: newContent });
 
+      // Clear the notes tab after successful update to prevent re-adding same content
+      await updateCard(card.id, { notes: undefined });
+
       toast({
         type: 'success',
         message: 'Note updated',
