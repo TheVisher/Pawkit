@@ -466,13 +466,16 @@ interface NotesTabContentProps {
   card: LocalCard;
 }
 
-function NotesTabContent({ card }: NotesTabContentProps) {
+function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
   const updateCard = useDataStore((s) => s.updateCard);
   const createCard = useDataStore((s) => s.createCard);
   const toast = useToastStore((s) => s.toast);
   const { pendingNoteText, clearPendingNoteText } = usePendingNoteText();
   const [isExporting, setIsExporting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+
+  // Use live card data so exportedNoteId updates reactively
+  const card = useCard(cardProp.id) ?? cardProp;
 
   // Check if the exported note still exists
   const exportedNote = useCard(card.exportedNoteId);
