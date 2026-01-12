@@ -23,7 +23,8 @@ export {
 
 // Convenience functions
 import { syncService } from './sync-service';
-import { clearAllSyncQueue } from '../sync-queue';
+import { clearAllSyncQueue, addToQueue, triggerSync } from '../sync-queue';
+import { db } from '@/lib/db';
 
 export const fullSync = () => syncService.fullSync();
 export const deltaSync = () => syncService.deltaSync();
@@ -35,11 +36,34 @@ export const setWorkspace = (id: string | null) => syncService.setWorkspace(id);
 export const getLastSyncTime = () => syncService.getLastSyncTime();
 export { clearAllSyncQueue };
 
+/**
+ * Repair function: Re-queue all unsynced references
+ * Use this to fix references that failed to sync due to missing case statement
+ */
+export async function repairUnsyncedReferences(): Promise<number> {
+  const unsyncedRefs = await db.references
+    .filter((ref) => !ref._synced && !ref._deleted)
+    .toArray();
+
+  console.log(`[Sync Repair] Found ${unsyncedRefs.length} unsynced references`);
+
+  for (const ref of unsyncedRefs) {
+    await addToQueue('reference', ref.id, 'create');
+  }
+
+  if (unsyncedRefs.length > 0) {
+    await triggerSync();
+  }
+
+  return unsyncedRefs.length;
+}
+
 // Expose debug helpers on window for console access
 if (typeof window !== 'undefined') {
   (window as unknown as Record<string, unknown>).__pawkitSync = {
     clearQueue: clearAllSyncQueue,
     fullSync,
     processQueueNow,
+    repairUnsyncedReferences,
   };
 }
