@@ -460,20 +460,18 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         }
 
         // Sort Muuri items to match DOM order (React's render order)
-        if (itemsToRemove.length > 0 || elementsToAdd.length > 0) {
-          const domOrder = Array.from(domItems).map((el) => (el as HTMLElement).dataset.cardId);
-          grid.sort((a, b) => {
-            const aId = a.getElement().dataset.cardId;
-            const bId = b.getElement().dataset.cardId;
-            return domOrder.indexOf(aId) - domOrder.indexOf(bId);
-          }, { layout: false });
-        }
+        // Always sort when cardIds changes - this handles reordering (e.g., sort by title)
+        // even when no items are added/removed
+        const domOrder = Array.from(domItems).map((el) => (el as HTMLElement).dataset.cardId);
+        grid.sort((a, b) => {
+          const aId = a.getElement().dataset.cardId;
+          const bId = b.getElement().dataset.cardId;
+          return domOrder.indexOf(aId) - domOrder.indexOf(bId);
+        }, { layout: false });
 
-        // Trigger layout if anything changed
-        if (itemsToRemove.length > 0 || elementsToAdd.length > 0) {
-          grid.refreshItems();
-          grid.layout();
-        }
+        // Trigger layout to apply the new order
+        grid.refreshItems();
+        grid.layout();
       }, 50);
 
       return () => {
