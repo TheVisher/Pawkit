@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen } from 'lucide-react';
+import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen, RefreshCw } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/tags/tag-input';
@@ -23,6 +23,7 @@ import { findSupertagsInTags, getSupertagDefinition, getAllSupertags, getSuperta
 import { NotesEditor } from '@/components/editor';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useCard } from '@/lib/hooks/use-live-data';
 
 type CardDetailTab = 'details' | 'notes' | 'chat';
 
@@ -471,13 +472,17 @@ function NotesTabContent({ card }: NotesTabContentProps) {
   const toast = useToastStore((s) => s.toast);
   const { pendingNoteText, clearPendingNoteText } = usePendingNoteText();
   const [isExporting, setIsExporting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // Check if the exported note still exists
+  const exportedNote = useCard(card.exportedNoteId);
+  const noteExists = !!exportedNote && !exportedNote._deleted;
 
   // Handle pending note text from article selection
   useEffect(() => {
     if (pendingNoteText) {
       // Append the pending note text to existing notes
       const currentNotes = card.notes || '';
-      const separator = currentNotes && currentNotes !== '<p></p>' ? '' : ''; // Notes already have a trailing <p></p>
 
       // If there's existing content, add the new content after it
       // Otherwise just use the new content
@@ -501,7 +506,7 @@ function NotesTabContent({ card }: NotesTabContentProps) {
     updateCard(card.id, { notes: isEmpty ? undefined : html });
   }, [card.id, updateCard]);
 
-  // Export notes to a standalone note card
+  // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
     const notesContent = card.notes;
     if (!notesContent || notesContent === '<p></p>') {
@@ -514,7 +519,7 @@ function NotesTabContent({ card }: NotesTabContentProps) {
 
     setIsExporting(true);
     try {
-      await createCard({
+      const newNoteId = await createCard({
         type: 'md-note',
         title: `Notes on: ${card.title}`,
         content: notesContent,
@@ -526,9 +531,12 @@ function NotesTabContent({ card }: NotesTabContentProps) {
         isFileCard: false,
       });
 
+      // Store the exported note ID on the card
+      await updateCard(card.id, { exportedNoteId: newNoteId });
+
       toast({
         type: 'success',
-        message: 'Note created from your annotations',
+        message: 'Note created',
       });
     } catch (error) {
       console.error('Failed to export notes:', error);
@@ -539,7 +547,64 @@ function NotesTabContent({ card }: NotesTabContentProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [card.notes, card.title, card.workspaceId, createCard, toast]);
+  }, [card.notes, card.title, card.workspaceId, card.id, createCard, updateCard, toast]);
+
+  // Update existing exported note by appending new content
+  const handleUpdateNote = useCallback(async () => {
+    const notesContent = card.notes;
+    if (!notesContent || notesContent === '<p></p>') {
+      toast({
+        type: 'warning',
+        message: 'No notes to export',
+      });
+      return;
+    }
+
+    if (!card.exportedNoteId) {
+      toast({
+        type: 'warning',
+        message: 'No exported note found, use New Note instead',
+      });
+      return;
+    }
+
+    // Check if the note still exists
+    if (!noteExists) {
+      toast({
+        type: 'warning',
+        message: 'Original note not found, use New Note',
+      });
+      // Clear the invalid exportedNoteId
+      await updateCard(card.id, { exportedNoteId: undefined });
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      // Append new notes content to the existing note
+      const existingContent = exportedNote.content || '';
+      const separator = existingContent && existingContent !== '<p></p>' ? '<p></p>' : '';
+      const newContent = existingContent ? `${existingContent}${separator}${notesContent}` : notesContent;
+
+      await updateCard(card.exportedNoteId, { content: newContent });
+
+      toast({
+        type: 'success',
+        message: 'Note updated',
+      });
+    } catch (error) {
+      console.error('Failed to update note:', error);
+      toast({
+        type: 'error',
+        message: 'Failed to update note',
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  }, [card.notes, card.exportedNoteId, card.id, noteExists, exportedNote, updateCard, toast]);
+
+  const hasNotes = card.notes && card.notes !== '<p></p>';
+  const canUpdate = hasNotes && card.exportedNoteId && noteExists;
 
   return (
     <div className="flex flex-col h-full">
@@ -559,26 +624,46 @@ function NotesTabContent({ card }: NotesTabContentProps) {
         />
       </div>
 
-      {/* Footer with auto-save hint and export button */}
+      {/* Footer with auto-save hint and export buttons */}
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-border-subtle">
         <p className="text-[10px] text-text-muted">
           Auto-saves as you type
         </p>
-        <button
-          onClick={handleExportToNote}
-          disabled={isExporting || !card.notes || card.notes === '<p></p>'}
-          className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all',
-            'bg-bg-surface-2 border border-border-subtle',
-            'hover:bg-bg-surface-3 hover:border-[var(--color-accent)]/30 hover:text-[var(--color-accent)]',
-            'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-bg-surface-2 disabled:hover:border-border-subtle disabled:hover:text-text-muted',
-            'text-text-secondary'
-          )}
-          title="Export notes to a new standalone note"
-        >
-          <NotebookPen className="h-3.5 w-3.5" />
-          <span>{isExporting ? 'Creating...' : 'Export to Note'}</span>
-        </button>
+        <div className="flex gap-2">
+          {/* New Note button - always creates a new note */}
+          <button
+            onClick={handleExportToNote}
+            disabled={isExporting || !hasNotes}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all',
+              'bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30',
+              'hover:bg-[var(--color-accent)]/30 hover:border-[var(--color-accent)]/50',
+              'text-[var(--color-accent)]',
+              'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[var(--color-accent)]/20 disabled:hover:border-[var(--color-accent)]/30'
+            )}
+            title="Create a new standalone note from these annotations"
+          >
+            <NotebookPen className="h-3.5 w-3.5" />
+            <span>{isExporting ? 'Creating...' : 'New Note'}</span>
+          </button>
+
+          {/* Update Note button - appends to existing note */}
+          <button
+            onClick={handleUpdateNote}
+            disabled={isUpdating || !canUpdate}
+            className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all',
+              'bg-bg-surface-2 border border-border-subtle',
+              'hover:bg-bg-surface-3 hover:border-[var(--color-accent)]/30 hover:text-[var(--color-accent)]',
+              'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-bg-surface-2 disabled:hover:border-border-subtle disabled:hover:text-text-muted',
+              'text-text-secondary'
+            )}
+            title={canUpdate ? "Append notes to the existing exported note" : "No existing note to update - use New Note first"}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>{isUpdating ? 'Updating...' : 'Update Note'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

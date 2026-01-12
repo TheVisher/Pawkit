@@ -142,6 +142,9 @@ export interface LocalCard extends SyncMetadata {
   // Daily Note
   isDailyNote?: boolean;        // Flag for daily note cards
 
+  // Notes Export
+  exportedNoteId?: string;      // ID of the note created from exported notes tab
+
   // Contact photo header customization
   headerGradientColor?: string;    // Hex color for gradient (default: accent color)
   headerImagePosition?: number;    // 0-100 vertical position (default: 50)
