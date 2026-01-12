@@ -19,6 +19,8 @@ interface ContentRouterProps {
   onClose: () => void;
   showFullReader?: boolean;
   setShowFullReader?: (show: boolean) => void;
+  onRequestExpandImage?: () => void;
+  hasImage?: boolean;
   className?: string;
 }
 
@@ -30,6 +32,8 @@ export function ContentRouter({
   onClose,
   showFullReader,
   setShowFullReader,
+  onRequestExpandImage,
+  hasImage,
   className,
 }: ContentRouterProps) {
   // Note cards - editor focused
@@ -61,6 +65,8 @@ export function ContentRouter({
         onClose={onClose}
         showFullReader={showFullReader || false}
         setShowFullReader={setShowFullReader || (() => {})}
+        onRequestExpandImage={onRequestExpandImage}
+        hasImage={hasImage}
         className={className}
       />
     );
@@ -76,6 +82,8 @@ export function ContentRouter({
       onClose={onClose}
       showFullReader={showFullReader || false}
       setShowFullReader={setShowFullReader || (() => {})}
+      onRequestExpandImage={onRequestExpandImage}
+      hasImage={hasImage}
       className={className}
     />
   );
