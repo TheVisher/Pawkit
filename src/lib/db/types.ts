@@ -144,7 +144,7 @@ export interface LocalCard extends SyncMetadata {
 
   // Notes Export
   exportedNoteId?: string;      // ID of the note created from exported notes tab
-  lastExportedNotes?: string;   // Snapshot of notes at last export (to diff for updates)
+  exportedHighlightCount?: number; // Number of highlights already exported (for delta updates)
 
   // Contact photo header customization
   headerGradientColor?: string;    // Hex color for gradient (default: accent color)
