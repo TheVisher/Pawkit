@@ -57,6 +57,10 @@ interface UIState {
   // Command palette (not persisted)
   commandPaletteOpen: boolean;
 
+  // Muuri layout trigger (not persisted)
+  // Increment to force grid relayout when card content changes affect dimensions
+  muuriLayoutVersion: number;
+
   // Actions
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
@@ -76,6 +80,7 @@ interface UIState {
   closeModal: () => void;
   toggleCommandPalette: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  triggerMuuriLayout: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -94,6 +99,7 @@ export const useUIStore = create<UIState>()(
       activeModal: null,
       modalData: null,
       commandPaletteOpen: false,
+      muuriLayoutVersion: 0,
 
       // Sidebar actions
       toggleLeftSidebar: () =>
@@ -177,6 +183,10 @@ export const useUIStore = create<UIState>()(
         set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
       setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+
+      // Muuri layout trigger - increment to force grid relayout
+      triggerMuuriLayout: () =>
+        set((state) => ({ muuriLayoutVersion: state.muuriLayoutVersion + 1 })),
     }),
     {
       name: 'pawkit-ui-preferences',
@@ -211,6 +221,7 @@ export const selectCardSize = (state: UIState) => state.cardSize;
 export const selectActiveModal = (state: UIState) => state.activeModal;
 export const selectModalData = (state: UIState) => state.modalData;
 export const selectCommandPaletteOpen = (state: UIState) => state.commandPaletteOpen;
+export const selectMuuriLayoutVersion = (state: UIState) => state.muuriLayoutVersion;
 
 // =============================================================================
 // HOOKS
