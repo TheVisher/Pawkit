@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Hash,
   Sparkles,
+  Link2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addMenuItems, type SearchResults } from './types';
@@ -85,6 +86,9 @@ export function IdleContent({
   const hasContent = quickNoteText.length > 0;
   const isPrefixCommand = quickNoteText.startsWith('/') || quickNoteText.startsWith('#') || quickNoteText.startsWith('@');
 
+  // Check if the input is a URL
+  const isUrl = hasContent && /^(https?:\/\/|www\.)|^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(\/|$)/i.test(quickNoteText.trim());
+
   // On tags page, show "Filtering tags..." instead of search results
   const isFilteringTags = isOnTagsPage && hasContent && !isPrefixCommand;
 
@@ -138,6 +142,7 @@ export function IdleContent({
           <div className="flex-1 min-w-0 flex items-center h-10 px-2 gap-2 rounded-xl hover:bg-[var(--glass-bg)] transition-colors duration-150 cursor-text">
             <Search className="h-4 w-4 shrink-0 text-text-muted" />
             <input
+              ref={textareaRef as unknown as React.RefObject<HTMLInputElement>}
               type="text"
               value={quickNoteText}
               onChange={(e) => setQuickNoteText(e.target.value)}
@@ -189,6 +194,14 @@ export function IdleContent({
         <div className="flex items-center gap-2 px-3 py-2 mt-1 border-t border-[var(--glass-border)]">
           <Hash className="h-4 w-4 text-[var(--color-accent)]" />
           <span className="text-sm text-text-muted">Filtering tags...</span>
+        </div>
+      )}
+
+      {/* URL Bookmark Hint */}
+      {isQuickNoteMode && isUrl && !hasSearchResults && (
+        <div className="flex items-center gap-2 px-3 py-2 mt-1 border-t border-[var(--glass-border)]">
+          <Link2 className="h-4 w-4 text-[var(--color-accent)]" />
+          <span className="text-sm text-text-muted">Press <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] text-text-primary text-xs font-medium">Enter</kbd> to create bookmark</span>
         </div>
       )}
 

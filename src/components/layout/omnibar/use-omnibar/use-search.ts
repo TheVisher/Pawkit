@@ -606,7 +606,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     onModeChange?.();
     setForceExpanded(true);
     setIsQuickNoteMode(true);
-    setTimeout(() => textareaRef.current?.focus(), 300);
+    // Focus immediately - the useEffect will also try to focus on isQuickNoteMode change
+    requestAnimationFrame(() => textareaRef.current?.focus());
   }, [onModeChange]);
 
   const closeSearch = useCallback(() => {
