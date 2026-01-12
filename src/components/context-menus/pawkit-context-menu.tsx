@@ -26,7 +26,7 @@ interface PawkitContextMenuProps {
 }
 
 export function PawkitContextMenu({ collection, children }: PawkitContextMenuProps) {
-  const updateCollection = useDataStore((s) => s.updateCollection);
+  const renamePawkit = useDataStore((s) => s.renamePawkit);
   const deleteCollection = useDataStore((s) => s.deleteCollection);
   const createCollection = useDataStore((s) => s.createCollection);
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
@@ -66,8 +66,12 @@ export function PawkitContextMenu({ collection, children }: PawkitContextMenuPro
   const handleRename = async () => {
     const newName = prompt('Rename Pawkit:', collection.name);
     if (newName?.trim() && newName !== collection.name) {
-      await updateCollection(collection.id, { name: newName.trim() });
-      toast({ type: 'success', message: 'Renamed' });
+      const result = await renamePawkit(collection.id, newName.trim());
+      if (result.success) {
+        toast({ type: 'success', message: 'Renamed' });
+      } else {
+        toast({ type: 'error', message: result.error || 'Failed to rename' });
+      }
     }
   };
 
