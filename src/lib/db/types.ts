@@ -109,6 +109,7 @@ export interface LocalCard extends SyncMetadata {
 
   // Article/Reader
   articleContent?: string;
+  articleContentEdited?: boolean;  // True if user has modified extracted content
   summary?: string;
   summaryType?: string;
 

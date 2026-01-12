@@ -3,21 +3,33 @@
 /**
  * Card Details Panel
  * Shown in the right sidebar when a card modal is open
+ * Features tabbed interface for Details, Notes, and Kit Chat
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2 } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/tags/tag-input';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCardDetailSidebar, usePendingNoteText } from '@/lib/stores/ui-store';
+import { useSettingsStore } from '@/lib/stores/settings-store';
 import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
 import { SupertagPanel } from './SupertagPanel';
 import { SupertagSelector } from './SupertagSelector';
 import { ReferencesSection } from './sections/ReferencesSection';
 import { BacklinksSection } from './sections/BacklinksSection';
 import { findSupertagsInTags, getSupertagDefinition, getAllSupertags, getSupertagTemplate } from '@/lib/tags/supertags';
+import { NotesEditor } from '@/components/editor';
 import type { LocalCard, LocalCollection } from '@/lib/db';
+
+type CardDetailTab = 'details' | 'notes' | 'chat';
+
+const TABS: { id: CardDetailTab; label: string; icon: typeof Info }[] = [
+  { id: 'details', label: 'Details', icon: Info },
+  { id: 'notes', label: 'Notes', icon: FileText },
+  { id: 'chat', label: 'Kit Chat', icon: MessageSquare },
+];
 
 interface CardDetailsPanelProps {
   card: LocalCard;
@@ -29,6 +41,9 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
   const [copied, setCopied] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const updateCard = useDataStore((s) => s.updateCard);
+  const { cardDetailTab, setTab } = useCardDetailSidebar();
+  const visualStyle = useSettingsStore((s) => s.visualStyle);
+  const isHighContrast = visualStyle === 'highContrast';
 
   // Find supertags with sections (for template panel)
   const supertagWithSections = useMemo(() => {
@@ -97,13 +112,108 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
   return (
     <div
       className={cn(
-        'space-y-4 transition-all ease-out',
+        'flex flex-col h-full -mx-4 transition-all ease-out',
         isTransitioning
           ? 'opacity-0 translate-y-2'
           : 'opacity-100 translate-y-0'
       )}
       style={{ transitionDuration: '250ms' }}
     >
+      {/* Tab Pills */}
+      <div className="flex gap-1.5 px-3 pt-3 flex-shrink-0">
+        {TABS.map((tab) => {
+          const isActive = cardDetailTab === tab.id;
+          const Icon = tab.icon;
+
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setTab(tab.id)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 text-sm font-medium transition-all duration-200 relative",
+                // Fully rounded squircle pills
+                "rounded-xl",
+                // High contrast mode styles
+                isHighContrast
+                  ? isActive
+                    ? "text-[var(--color-accent)] bg-bg-surface-3 border-2 border-[var(--color-accent)] font-bold"
+                    : "text-text-primary border border-border-subtle hover:border-text-muted hover:bg-bg-surface-2"
+                  // Default glass styles
+                  : isActive
+                    ? "text-text-primary bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+                    : "text-text-muted hover:text-text-secondary hover:bg-black/5 dark:hover:bg-white/5"
+              )}
+            >
+              <Icon className={cn(
+                "h-4 w-4 transition-colors",
+                isActive ? "text-[var(--color-accent)]" : ""
+              )} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        {cardDetailTab === 'details' && (
+          <DetailsTabContent
+            card={card}
+            collections={collections}
+            copied={copied}
+            isEditingTags={isEditingTags}
+            setIsEditingTags={setIsEditingTags}
+            isNoteCard={isNoteCard}
+            supertagWithSections={supertagWithSections}
+            handleCopyUrl={handleCopyUrl}
+            handleUndo={handleUndo}
+            handleRedo={handleRedo}
+            handleTagsChange={handleTagsChange}
+            handleContentChange={handleContentChange}
+            updateCard={updateCard}
+          />
+        )}
+        {cardDetailTab === 'notes' && <NotesTabContent card={card} />}
+        {cardDetailTab === 'chat' && <ChatTabContent />}
+      </div>
+    </div>
+  );
+}
+
+// Details Tab - Contains all the existing card detail content
+interface DetailsTabContentProps {
+  card: LocalCard;
+  collections: LocalCollection[];
+  copied: boolean;
+  isEditingTags: boolean;
+  setIsEditingTags: (editing: boolean) => void;
+  isNoteCard: boolean;
+  supertagWithSections: ReturnType<typeof findSupertagsInTags>[0] | null;
+  handleCopyUrl: () => void;
+  handleUndo: () => void;
+  handleRedo: () => void;
+  handleTagsChange: (tags: string[]) => void;
+  handleContentChange: (content: string) => void;
+  updateCard: (id: string, updates: Partial<LocalCard>) => Promise<void>;
+}
+
+function DetailsTabContent({
+  card,
+  collections,
+  copied,
+  isEditingTags,
+  setIsEditingTags,
+  isNoteCard,
+  supertagWithSections,
+  handleCopyUrl,
+  handleUndo,
+  handleRedo,
+  handleTagsChange,
+  handleContentChange,
+  updateCard,
+}: DetailsTabContentProps) {
+  return (
+    <div className="space-y-4">
       {/* Quick Actions for URL cards */}
       {card.url && card.type === 'url' && (
         <>
@@ -334,19 +444,6 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
         <p className="text-xs text-text-muted italic">No attachments</p>
       </div>
 
-      <Separator className="bg-border-subtle" />
-
-      {/* Kit Chat Section (placeholder) */}
-      <div>
-        <div className="flex items-center gap-2 text-text-muted mb-3">
-          <MessageSquare className="h-5 w-5" />
-          <span className="text-xs font-medium uppercase">Kit Chat</span>
-        </div>
-        <div className="px-3 py-4 rounded-lg bg-bg-surface-2 border border-border-subtle text-center">
-          <p className="text-xs text-text-muted">AI assistant coming soon</p>
-        </div>
-      </div>
-
       {/* Metadata */}
       <div className="pt-2 space-y-1 text-xs text-text-muted">
         <div className="flex justify-between">
@@ -357,6 +454,88 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
           <span>Updated</span>
           <span>{new Date(card.updatedAt).toLocaleDateString()}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Notes Tab - Dedicated notes editor for user annotations
+interface NotesTabContentProps {
+  card: LocalCard;
+}
+
+function NotesTabContent({ card }: NotesTabContentProps) {
+  const updateCard = useDataStore((s) => s.updateCard);
+  const { pendingNoteText, clearPendingNoteText } = usePendingNoteText();
+
+  // Handle pending note text from article selection
+  useEffect(() => {
+    if (pendingNoteText) {
+      // Append the pending note text to existing notes
+      const currentNotes = card.notes || '';
+      const separator = currentNotes && currentNotes !== '<p></p>' ? '' : ''; // Notes already have a trailing <p></p>
+
+      // If there's existing content, add the new content after it
+      // Otherwise just use the new content
+      let newNotes: string;
+      if (currentNotes && currentNotes !== '<p></p>') {
+        // Remove trailing empty paragraph if present, then add the new content
+        const trimmedNotes = currentNotes.replace(/<p><\/p>$/, '');
+        newNotes = `${trimmedNotes}${pendingNoteText}`;
+      } else {
+        newNotes = pendingNoteText;
+      }
+
+      updateCard(card.id, { notes: newNotes });
+      clearPendingNoteText();
+    }
+  }, [pendingNoteText, card.id, card.notes, updateCard, clearPendingNoteText]);
+
+  const handleNotesChange = useCallback((html: string) => {
+    // Don't save empty paragraph as notes
+    const isEmpty = html === '<p></p>' || html === '';
+    updateCard(card.id, { notes: isEmpty ? undefined : html });
+  }, [card.id, updateCard]);
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header with tip */}
+      <div className="flex items-center gap-2 mb-3 text-text-muted">
+        <Sparkles className="h-4 w-4" />
+        <span className="text-xs">Your personal notes while reading</span>
+      </div>
+
+      {/* Notes Editor - fills available space */}
+      <div className="flex-1 rounded-lg bg-bg-surface-1/50 border border-border-subtle p-3">
+        <NotesEditor
+          content={card.notes || ''}
+          onChange={handleNotesChange}
+          placeholder="Jot down your thoughts, key takeaways, or to-dos..."
+          className="h-full"
+        />
+      </div>
+
+      {/* Footer hint */}
+      <p className="text-[10px] text-text-muted mt-2 text-center">
+        Auto-saves as you type
+      </p>
+    </div>
+  );
+}
+
+// Chat Tab - Kit Chat AI assistant
+function ChatTabContent() {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      <MessageSquare className="h-12 w-12 text-text-muted mb-4 opacity-50" />
+      <h3 className="text-sm font-medium text-text-secondary mb-2">Kit Chat</h3>
+      <p className="text-xs text-text-muted max-w-[200px]">
+        AI assistant for this card coming soon.
+      </p>
+      <div className="mt-6 px-4 py-3 rounded-lg bg-bg-surface-2 border border-border-subtle">
+        <p className="text-xs text-text-muted">
+          Ask questions about this card, get summaries, or request related content.
+        </p>
       </div>
     </div>
   );
