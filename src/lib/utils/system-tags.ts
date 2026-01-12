@@ -28,6 +28,12 @@ export const OVERDUE_TAG = 'overdue';
 /** All schedule tags for easy removal */
 export const ALL_SCHEDULE_TAGS = [SCHEDULED_TAG, DUE_TODAY_TAG, OVERDUE_TAG];
 
+/** Daily note tag - journal entries that should never be "overdue" */
+export const DAILY_NOTE_TAG = 'daily-note';
+
+/** Todo tag - task lists that are only overdue if they have unchecked items */
+export const TODO_TAG = 'todo';
+
 /** Sync conflict tag - added when card has a sync conflict */
 export const CONFLICT_TAG = 'conflict';
 
@@ -280,6 +286,42 @@ function isNoteCard(type: string): boolean {
   return type === 'md-note' || type === 'text-note';
 }
 
+/**
+ * Check if a card has unchecked task items in its content
+ * Used to determine if a todo card should be marked as overdue
+ */
+export function hasUncheckedTasks(content: string | undefined | null): boolean {
+  if (!content) return false;
+  // Check for Tiptap taskItem elements with data-checked="false"
+  // Pattern matches: data-checked="false" or data-checked='false'
+  return /data-checked=["']false["']/.test(content);
+}
+
+/**
+ * Check if a card should be excluded from overdue logic
+ * Daily notes are journal entries and should never be marked overdue
+ */
+export function shouldExcludeFromOverdue(tags: string[] | undefined): boolean {
+  if (!tags) return false;
+  return tags.includes(DAILY_NOTE_TAG);
+}
+
+/**
+ * Check if a todo card should be marked as overdue
+ * Only if it has unchecked task items
+ */
+export function isTodoCardOverdue(
+  tags: string[] | undefined,
+  content: string | undefined | null,
+  scheduledDate: Date | string | undefined | null
+): boolean {
+  if (!tags || !scheduledDate) return false;
+  if (!tags.includes(TODO_TAG)) return false;
+  if (!isOverdue(scheduledDate)) return false;
+  // Only mark as overdue if there are unchecked tasks
+  return hasUncheckedTasks(content);
+}
+
 
 // =============================================================================
 // MAIN FUNCTION
@@ -319,6 +361,46 @@ function getEffectiveScheduledDate(card: LocalCard): Date | string | null {
 }
 
 /**
+ * Get the correct schedule tag for a card, considering special card types
+ * - Daily notes (daily-note tag): NEVER get overdue tag
+ * - Todos (todo tag): Only get overdue if they have unchecked tasks
+ * - Regular cards: Standard overdue logic based on date
+ */
+export function getScheduleTagForCard(card: LocalCard): string | null {
+  const scheduledDate = getEffectiveScheduledDate(card);
+  if (!scheduledDate) return null;
+
+  const tags = card.tags || [];
+
+  // Daily notes are journal entries - never mark as overdue
+  if (shouldExcludeFromOverdue(tags)) {
+    // If the date is in the past, just remove any schedule tag (no overdue)
+    if (isOverdue(scheduledDate)) {
+      return null;
+    }
+    // Otherwise use standard logic for due-today/scheduled
+    return getScheduleTagForDate(scheduledDate);
+  }
+
+  // Todo cards - only overdue if they have unchecked tasks
+  if (tags.includes(TODO_TAG)) {
+    if (isOverdue(scheduledDate)) {
+      // Only mark as overdue if there are unchecked tasks
+      if (hasUncheckedTasks(card.content)) {
+        return OVERDUE_TAG;
+      }
+      // All tasks completed - no overdue tag
+      return null;
+    }
+    // Not in the past - use standard logic
+    return getScheduleTagForDate(scheduledDate);
+  }
+
+  // Regular cards - use standard date-based logic
+  return getScheduleTagForDate(scheduledDate);
+}
+
+/**
  * Check if a card's schedule tags need updating
  * Returns the new tags array if update needed, or null if no update needed
  */
@@ -335,13 +417,17 @@ export function getUpdatedScheduleTagsIfNeeded(card: LocalCard): string[] | null
   }
 
   const currentScheduleTag = (card.tags || []).find(t => isScheduleTag(t));
-  const correctScheduleTag = getScheduleTagForDate(scheduledDate);
+  const correctScheduleTag = getScheduleTagForCard(card);
 
   // If the tag is already correct, no update needed
   if (currentScheduleTag === correctScheduleTag) {
     return null;
   }
 
-  // Update needed - return new tags
-  return updateScheduleTags(card.tags || [], scheduledDate);
+  // Update needed - build new tags array
+  let newTags = removeAllScheduleTags(card.tags || []);
+  if (correctScheduleTag) {
+    newTags = addSystemTag(newTags, correctScheduleTag);
+  }
+  return newTags;
 }

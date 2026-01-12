@@ -63,26 +63,33 @@ export function DataProvider({ children }: DataProviderProps) {
   // Phase 2: Load ALL cards in background after UI paints
   // ==========================================================================
 
+  // State and refs for two-phase loading
+  const [shouldLoadAll, setShouldLoadAll] = useState(false);
+  const lastAllCardsRef = useRef<LocalCard[] | undefined>(undefined);
+
   // Phase 1: Initial fast query - get 50 most recent by updatedAt
   // Uses orderBy + limit for speed, filters deleted client-side (rare in recent 50)
+  // NOTE: We avoid .reverse() here due to Dexie reactivity issues with reverse()
+  // See: https://github.com/dexie/Dexie.js/issues/2034
+  // NOTE: This query is disabled once allCards is loaded to avoid dual subscriptions
   const initialCards = useLiveQuery(
     async () => {
-      if (!workspaceId) return undefined;
+      // Don't run this query if allCards is loaded (shouldLoadAll = true)
+      if (!workspaceId || shouldLoadAll) return undefined;
       const recent = await db.cards
         .orderBy('updatedAt')
-        .reverse()
         .limit(60) // Fetch 60 to account for potential deleted cards
         .toArray();
-      return recent
+      // Sort client-side (reverse order) to avoid Dexie .reverse() reactivity issues
+      const sorted = recent
         .filter((c) => c.workspaceId === workspaceId && !c._deleted)
-        .slice(0, 50);
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      return sorted.slice(0, 50);
     },
-    [workspaceId]
+    [workspaceId, shouldLoadAll]
   );
 
-  // Phase 2: Full query - runs after a short delay to let UI paint
-  const [shouldLoadAll, setShouldLoadAll] = useState(false);
-
+  // Transition from Phase 1 to Phase 2 after initial render
   useEffect(() => {
     if (initialCards !== undefined && !shouldLoadAll) {
       // Delay full load to let initial render complete and LCP happen
@@ -91,11 +98,13 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   }, [initialCards, shouldLoadAll]);
 
-  // Reset shouldLoadAll when workspace changes
+  // Reset shouldLoadAll and cache when workspace changes
   useEffect(() => {
     setShouldLoadAll(false);
+    lastAllCardsRef.current = undefined;
   }, [workspaceId]);
 
+  // Phase 2: Full query - uses where() for proper Dexie reactivity
   const allCards = useLiveQuery(
     async () => {
       if (!workspaceId || !shouldLoadAll) return undefined;
@@ -108,8 +117,15 @@ export function DataProvider({ children }: DataProviderProps) {
     [workspaceId, shouldLoadAll]
   );
 
-  // Combine: use allCards when available, otherwise initialCards
-  const cards = allCards ?? initialCards;
+  // Update cache when allCards has data
+  // This ensures that once we have the full dataset, we never show partial data again
+  if (allCards !== undefined) {
+    lastAllCardsRef.current = allCards;
+  }
+
+  // Combine: use allCards when available, fall back to cached allCards, then initialCards
+  // This prevents the UI from flickering when allCards temporarily becomes undefined
+  const cards = allCards ?? lastAllCardsRef.current ?? initialCards;
 
   // Single query for all collections - shared by all consumers
   const collections = useLiveQuery(
@@ -139,8 +155,11 @@ export function DataProvider({ children }: DataProviderProps) {
 
   // Determine loading state - useLiveQuery returns undefined while loading
   // Also consider loading if no workspace is selected yet
-  // Use initialCards for isLoading (fast initial load), not allCards
-  const isLoading = !workspaceId || initialCards === undefined || collections === undefined || calendarEvents === undefined;
+  // After Phase 2, use allCards for loading check; before that, use initialCards
+  const cardsLoading = shouldLoadAll
+    ? allCards === undefined && lastAllCardsRef.current === undefined
+    : initialCards === undefined;
+  const isLoading = !workspaceId || cardsLoading || collections === undefined || calendarEvents === undefined;
 
   // isFullyLoaded indicates all cards are loaded, not just the initial batch
   const isFullyLoaded = allCards !== undefined;
