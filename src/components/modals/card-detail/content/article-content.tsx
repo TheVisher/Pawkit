@@ -3,16 +3,25 @@
 /**
  * Article Content Component
  * Clean reader-focused layout for URL/article cards
- * Shows either "Extract Article" button or article text
+ * Shows either "Extract Article" button or editable article text via Tiptap
  */
 
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { BookOpen, Loader2 } from 'lucide-react';
-import DOMPurify from 'dompurify';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
-import { Button } from '@/components/ui/button';
 import { Reader } from '@/components/reader';
+import { ArticleEditor } from '@/components/editor';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { calculateReadingTime } from '@/lib/db/schema';
 import { getDomain, getContentStats } from '../types';
 import { updateReadingTimeTag, updateReadTag } from '@/lib/utils/system-tags';
@@ -50,6 +59,10 @@ export function ArticleContent({
   // Extraction state
   const [isExtractingArticle, setIsExtractingArticle] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [showReextractDialog, setShowReextractDialog] = useState(false);
+
+  // Track if user has edited article content
+  const hasEditedArticle = !!card.articleContentEdited;
 
   // Reading progress - use refs to avoid re-renders on scroll
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -122,37 +135,42 @@ export function ArticleContent({
     }
   }, [hasArticleContent, mightBeExtracting, isExtractingArticle, hasImage, onRequestExpandImage]);
 
-  // Sanitize article content with DOMPurify before rendering
-  const sanitizedContent = useMemo(() => {
-    if (typeof window === 'undefined' || !articleContent) return '';
-    let cleaned = DOMPurify.sanitize(articleContent, {
-      ADD_TAGS: ['iframe'],
-      ADD_ATTR: ['allowfullscreen', 'frameborder', 'src', 'loading'],
+  // Handle article content changes from the editor
+  const handleArticleContentChange = useCallback((html: string) => {
+    updateCard(card.id, {
+      articleContent: html,
+      // Recalculate word count and reading time when content changes
+      wordCount: getContentStats(html).words,
+      readingTime: calculateReadingTime(getContentStats(html).words),
     });
-    cleaned = cleaned.replace(/<img\s/gi, '<img loading="lazy" ');
+  }, [card.id, updateCard]);
 
-    // Convert quoted paragraphs to blockquotes
-    // Match <p> tags, check if they start with quotes and are substantial
-    const quoteChars = '"""\u201C\u201D\u2018\u2019\'';
-    cleaned = cleaned.replace(/<p>([^]*?)<\/p>/gi, (match, content) => {
-      const trimmed = content.trim();
-      const firstChar = trimmed.charAt(0);
-      const startsWithQuote = quoteChars.includes(firstChar);
-      const hasClosingQuote = quoteChars.split('').some(q => trimmed.includes(q) && trimmed.indexOf(q) > 0);
+  // Track when user makes any edit to the article content
+  const handleArticleEdit = useCallback(() => {
+    // Only update if not already marked as edited
+    if (!card.articleContentEdited) {
+      updateCard(card.id, { articleContentEdited: true });
+    }
+  }, [card.id, card.articleContentEdited, updateCard]);
 
-      if (startsWithQuote && hasClosingQuote && trimmed.length > 80) {
-        return `<blockquote><p>${content}</p></blockquote>`;
-      }
-      return match;
-    });
-
-    return cleaned;
-  }, [articleContent]);
-
-  // Extract article from URL
-  const handleExtractArticle = useCallback(async () => {
+  // Handle click on extract/try again button
+  const handleExtractClick = useCallback(() => {
     if (!card.url || isExtractingArticle) return;
 
+    // If user has edited article content, show confirmation dialog
+    if (hasEditedArticle) {
+      setShowReextractDialog(true);
+      return;
+    }
+    // Otherwise proceed directly
+    performExtractArticle();
+  }, [card.url, isExtractingArticle, hasEditedArticle]);
+
+  // Extract article from URL
+  const performExtractArticle = useCallback(async () => {
+    if (!card.url || isExtractingArticle) return;
+
+    setShowReextractDialog(false);
     setIsExtractingArticle(true);
     setExtractionError(null);
 
@@ -197,6 +215,8 @@ export function ArticleContent({
         readProgress: 0,
         metadata: Object.keys(newMetadata).length > 0 ? newMetadata : undefined,
         tags: newTags,
+        // Reset the articleContentEdited flag since this is fresh content
+        articleContentEdited: false,
       });
     } catch (error) {
       console.error('[ArticleContent] Extraction failed:', error);
@@ -298,8 +318,8 @@ export function ArticleContent({
       ref={scrollContainerRef}
       className={cn('flex-1 overflow-y-auto', className)}
     >
-      {hasArticleContent ? (
-        // Article text only - metadata is in the header
+      {hasArticleContent || !mightBeExtracting ? (
+        // Article editor - metadata is in the header
         <div className="px-6 pb-8 pt-4">
           {/* Reading progress bar - uses ref for direct DOM updates to avoid re-renders */}
           <div className="sticky top-0 left-0 right-0 h-1 bg-[var(--border-subtle)] -mx-6 mb-4 z-10">
@@ -310,26 +330,62 @@ export function ArticleContent({
             />
           </div>
 
+          {/* Re-extract button when no content - subtle, inline with the editor */}
+          {!hasArticleContent && card.url && (
+            <div className="mb-4 text-sm text-text-muted">
+              <div className="flex items-center gap-2">
+                <span>{extractionError || 'Extraction failed or article not available.'}</span>
+                <button
+                  onClick={handleExtractClick}
+                  disabled={isExtractingArticle}
+                  className={cn(
+                    'inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline',
+                    'disabled:opacity-50 disabled:cursor-not-allowed'
+                  )}
+                >
+                  {isExtractingArticle ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Extracting...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3" />
+                      Try again
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
           <article className="article-reader-content max-w-none">
-            <SanitizedArticleContent html={sanitizedContent} />
+            <ArticleEditor
+              content={articleContent}
+              onChange={handleArticleContentChange}
+              onEdit={handleArticleEdit}
+              placeholder="No content extracted. You can add your own notes here..."
+            />
           </article>
 
-          {/* End of article */}
-          <div className="mt-12 pt-6 border-t border-[var(--border-subtle)] text-center">
-            <p className="text-sm text-text-muted">End of article</p>
-            {card.url && (
-              <a
-                href={card.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-sm text-[var(--color-accent)] hover:underline"
-              >
-                View original →
-              </a>
-            )}
-          </div>
+          {/* End of article / View original link */}
+          {hasArticleContent && (
+            <div className="mt-12 pt-6 border-t border-[var(--border-subtle)] text-center">
+              <p className="text-sm text-text-muted">End of article</p>
+              {card.url && (
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-sm text-[var(--color-accent)] hover:underline"
+                >
+                  View original →
+                </a>
+              )}
+            </div>
+          )}
         </div>
-      ) : mightBeExtracting ? (
+      ) : (
         // Auto-extraction in progress - show loading state
         <div className="flex-1 flex flex-col items-center justify-center py-16 px-6">
           <div className="text-center max-w-md">
@@ -342,51 +398,25 @@ export function ArticleContent({
             </p>
           </div>
         </div>
-      ) : (
-        // Fallback - extraction failed or timed out
-        <div className="flex-1 flex flex-col items-center justify-center py-16 px-6">
-          <div className="text-center max-w-md">
-            <BookOpen className="h-12 w-12 mx-auto mb-4 text-text-muted opacity-50" />
-            <h3 className="text-lg font-medium text-text-primary mb-2">
-              Article not available
-            </h3>
-            <p className="text-text-muted text-sm mb-6">
-              {extractionError || "Couldn't extract article content automatically. Try extracting manually."}
-            </p>
-
-            <Button
-              size="default"
-              variant="outline"
-              onClick={handleExtractArticle}
-              disabled={isExtractingArticle}
-              className="gap-2"
-            >
-              {isExtractingArticle ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Extracting...
-                </>
-              ) : (
-                <>
-                  <BookOpen className="h-4 w-4" />
-                  Try Again
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
       )}
+
+      {/* Re-extract confirmation dialog */}
+      <AlertDialog open={showReextractDialog} onOpenChange={setShowReextractDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-extract Article?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You&apos;ve made edits to this article. Re-extracting will replace your changes with fresh content from the source.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performExtractArticle}>
+              Re-extract Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
-}
-
-/**
- * Renders pre-sanitized HTML content.
- * SECURITY: Content MUST be sanitized with DOMPurify before passing to this component.
- * The parent component sanitizes in the sanitizedContent useMemo hook.
- */
-function SanitizedArticleContent({ html }: { html: string }) {
-  // Content is pre-sanitized with DOMPurify in parent component
-  // eslint-disable-next-line react/no-danger
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }

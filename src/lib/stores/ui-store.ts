@@ -12,8 +12,9 @@ type CardSize = 'small' | 'medium' | 'large';
 type ModalType = 'card-detail' | 'create-card' | 'create-collection' | 'settings' | 'task' | null;
 
 // Right sidebar expansion modes (extensible for future features)
-type RightSidebarExpandedMode = 'settings' | 'split-view' | 'calendar-schedule' | null;
+type RightSidebarExpandedMode = 'settings' | 'split-view' | 'calendar-schedule' | 'card-detail' | null;
 type SettingsTab = 'appearance' | 'account' | 'data' | null;
+type CardDetailTab = 'details' | 'notes' | 'chat';
 
 // Width configuration for each expansion mode
 export const SIDEBAR_WIDTHS: Record<string, number> = {
@@ -21,6 +22,7 @@ export const SIDEBAR_WIDTHS: Record<string, number> = {
   settings: 480,
   'split-view': 600,
   'calendar-schedule': 600,
+  'card-detail': 380,
 };
 
 // Helper to get current sidebar width based on mode
@@ -39,6 +41,7 @@ interface UIState {
   // Right sidebar expansion (persisted)
   rightSidebarExpandedMode: RightSidebarExpandedMode;
   settingsTab: SettingsTab;
+  cardDetailTab: CardDetailTab;
 
   // Right sidebar section expanded states (persisted)
   // Section IDs: 'tags', 'sort-by', 'group-by', 'content-type', 'card-display', 'advanced-filters', 'quick-filter', 'reading-status'
@@ -61,6 +64,10 @@ interface UIState {
   // Increment to force grid relayout when card content changes affect dimensions
   muuriLayoutVersion: number;
 
+  // Pending note text from article selection (not persisted)
+  // Used to pass selected text from article editor to notes tab
+  pendingNoteText: string | null;
+
   // Actions
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
@@ -71,6 +78,7 @@ interface UIState {
   setRightSidebarExpandedMode: (mode: RightSidebarExpandedMode) => void;
   toggleSettingsMode: () => void;
   setSettingsTab: (tab: SettingsTab) => void;
+  setCardDetailTab: (tab: CardDetailTab) => void;
   setSidebarSectionExpanded: (sectionId: string, expanded: boolean) => void;
   toggleSidebarSection: (sectionId: string) => void;
   togglePawkitExpanded: (id: string) => void;
@@ -81,6 +89,8 @@ interface UIState {
   toggleCommandPalette: () => void;
   setCommandPaletteOpen: (open: boolean) => void;
   triggerMuuriLayout: () => void;
+  setPendingNoteText: (text: string | null) => void;
+  clearPendingNoteText: () => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -93,6 +103,7 @@ export const useUIStore = create<UIState>()(
       rightSidebarAnchored: false,
       rightSidebarExpandedMode: null,
       settingsTab: null,
+      cardDetailTab: 'details',
       sidebarSectionStates: {},
       expandedPawkitIds: [],
       cardSize: 'medium',
@@ -100,6 +111,7 @@ export const useUIStore = create<UIState>()(
       modalData: null,
       commandPaletteOpen: false,
       muuriLayoutVersion: 0,
+      pendingNoteText: null,
 
       // Sidebar actions
       toggleLeftSidebar: () =>
@@ -135,6 +147,8 @@ export const useUIStore = create<UIState>()(
         })),
 
       setSettingsTab: (tab) => set({ settingsTab: tab }),
+
+      setCardDetailTab: (tab) => set({ cardDetailTab: tab }),
 
       // Sidebar section actions
       setSidebarSectionExpanded: (sectionId, expanded) =>
@@ -187,6 +201,10 @@ export const useUIStore = create<UIState>()(
       // Muuri layout trigger - increment to force grid relayout
       triggerMuuriLayout: () =>
         set((state) => ({ muuriLayoutVersion: state.muuriLayoutVersion + 1 })),
+
+      // Pending note text actions - for create note from selection
+      setPendingNoteText: (text) => set({ pendingNoteText: text }),
+      clearPendingNoteText: () => set({ pendingNoteText: null }),
     }),
     {
       name: 'pawkit-ui-preferences',
@@ -215,6 +233,7 @@ export const selectLeftSidebarAnchored = (state: UIState) => state.leftSidebarAn
 export const selectRightSidebarAnchored = (state: UIState) => state.rightSidebarAnchored;
 export const selectRightSidebarExpandedMode = (state: UIState) => state.rightSidebarExpandedMode;
 export const selectSettingsTab = (state: UIState) => state.settingsTab;
+export const selectCardDetailTab = (state: UIState) => state.cardDetailTab;
 export const selectSidebarSectionStates = (state: UIState) => state.sidebarSectionStates;
 export const selectExpandedPawkitIds = (state: UIState) => state.expandedPawkitIds;
 export const selectCardSize = (state: UIState) => state.cardSize;
@@ -222,6 +241,7 @@ export const selectActiveModal = (state: UIState) => state.activeModal;
 export const selectModalData = (state: UIState) => state.modalData;
 export const selectCommandPaletteOpen = (state: UIState) => state.commandPaletteOpen;
 export const selectMuuriLayoutVersion = (state: UIState) => state.muuriLayoutVersion;
+export const selectPendingNoteText = (state: UIState) => state.pendingNoteText;
 
 // =============================================================================
 // HOOKS
@@ -260,6 +280,17 @@ export function useRightSidebarSettings() {
       settingsTab: state.settingsTab,
       toggleSettings: state.toggleSettingsMode,
       setTab: state.setSettingsTab,
+    }))
+  );
+}
+
+export function useCardDetailSidebar() {
+  return useUIStore(
+    useShallow((state) => ({
+      isCardDetailMode: state.rightSidebarExpandedMode === 'card-detail',
+      cardDetailTab: state.cardDetailTab,
+      setTab: state.setCardDetailTab,
+      setExpandedMode: state.setRightSidebarExpandedMode,
     }))
   );
 }
@@ -325,6 +356,17 @@ export function usePawkitTreeExpanded() {
       expandedIds: state.expandedPawkitIds,
       toggle: state.togglePawkitExpanded,
       setExpanded: state.setPawkitExpanded,
+    }))
+  );
+}
+
+// Hook for pending note text (create note from article selection)
+export function usePendingNoteText() {
+  return useUIStore(
+    useShallow((state) => ({
+      pendingNoteText: state.pendingNoteText,
+      setPendingNoteText: state.setPendingNoteText,
+      clearPendingNoteText: state.clearPendingNoteText,
     }))
   );
 }

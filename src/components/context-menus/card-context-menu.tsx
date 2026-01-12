@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import {
   ContextMenu,
   ContextMenuContent,
@@ -9,6 +9,16 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   ExternalLink,
   Copy,
@@ -46,10 +56,14 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   const openEditThumbnail = useModalStore((s) => s.openEditThumbnail);
   const toast = useToastStore((s) => s.toast);
 
+  // State for re-extract confirmation dialog
+  const [showReextractDialog, setShowReextractDialog] = useState(false);
+
   const isBookmark = card.type === 'url' && card.url;
   const isPinned = card.pinned;
   const isRead = card.isRead;
   const hasArticle = !!card.articleContent;
+  const hasEditedArticle = !!card.articleContentEdited;
 
   const handleOpenInNewTab = () => {
     if (card.url) {
@@ -65,11 +79,24 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   };
 
   const handleRefetchMetadata = () => {
+    // If user has edited article content, show confirmation dialog
+    if (hasEditedArticle) {
+      setShowReextractDialog(true);
+      return;
+    }
+    // Otherwise proceed directly
+    performRefetchMetadata();
+  };
+
+  const performRefetchMetadata = async () => {
     // Clear the cache entry so the card can be refetched
     clearMetadataCache();
     // Queue the card for metadata fetching
     queueMetadataFetch(card.id);
+    // Reset the articleContentEdited flag since we're getting fresh content
+    await updateCard(card.id, { articleContentEdited: false });
     toast({ type: 'info', message: 'Refreshing metadata...' });
+    setShowReextractDialog(false);
   };
 
   const handleEditThumbnail = () => {
@@ -120,102 +147,122 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   };
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
-        {children}
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        {/* Edit */}
-        <ContextMenuItem onClick={handleEdit}>
-          <Pencil className="size-4" />
-          Edit
-          <ContextMenuShortcut>E</ContextMenuShortcut>
-        </ContextMenuItem>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          {children}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          {/* Edit */}
+          <ContextMenuItem onClick={handleEdit}>
+            <Pencil className="size-4" />
+            Edit
+            <ContextMenuShortcut>E</ContextMenuShortcut>
+          </ContextMenuItem>
 
-        {/* Bookmark-specific actions */}
-        {isBookmark && (
-          <>
-            <ContextMenuItem onClick={handleOpenInNewTab}>
-              <ExternalLink className="size-4" />
-              Open in new tab
-              <ContextMenuShortcut>O</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleCopyUrl}>
-              <Copy className="size-4" />
-              Copy URL
-              <ContextMenuShortcut>C</ContextMenuShortcut>
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleRefetchMetadata}>
-              <RefreshCw className="size-4" />
-              Refetch Metadata
-            </ContextMenuItem>
-            <ContextMenuItem onClick={handleEditThumbnail}>
-              <ImagePlus className="size-4" />
-              Edit Thumbnail
-            </ContextMenuItem>
-          </>
-        )}
-
-        <ContextMenuSeparator />
-
-        {/* Pin/Unpin */}
-        <ContextMenuItem onClick={handleTogglePin}>
-          {isPinned ? (
+          {/* Bookmark-specific actions */}
+          {isBookmark && (
             <>
-              <PinOff className="size-4" />
-              Unpin
-            </>
-          ) : (
-            <>
-              <Pin className="size-4" />
-              Pin
+              <ContextMenuItem onClick={handleOpenInNewTab}>
+                <ExternalLink className="size-4" />
+                Open in new tab
+                <ContextMenuShortcut>O</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleCopyUrl}>
+                <Copy className="size-4" />
+                Copy URL
+                <ContextMenuShortcut>C</ContextMenuShortcut>
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleRefetchMetadata}>
+                <RefreshCw className="size-4" />
+                Refetch Metadata
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleEditThumbnail}>
+                <ImagePlus className="size-4" />
+                Edit Thumbnail
+              </ContextMenuItem>
             </>
           )}
-          <ContextMenuShortcut>P</ContextMenuShortcut>
-        </ContextMenuItem>
 
-        {/* Add to Pawkit submenu */}
-        <AddToPawkitSubmenu cardId={card.id} cardCollections={card.tags || []} />
+          <ContextMenuSeparator />
 
-        {/* Schedule submenu - for bookmark cards */}
-        {isBookmark && (
-          <ScheduleSubmenu cardId={card.id} currentSchedule={card.scheduledDate} />
-        )}
-
-        {/* Mark as Read/Unread - for bookmarks with extracted article content */}
-        {isBookmark && hasArticle && (
-          <ContextMenuItem onClick={handleToggleRead}>
-            {isRead ? (
+          {/* Pin/Unpin */}
+          <ContextMenuItem onClick={handleTogglePin}>
+            {isPinned ? (
               <>
-                <BookX className="size-4" />
-                Mark as unread
+                <PinOff className="size-4" />
+                Unpin
               </>
             ) : (
               <>
-                <BookOpen className="size-4" />
-                Mark as read
+                <Pin className="size-4" />
+                Pin
               </>
             )}
+            <ContextMenuShortcut>P</ContextMenuShortcut>
           </ContextMenuItem>
-        )}
 
-        {/* Remove from collection (only show when viewing a collection) */}
-        {currentCollection && (
-          <ContextMenuItem onClick={handleRemoveFromCollection}>
-            <FolderMinus className="size-4" />
-            Remove from this Pawkit
+          {/* Add to Pawkit submenu */}
+          <AddToPawkitSubmenu cardId={card.id} cardCollections={card.tags || []} />
+
+          {/* Schedule submenu - for bookmark cards */}
+          {isBookmark && (
+            <ScheduleSubmenu cardId={card.id} currentSchedule={card.scheduledDate} />
+          )}
+
+          {/* Mark as Read/Unread - for bookmarks with extracted article content */}
+          {isBookmark && hasArticle && (
+            <ContextMenuItem onClick={handleToggleRead}>
+              {isRead ? (
+                <>
+                  <BookX className="size-4" />
+                  Mark as unread
+                </>
+              ) : (
+                <>
+                  <BookOpen className="size-4" />
+                  Mark as read
+                </>
+              )}
+            </ContextMenuItem>
+          )}
+
+          {/* Remove from collection (only show when viewing a collection) */}
+          {currentCollection && (
+            <ContextMenuItem onClick={handleRemoveFromCollection}>
+              <FolderMinus className="size-4" />
+              Remove from this Pawkit
+            </ContextMenuItem>
+          )}
+
+          <ContextMenuSeparator />
+
+          {/* Delete */}
+          <ContextMenuItem variant="destructive" onClick={handleDelete}>
+            <Trash2 className="size-4" />
+            Delete
+            <ContextMenuShortcut>Del</ContextMenuShortcut>
           </ContextMenuItem>
-        )}
+        </ContextMenuContent>
+      </ContextMenu>
 
-        <ContextMenuSeparator />
-
-        {/* Delete */}
-        <ContextMenuItem variant="destructive" onClick={handleDelete}>
-          <Trash2 className="size-4" />
-          Delete
-          <ContextMenuShortcut>Del</ContextMenuShortcut>
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+      {/* Re-extract confirmation dialog */}
+      <AlertDialog open={showReextractDialog} onOpenChange={setShowReextractDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-extract Article?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You&apos;ve made edits to this article. Re-extracting will replace your changes with fresh content from the source.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performRefetchMetadata}>
+              Re-extract Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
