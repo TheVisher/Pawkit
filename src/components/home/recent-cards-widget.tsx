@@ -3,10 +3,10 @@
 /**
  * Recent Cards Widget
  * Shows recently added cards in a responsive vertical scroll grid
- * Columns adjust based on widget width (targeting ~220px per card)
+ * Uses CSS auto-fill for immediate responsive columns without JS measurement
  */
 
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Layers } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,10 +17,9 @@ import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
 import { formatDistanceToNow } from 'date-fns';
 
-// Card sizing constants
-const TARGET_CARD_WIDTH = 320; // Target width per card in pixels
-const MIN_CARD_WIDTH = 280; // Minimum card width
-const GAP_SIZE = 12; // Gap between cards (gap-3 = 12px)
+// Card sizing constants - CSS handles the responsive columns
+const MIN_CARD_WIDTH = 280; // Minimum card width before wrapping to fewer columns
+const MAX_CARD_WIDTH = 400; // Maximum card width to prevent overly large cards
 
 interface RecentCardItemProps {
   card: LocalCard;
@@ -98,36 +97,6 @@ export function RecentCardsWidget() {
   const cards = useCards(workspace?.id);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
-  // Track container width for dynamic column calculation
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-
-  // Use ResizeObserver to track widget width changes
-  useEffect(() => {
-    const container = gridRef.current;
-    if (!container) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
-      }
-    });
-
-    resizeObserver.observe(container);
-    return () => resizeObserver.disconnect();
-  }, []);
-
-  // Calculate number of columns based on available width
-  const columnCount = useMemo(() => {
-    if (containerWidth === 0) return 2; // Default
-
-    // Calculate how many columns fit at target width
-    const columnsAtTarget = Math.floor((containerWidth + GAP_SIZE) / (TARGET_CARD_WIDTH + GAP_SIZE));
-
-    // Ensure at least 1 column, cap at reasonable max
-    return Math.max(1, Math.min(columnsAtTarget, 6));
-  }, [containerWidth]);
-
   const recentCards = useMemo(() => {
     return cards
       .filter((c) => {
@@ -155,15 +124,12 @@ export function RecentCardsWidget() {
         </div>
 
         {recentCards.length > 0 ? (
-          <div
-            ref={gridRef}
-            className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-bg-surface-3 scrollbar-track-transparent pr-1"
-          >
-            {/* Responsive vertical scroll grid - columns based on width */}
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-bg-surface-3 scrollbar-track-transparent pr-1">
+            {/* CSS auto-fill handles responsive columns without JS measurement */}
             <div
               className="grid gap-3"
               style={{
-                gridTemplateColumns: `repeat(${columnCount}, minmax(${MIN_CARD_WIDTH}px, 1fr))`,
+                gridTemplateColumns: `repeat(auto-fill, minmax(${MIN_CARD_WIDTH}px, ${MAX_CARD_WIDTH}px))`,
               }}
             >
               {recentCards.map((card) => (
