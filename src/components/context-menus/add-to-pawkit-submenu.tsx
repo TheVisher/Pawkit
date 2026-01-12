@@ -10,6 +10,7 @@ import {
 import { FolderPlus, Check, ChevronRight } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useUIStore } from '@/lib/stores/ui-store';
 import { useCollections } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import type { LocalCollection } from '@/lib/db';
@@ -128,6 +129,7 @@ export function AddToPawkitSubmenu({ cardId, cardCollections }: AddToPawkitSubme
   const addCardToCollection = useDataStore((s) => s.addCardToCollection);
   const removeCardFromCollection = useDataStore((s) => s.removeCardFromCollection);
   const toast = useToastStore((s) => s.toast);
+  const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
 
   const tree = buildCollectionTree(collections.filter(c => !c._deleted && !c.isSystem));
 
@@ -141,6 +143,9 @@ export function AddToPawkitSubmenu({ cardId, cardCollections }: AddToPawkitSubme
       await addCardToCollection(cardId, slug);
       toast({ type: 'success', message: `Added to ${name}` });
     }
+
+    // Trigger Muuri layout refresh after card tags change
+    setTimeout(() => triggerMuuriLayout(), 100);
   };
 
   if (tree.length === 0) {
