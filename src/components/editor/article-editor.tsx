@@ -194,11 +194,9 @@ export function ArticleEditor({
     };
   }, [editor, onChange]);
 
-  // UI store for create note from selection
-  const { setCardDetailTab, setPendingNoteText } = useUIStore((s) => ({
-    setCardDetailTab: s.setCardDetailTab,
-    setPendingNoteText: s.setPendingNoteText,
-  }));
+  // UI store for create note from selection - use individual selectors to avoid infinite loop
+  const setCardDetailTab = useUIStore((s) => s.setCardDetailTab);
+  const setPendingNoteText = useUIStore((s) => s.setPendingNoteText);
 
   // Handle Cmd+K for link
   const setLink = useCallback(() => {
