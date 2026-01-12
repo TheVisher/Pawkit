@@ -126,11 +126,12 @@ class SyncService {
   }
 
   /**
-   * Smart sync - checks if we need full sync or just push
+   * Smart sync - always does a full sync on app load
    *
-   * Simple logic:
-   * - If local DB is empty → full sync (first load or cache cleared)
-   * - If local DB has data → just push queue (Realtime handles incoming)
+   * Previously this only pushed when local data existed, relying on Realtime
+   * for incoming changes. However, Realtime only watches the Card table,
+   * not Collections or other entities. So we now always do a full sync
+   * to ensure collections/events/etc are pulled from server.
    */
   async deltaSync(): Promise<void> {
     if (!this.workspaceId) {
@@ -148,18 +149,10 @@ class SyncService {
       return;
     }
 
-    // Check if we have local data (simple existence check)
-    const cardCount = await db.cards.where('workspaceId').equals(this.workspaceId).count();
-
-    if (cardCount === 0) {
-      // No local data - need full sync (first time user or cleared cache)
-      log.info('No local data, performing initial full sync');
-      return this.fullSync();
-    }
-
-    // We have local data - Realtime handles incoming, just push any pending changes
-    log.debug('Local data exists, processing queue only');
-    return this.pushOnlySync();
+    // Always do a full sync to pull collections, events, etc.
+    // Realtime only watches Card table, so other entities need explicit pull
+    log.info('Performing full sync');
+    return this.fullSync();
   }
 
   /**
