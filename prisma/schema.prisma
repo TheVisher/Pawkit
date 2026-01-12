@@ -538,6 +538,10 @@ model Reference {
   // Display text shown in the mention pill
   linkText String
 
+  // Soft delete
+  deleted   Boolean   @default(false)
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -545,6 +549,7 @@ model Reference {
   @@index([targetId, targetType])
   @@index([workspaceId])
   @@index([workspaceId, sourceId])
+  @@index([workspaceId, deleted])
 }
 
 // =============================================================================

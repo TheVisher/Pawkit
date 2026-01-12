@@ -9,6 +9,7 @@ import type {
   LocalCollection,
   LocalCard,
   LocalCalendarEvent,
+  LocalReference,
   SyncMetadata,
 } from '@/lib/db';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -18,6 +19,7 @@ import {
   type ServerCollection,
   type ServerCard,
   type ServerEvent,
+  type ServerReference,
   ENTITY_ENDPOINTS,
   ENTITY_TYPE_MAP,
 } from './types';
@@ -184,6 +186,23 @@ function serverEventToLocal(server: ServerEvent): LocalCalendarEvent {
 }
 
 /**
+ * Convert server reference to local format
+ */
+function serverReferenceToLocal(server: ServerReference): LocalReference {
+  return {
+    id: server.id,
+    workspaceId: server.workspaceId,
+    sourceId: server.sourceId,
+    targetId: server.targetId,
+    targetType: server.targetType,
+    linkText: server.linkText,
+    createdAt: new Date(server.createdAt),
+    updatedAt: new Date(server.updatedAt),
+    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
+  };
+}
+
+/**
  * Upsert items to local database with conflict resolution
  */
 export async function upsertItems(
@@ -228,6 +247,11 @@ export async function upsertItems(
     case 'events': {
       const localItems = (filteredItems as ServerEvent[]).map(serverEventToLocal);
       await db.calendarEvents.bulkPut(localItems);
+      break;
+    }
+    case 'references': {
+      const localItems = (filteredItems as ServerReference[]).map(serverReferenceToLocal);
+      await db.references.bulkPut(localItems);
       break;
     }
   }
