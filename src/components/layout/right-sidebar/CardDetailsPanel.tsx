@@ -522,7 +522,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
     setIsExporting(true);
     try {
-      const newNoteId = await createCard({
+      const newNote = await createCard({
         type: 'md-note',
         title: `Notes on: ${card.title}`,
         content: notesContent,
@@ -535,7 +535,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       });
 
       // Store the exported note ID on the card
-      await updateCard(card.id, { exportedNoteId: newNoteId });
+      await updateCard(card.id, { exportedNoteId: newNote.id });
 
       toast({
         type: 'success',
