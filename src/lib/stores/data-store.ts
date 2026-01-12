@@ -419,30 +419,41 @@ export const useDataStore = create<DataState>((set, get) => ({
   loadAll: async (workspaceId) => {
     set({ isLoading: true, error: null });
     try {
-      // Sync schedule tags for cards (handle day changes: scheduled -> due-today -> overdue)
-      const cards = await db.cards
-        .where('workspaceId')
-        .equals(workspaceId)
-        .filter((c) => !c._deleted)
-        .toArray();
+      // Only check schedule tags once per day (not on every app load)
+      // This prevents unnecessary sync queue items and potential race conditions
+      const SCHEDULE_CHECK_KEY = 'pawkit:lastScheduleTagCheckDate';
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const lastCheckDate = localStorage.getItem(SCHEDULE_CHECK_KEY);
 
-      const cardsToUpdate: { id: string; tags: string[] }[] = [];
-      for (const card of cards) {
-        const updatedTags = getUpdatedScheduleTagsIfNeeded(card);
-        if (updatedTags) {
-          cardsToUpdate.push({ id: card.id, tags: updatedTags });
+      if (lastCheckDate !== today) {
+        // It's a new day - check and update schedule tags
+        const cards = await db.cards
+          .where('workspaceId')
+          .equals(workspaceId)
+          .filter((c) => !c._deleted)
+          .toArray();
+
+        const cardsToUpdate: { id: string; tags: string[] }[] = [];
+        for (const card of cards) {
+          const updatedTags = getUpdatedScheduleTagsIfNeeded(card);
+          if (updatedTags) {
+            cardsToUpdate.push({ id: card.id, tags: updatedTags });
+          }
         }
-      }
 
-      // Batch update cards that need schedule tag sync
-      if (cardsToUpdate.length > 0) {
-        await Promise.all(
-          cardsToUpdate.map(async ({ id, tags }) => {
-            await db.cards.update(id, { tags, _synced: false, _lastModified: new Date() });
-            // Schedule tag updates are local-only, skip conflict check
-            await addToQueue('card', id, 'update', { tags }, { skipConflictCheck: true });
-          })
-        );
+        // Batch update cards that need schedule tag sync
+        if (cardsToUpdate.length > 0) {
+          await Promise.all(
+            cardsToUpdate.map(async ({ id, tags }) => {
+              await db.cards.update(id, { tags, _synced: false, _lastModified: new Date() });
+              // Schedule tag updates are local-only, skip conflict check
+              await addToQueue('card', id, 'update', { tags }, { skipConflictCheck: true });
+            })
+          );
+        }
+
+        // Mark today as checked
+        localStorage.setItem(SCHEDULE_CHECK_KEY, today);
       }
 
       set({ isLoading: false });

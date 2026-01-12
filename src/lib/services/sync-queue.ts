@@ -311,23 +311,40 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       if (response.status === 409 && entityType === 'card' && operation === 'update') {
         const conflictData = await response.json();
         if (conflictData.code === 'VERSION_CONFLICT') {
-          // If skipConflictCheck is true, just accept server data without creating conflict copy
+          const serverCard = conflictData.serverCard;
+          const serverVersion = serverCard.version as number;
+
+          // Get current local card data
+          const localCard = await db.cards.get(entityId);
+
+          // Accept server version number to sync versions
+          await db.cards.update(entityId, {
+            version: serverVersion,
+            _serverVersion: new Date().toISOString(),
+          });
+
+          // If skipConflictCheck is true, we're done - accept server version
           if (item.skipConflictCheck) {
             log.debug(`Accepting server version for card ${entityId} (skipConflictCheck=true)`);
-            const serverCard = conflictData.serverCard;
-            await db.cards.update(entityId, {
-              version: serverCard.version,
-              _synced: true,
-              _serverVersion: new Date().toISOString(),
-            });
+            await db.cards.update(entityId, { _synced: true });
             await db.syncQueue.delete(item.id!);
             return;
           }
 
-          log.warn(`Version conflict detected for card ${entityId}`);
-          await handleCardConflict(entityId, conflictData.serverCard);
-          // Remove from queue - conflict has been handled
+          // For regular updates: local is source of truth - re-queue to push local changes
+          // This overwrites server with local data without creating duplicate cards
+          log.warn(`Version conflict for card ${entityId} - re-queueing to push local changes (no duplicate created)`);
+
+          // Remove the current queue item first
           await db.syncQueue.delete(item.id!);
+
+          // Re-queue with skipConflictCheck so it sends without expectedVersion
+          // This will overwrite server with our local data
+          if (localCard && payload) {
+            await addToQueue('card', entityId, 'update', payload, { skipConflictCheck: true });
+            // Trigger sync to process immediately
+            setTimeout(() => triggerSync(), 100);
+          }
           return;
         }
       }
@@ -770,9 +787,10 @@ const CONFLICT_RATE_WINDOW_MS = 60000; // 1 minute window
 let recentConflictTimestamps: number[] = [];
 
 /**
- * Handle a version conflict for a card
- * Creates a conflict copy of the local card and links both with conflict tag
+ * @deprecated No longer used - conflicts are now resolved by pushing local changes
+ * without creating duplicates. Kept for reference and potential future use.
  *
+ * Previously: Creates a conflict copy of the local card and links both with conflict tag
  * Rate limited to prevent mass duplications from bulk updates
  */
 async function handleCardConflict(
