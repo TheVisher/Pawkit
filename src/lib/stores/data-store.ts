@@ -14,6 +14,7 @@ import {
   addCardToPawkit,
   removeCardFromPawkit,
 } from '@/lib/migrations/tag-architecture-migration';
+import { slugify } from '@/lib/utils';
 
 // Type declaration for debug helpers exposed on window
 declare global {
@@ -76,6 +77,7 @@ interface DataState {
   createCollection: (collection: Omit<LocalCollection, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCollection>;
   updateCollection: (id: string, updates: Partial<LocalCollection>) => Promise<void>;
   deleteCollection: (id: string) => Promise<void>;
+  renamePawkit: (id: string, newName: string) => Promise<{ success: boolean; error?: string }>;
 
   // Bulk actions
   loadAll: (workspaceId: string) => Promise<void>;
@@ -352,6 +354,62 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Queue sync and trigger immediately (delete is a discrete action)
     await addToQueue('collection', id, 'delete');
     triggerSync();
+  },
+
+  // Rename a Pawkit - updates both name and slug, and updates all card tags
+  renamePawkit: async (id, newName) => {
+    const existing = await db.collections.get(id);
+    if (!existing) return { success: false, error: 'Pawkit not found' };
+    if (existing.isSystem) return { success: false, error: 'Cannot rename system Pawkits' };
+
+    const newSlug = slugify(newName);
+    const oldSlug = existing.slug;
+
+    // Check if new slug already exists (different collection)
+    if (newSlug !== oldSlug) {
+      const slugExists = await db.collections
+        .where('[workspaceId+slug]')
+        .equals([existing.workspaceId, newSlug])
+        .first();
+
+      if (slugExists && slugExists.id !== id && !slugExists._deleted) {
+        return { success: false, error: 'A Pawkit with this name already exists' };
+      }
+    }
+
+    // Update the collection
+    const updated = markModified({
+      ...existing,
+      name: newName.trim(),
+      slug: newSlug,
+      updatedAt: new Date(),
+    });
+
+    await db.collections.put(updated);
+    await addToQueue('collection', id, 'update', { name: newName.trim(), slug: newSlug });
+
+    // Update all cards that have the old slug in their tags
+    if (newSlug !== oldSlug) {
+      const cardsWithOldSlug = await db.cards
+        .where('workspaceId')
+        .equals(existing.workspaceId)
+        .filter((card) => !card._deleted && card.tags?.includes(oldSlug))
+        .toArray();
+
+      for (const card of cardsWithOldSlug) {
+        const newTags = card.tags.map((tag) => (tag === oldSlug ? newSlug : tag));
+        await db.cards.update(card.id, {
+          tags: newTags,
+          _synced: false,
+          _lastModified: new Date(),
+        });
+        // Tag updates are local-only, skip conflict check
+        await addToQueue('card', card.id, 'update', { tags: newTags }, { skipConflictCheck: true });
+      }
+    }
+
+    triggerSync();
+    return { success: true };
   },
 
   // ==========================================================================
