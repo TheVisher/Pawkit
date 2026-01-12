@@ -509,6 +509,26 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     updateCard(card.id, { notes: isEmpty ? undefined : html });
   }, [card.id, updateCard]);
 
+  // Helper: Parse notes HTML into individual highlight blocks
+  // Each highlight is: <blockquote>...</blockquote><p><em>Highlighted on...</em></p><p></p>
+  const parseHighlightBlocks = useCallback((html: string): string[] => {
+    if (!html) return [];
+    const blocks: string[] = [];
+    // Match blockquote + following paragraph(s) until next blockquote or end
+    const pattern = /<blockquote>[\s\S]*?<\/blockquote>[\s\S]*?(?=<blockquote>|$)/g;
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      blocks.push(match[0].trim());
+    }
+    return blocks;
+  }, []);
+
+  // Count current highlights
+  const currentHighlights = useMemo(() => parseHighlightBlocks(card.notes || ''), [card.notes, parseHighlightBlocks]);
+  const totalHighlightCount = currentHighlights.length;
+  const exportedCount = card.exportedHighlightCount || 0;
+  const newHighlightCount = totalHighlightCount - exportedCount;
+
   // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
     const notesContent = card.notes;
@@ -534,10 +554,10 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
         isFileCard: false,
       });
 
-      // Store the exported note ID and snapshot of what was exported
+      // Store the exported note ID and count of highlights exported
       await updateCard(card.id, {
         exportedNoteId: newNote.id,
-        lastExportedNotes: notesContent,
+        exportedHighlightCount: totalHighlightCount,
       });
 
       toast({
@@ -553,19 +573,10 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [card.notes, card.title, card.workspaceId, card.id, createCard, updateCard, toast]);
+  }, [card.notes, card.title, card.workspaceId, card.id, totalHighlightCount, createCard, updateCard, toast]);
 
-  // Update existing exported note by appending new content
+  // Update existing exported note by appending only NEW highlights
   const handleUpdateNote = useCallback(async () => {
-    const notesContent = card.notes;
-    if (!notesContent || notesContent === '<p></p>') {
-      toast({
-        type: 'warning',
-        message: 'No notes to export',
-      });
-      return;
-    }
-
     if (!card.exportedNoteId) {
       toast({
         type: 'warning',
@@ -580,45 +591,38 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
         type: 'warning',
         message: 'Original note not found, use New Note',
       });
-      // Clear the invalid exportedNoteId
-      await updateCard(card.id, { exportedNoteId: undefined });
+      await updateCard(card.id, { exportedNoteId: undefined, exportedHighlightCount: undefined });
+      return;
+    }
+
+    // Get only the new highlights (after the previously exported count)
+    const newHighlights = currentHighlights.slice(exportedCount);
+    if (newHighlights.length === 0) {
+      toast({
+        type: 'info',
+        message: 'No new notes to add',
+      });
       return;
     }
 
     setIsUpdating(true);
     try {
-      // Calculate delta - only content that's new since last export
-      let deltaContent = notesContent;
-      const lastExported = card.lastExportedNotes;
+      // Join new highlights into content
+      const deltaContent = newHighlights.join('');
 
-      if (lastExported && notesContent.startsWith(lastExported)) {
-        // Notes were appended - extract just the new part
-        deltaContent = notesContent.slice(lastExported.length).trim();
-
-        // If no new content after the delta extraction
-        if (!deltaContent || deltaContent === '<p></p>') {
-          toast({
-            type: 'info',
-            message: 'No new notes to add',
-          });
-          setIsUpdating(false);
-          return;
-        }
-      }
-
-      // Append delta to the exported note
+      // Append to the exported note
       const existingContent = exportedNote.content || '';
       const separator = existingContent && existingContent !== '<p></p>' ? '<p></p>' : '';
       const newContent = existingContent ? `${existingContent}${separator}${deltaContent}` : deltaContent;
 
       await updateCard(card.exportedNoteId, { content: newContent });
 
-      // Update the snapshot of what's been exported
-      await updateCard(card.id, { lastExportedNotes: notesContent });
+      // Update the exported count
+      await updateCard(card.id, { exportedHighlightCount: totalHighlightCount });
 
       toast({
         type: 'success',
-        message: 'Note updated',
+        message: `Added ${newHighlights.length} new highlight${newHighlights.length > 1 ? 's' : ''}`,
       });
     } catch (error) {
       console.error('Failed to update note:', error);
@@ -629,12 +633,11 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsUpdating(false);
     }
-  }, [card.notes, card.exportedNoteId, card.id, card.lastExportedNotes, noteExists, exportedNote, updateCard, toast]);
+  }, [card.exportedNoteId, card.id, noteExists, currentHighlights, exportedCount, totalHighlightCount, exportedNote, updateCard, toast]);
 
   const hasNotes = card.notes && card.notes !== '<p></p>';
-  // Can update if: has notes, has exported note, note exists, AND there's new content
-  const hasNewContent = hasNotes && (!card.lastExportedNotes || card.notes !== card.lastExportedNotes);
-  const canUpdate = hasNotes && card.exportedNoteId && noteExists && hasNewContent;
+  // Can update if: has notes, has exported note, note exists, AND there are new highlights
+  const canUpdate = hasNotes && card.exportedNoteId && noteExists && newHighlightCount > 0;
 
   return (
     <div className="flex flex-col h-full">
