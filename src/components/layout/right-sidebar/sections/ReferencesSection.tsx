@@ -7,6 +7,7 @@
 
 import { useMemo } from 'react';
 import { AtSign, Calendar, FileText, Link2, FolderOpen, Trash2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { useReferences, useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -121,75 +122,78 @@ export function ReferencesSection({ cardId, workspaceId }: ReferencesSectionProp
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-2 text-text-muted mb-3">
-        <AtSign className="h-5 w-5" />
-        <span className="text-xs font-medium uppercase">References</span>
-      </div>
+    <>
+      <div>
+        <div className="flex items-center gap-2 text-text-muted mb-3">
+          <AtSign className="h-5 w-5" />
+          <span className="text-xs font-medium uppercase">References</span>
+        </div>
 
-      <div className="space-y-3">
-        {/* Date references */}
-        {grouped.dates.length > 0 && (
-          <div>
-            <div className="text-[10px] font-medium uppercase text-text-muted mb-1 px-2">
-              Scheduled
-            </div>
-            {grouped.dates.map((ref) => (
-              <ReferenceItem
-                key={ref.id}
-                reference={ref}
-                label={ref.parsedDate ? format(ref.parsedDate, 'MMMM d, yyyy') : ref.linkText}
-                subtitle={ref.parsedDate ? format(ref.parsedDate, 'EEEE') : undefined}
-                icon={<Calendar className="h-3.5 w-3.5" />}
-                onClick={() => handleDateClick(ref.targetId)}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* Card references */}
-        {grouped.cards.length > 0 && (
-          <div>
-            <div className="text-[10px] font-medium uppercase text-text-muted mb-1 px-2">
-              Cards
-            </div>
-            {grouped.cards.map((ref) => {
-              const isNote = ref.card && ['md-note', 'text-note'].includes(ref.card.type);
-              return (
+        <div className="space-y-3">
+          {/* Date references */}
+          {grouped.dates.length > 0 && (
+            <div>
+              <div className="text-[10px] font-medium uppercase text-text-muted mb-1 px-2">
+                Scheduled
+              </div>
+              {grouped.dates.map((ref) => (
                 <ReferenceItem
                   key={ref.id}
                   reference={ref}
-                  label={ref.card?.title || ref.linkText}
-                  subtitle={ref.isDeleted ? 'Deleted' : (isNote ? 'Note' : ref.card?.domain)}
-                  icon={isNote ? <FileText className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                  onClick={() => !ref.isDeleted && handleCardClick(ref.targetId)}
+                  label={ref.parsedDate ? format(ref.parsedDate, 'MMMM d, yyyy') : ref.linkText}
+                  subtitle={ref.parsedDate ? format(ref.parsedDate, 'EEEE') : undefined}
+                  icon={<Calendar className="h-3.5 w-3.5" />}
+                  onClick={() => handleDateClick(ref.targetId)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Card references */}
+          {grouped.cards.length > 0 && (
+            <div>
+              <div className="text-[10px] font-medium uppercase text-text-muted mb-1 px-2">
+                Cards
+              </div>
+              {grouped.cards.map((ref) => {
+                const isNote = ref.card && ['md-note', 'text-note'].includes(ref.card.type);
+                return (
+                  <ReferenceItem
+                    key={ref.id}
+                    reference={ref}
+                    label={ref.card?.title || ref.linkText}
+                    subtitle={ref.isDeleted ? 'Deleted' : (isNote ? 'Note' : ref.card?.domain)}
+                    icon={isNote ? <FileText className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                    onClick={() => !ref.isDeleted && handleCardClick(ref.targetId)}
+                    isDeleted={ref.isDeleted}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pawkit references */}
+          {grouped.pawkits.length > 0 && (
+            <div>
+              <div className="text-[10px] font-medium uppercase text-text-muted mb-1 px-2">
+                Pawkits
+              </div>
+              {grouped.pawkits.map((ref) => (
+                <ReferenceItem
+                  key={ref.id}
+                  reference={ref}
+                  label={ref.collection?.name || ref.linkText}
+                  icon={<FolderOpen className="h-3.5 w-3.5" />}
+                  onClick={() => !ref.isDeleted && handlePawkitClick(ref.targetId)}
                   isDeleted={ref.isDeleted}
                 />
-              );
-            })}
-          </div>
-        )}
-
-        {/* Pawkit references */}
-        {grouped.pawkits.length > 0 && (
-          <div>
-            <div className="text-[10px] font-medium uppercase text-text-muted mb-1 px-2">
-              Pawkits
+              ))}
             </div>
-            {grouped.pawkits.map((ref) => (
-              <ReferenceItem
-                key={ref.id}
-                reference={ref}
-                label={ref.collection?.name || ref.linkText}
-                icon={<FolderOpen className="h-3.5 w-3.5" />}
-                onClick={() => !ref.isDeleted && handlePawkitClick(ref.targetId)}
-                isDeleted={ref.isDeleted}
-              />
-            ))}
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
+      <Separator className="bg-border-subtle mt-4" />
+    </>
   );
 }
 

@@ -1859,6 +1859,60 @@ const percentUsed = (estimate.usage / estimate.quota) * 100;
 
 **Why valuable**: Surfaces forgotten connections in your knowledge base.
 
+### Color Palette Extraction (Mymind-style)
+
+**Inspiration**: Mymind extracts dominant colors from images and allows searching by color.
+
+**Concept**: Extract 3-5 dominant colors from card thumbnails and display clickable swatches in the card detail sidebar.
+
+**Features**:
+- [ ] Extract colors on card save - Process thumbnail to find dominant colors
+- [ ] Store in card metadata - `colorPalette: string[]` (hex values)
+- [ ] Display swatches in sidebar - Clickable color circles below thumbnail
+- [ ] Copy color on click - Click swatch → copies hex to clipboard
+- [ ] Filter by color (future) - Search/filter library by dominant color
+
+**Technical Approaches**:
+| Library | Pros | Cons |
+|---------|------|------|
+| `color-thief` | Popular, battle-tested | Requires Canvas API |
+| Canvas API (manual) | No dependencies | More code to write |
+| `vibrant.js` | Named palettes (vibrant, muted) | Heavier dependency |
+
+**Implementation Sketch**:
+```typescript
+// Extract on card save or thumbnail load
+async function extractPalette(imageUrl: string): Promise<string[]> {
+  const colorThief = new ColorThief();
+  const img = await loadImage(imageUrl);
+  const palette = colorThief.getPalette(img, 5); // Get 5 dominant colors
+  return palette.map(rgb => rgbToHex(rgb));
+}
+
+// Store in card metadata
+interface Card {
+  // ...existing fields
+  colorPalette?: string[]; // ['#4A90D9', '#2C3E50', '#E74C3C', ...]
+}
+```
+
+**UI Display**:
+```
+┌─────────────────────────────────┐
+│  [Thumbnail Image]              │
+│  ● ● ● ● ●  ← Color swatches    │
+│                                 │
+│  Tags: #design #inspiration     │
+└─────────────────────────────────┘
+```
+
+**Use Cases**:
+- Design inspiration - Find all "blue" or "warm" cards
+- Mood boards - Group cards by color aesthetic
+- Visual memory - "I remember it had orange in it"
+
+**Prior Art**: Mymind, Pinterest (implicit), Dribbble color search
+
 ---
 
 ## 20. Onboarding & User Experience

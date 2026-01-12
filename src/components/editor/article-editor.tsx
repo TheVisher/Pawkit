@@ -285,8 +285,8 @@ export function ArticleEditor({
           className={cn(
             'flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-all',
             editor.isActive('highlight')
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-              : 'text-text-secondary hover:text-text-primary hover:bg-white/10'
+              ? 'bg-amber-500/30 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/40 dark:border-amber-500/30'
+              : 'text-text-secondary hover:text-text-primary hover:bg-black/5 dark:hover:bg-white/10'
           )}
           title="Toggle highlight (Cmd+Shift+H)"
         >

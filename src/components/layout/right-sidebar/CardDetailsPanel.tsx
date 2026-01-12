@@ -7,9 +7,10 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen, RefreshCw } from 'lucide-react';
+import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen, RefreshCw, Link2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { getTagStyle } from '@/lib/utils/tag-colors';
 import { TagInput } from '@/components/tags/tag-input';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCardDetailSidebar, usePendingNoteText } from '@/lib/stores/ui-store';
@@ -42,6 +43,7 @@ interface CardDetailsPanelProps {
 export function CardDetailsPanel({ card, collections, isTransitioning }: CardDetailsPanelProps) {
   const [copied, setCopied] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
+  const [isEditingPawkits, setIsEditingPawkits] = useState(false);
   const updateCard = useDataStore((s) => s.updateCard);
   const { cardDetailTab, setTab } = useCardDetailSidebar();
   const visualStyle = useSettingsStore((s) => s.visualStyle);
@@ -165,6 +167,8 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
             copied={copied}
             isEditingTags={isEditingTags}
             setIsEditingTags={setIsEditingTags}
+            isEditingPawkits={isEditingPawkits}
+            setIsEditingPawkits={setIsEditingPawkits}
             isNoteCard={isNoteCard}
             supertagWithSections={supertagWithSections}
             handleCopyUrl={handleCopyUrl}
@@ -178,6 +182,24 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
         {cardDetailTab === 'notes' && <NotesTabContent card={card} />}
         {cardDetailTab === 'chat' && <ChatTabContent />}
       </div>
+
+      {/* Metadata - Anchored at bottom (only on Details tab) */}
+      {cardDetailTab === 'details' && (
+        <div className="flex-shrink-0 px-4 pb-4">
+          <div className="pt-3 border-t border-border-subtle">
+            <div className="space-y-1 text-xs text-text-muted">
+              <div className="flex justify-between">
+                <span>Updated</span>
+                <span>{new Date(card.updatedAt).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Created</span>
+                <span>{new Date(card.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -189,6 +211,8 @@ interface DetailsTabContentProps {
   copied: boolean;
   isEditingTags: boolean;
   setIsEditingTags: (editing: boolean) => void;
+  isEditingPawkits: boolean;
+  setIsEditingPawkits: (editing: boolean) => void;
   isNoteCard: boolean;
   supertagWithSections: ReturnType<typeof findSupertagsInTags>[0] | null;
   handleCopyUrl: () => void;
@@ -205,6 +229,8 @@ function DetailsTabContent({
   copied,
   isEditingTags,
   setIsEditingTags,
+  isEditingPawkits,
+  setIsEditingPawkits,
   isNoteCard,
   supertagWithSections,
   handleCopyUrl,
@@ -359,7 +385,8 @@ function DetailsTabContent({
             {card.tags.map((tag) => (
               <span
                 key={tag}
-                className="px-2.5 py-1 text-xs rounded-md bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30"
+                className="px-2.5 py-1 text-xs rounded-md font-medium"
+                style={getTagStyle(tag)}
               >
                 {tag}
               </span>
@@ -397,16 +424,93 @@ function DetailsTabContent({
 
       {/* Pawkit (Collection) Section */}
       <div>
-        <div className="flex items-center gap-2 text-text-muted mb-3">
-          <FolderOpen className="h-5 w-5" />
-          <span className="text-xs font-medium uppercase">Pawkits</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-text-muted">
+            <FolderOpen className="h-5 w-5" />
+            <span className="text-xs font-medium uppercase">Pawkits</span>
+          </div>
+          {!isEditingPawkits && (
+            <button
+              onClick={() => setIsEditingPawkits(true)}
+              className="p-1 rounded hover:bg-bg-surface-2 text-text-muted hover:text-text-primary transition-colors"
+              title="Add to Pawkit"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {/* Filter card.tags to only show Pawkit tags (tags that match a Pawkit slug) */}
         {(() => {
           const pawkitSlugs = new Set(collections.map(c => c.slug));
           const cardPawkitTags = (card.tags || []).filter(tag => pawkitSlugs.has(tag));
+          const availablePawkits = collections.filter(c => !cardPawkitTags.includes(c.slug));
+
+          if (isEditingPawkits) {
+            return (
+              <div className="space-y-2">
+                {/* Show current Pawkits with remove option */}
+                {cardPawkitTags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {cardPawkitTags.map((collectionSlug) => {
+                      const collection = collections.find(c => c.slug === collectionSlug);
+                      return (
+                        <span
+                          key={collectionSlug}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-bg-surface-2 text-text-primary border border-border-subtle group"
+                        >
+                          {collection?.name || collectionSlug}
+                          <button
+                            onClick={() => {
+                              const newTags = (card.tags || []).filter(t => t !== collectionSlug);
+                              updateCard(card.id, { tags: newTags });
+                            }}
+                            className="opacity-60 hover:opacity-100 hover:text-red-400 transition-opacity"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* Show available Pawkits to add */}
+                {availablePawkits.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="text-[10px] text-text-muted uppercase">Add to Pawkit:</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {availablePawkits.map((collection) => (
+                        <button
+                          key={collection.id}
+                          onClick={() => {
+                            const newTags = [...(card.tags || []), collection.slug];
+                            updateCard(card.id, { tags: newTags });
+                          }}
+                          className="px-2 py-1 text-xs rounded-md bg-bg-surface-1 text-text-secondary border border-border-subtle hover:bg-bg-surface-2 hover:text-text-primary hover:border-[var(--color-accent)]/30 transition-colors"
+                        >
+                          + {collection.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-muted italic">No more Pawkits available</p>
+                )}
+                <button
+                  onClick={() => setIsEditingPawkits(false)}
+                  className="text-xs text-text-muted hover:text-text-primary"
+                >
+                  Done
+                </button>
+              </div>
+            );
+          }
+
           return cardPawkitTags.length > 0 ? (
-            <div className="flex flex-wrap gap-1.5">
+            <div
+              className="flex flex-wrap gap-1.5 cursor-pointer"
+              onClick={() => setIsEditingPawkits(true)}
+              title="Click to edit Pawkits"
+            >
               {cardPawkitTags.map((collectionSlug) => {
                 const collection = collections.find(c => c.slug === collectionSlug);
                 return (
@@ -420,17 +524,20 @@ function DetailsTabContent({
               })}
             </div>
           ) : (
-            <p className="text-xs text-text-muted italic">Not in any Pawkit</p>
+            <button
+              onClick={() => setIsEditingPawkits(true)}
+              className="text-xs text-text-muted italic hover:text-text-primary"
+            >
+              Click to add to a Pawkit
+            </button>
           );
         })()}
       </div>
 
       <Separator className="bg-border-subtle" />
 
-      {/* References Section - outgoing @ mentions */}
+      {/* References Section - outgoing @ mentions (includes its own separator) */}
       <ReferencesSection cardId={card.id} workspaceId={card.workspaceId} />
-
-      <Separator className="bg-border-subtle" />
 
       {/* Backlinks Section - incoming @ mentions */}
       <BacklinksSection card={card} workspaceId={card.workspaceId} />
@@ -445,18 +552,6 @@ function DetailsTabContent({
         </div>
         <p className="text-xs text-text-muted italic">No attachments</p>
       </div>
-
-      {/* Metadata */}
-      <div className="pt-2 space-y-1 text-xs text-text-muted">
-        <div className="flex justify-between">
-          <span>Created</span>
-          <span>{new Date(card.createdAt).toLocaleDateString()}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Updated</span>
-          <span>{new Date(card.updatedAt).toLocaleDateString()}</span>
-        </div>
-      </div>
     </div>
   );
 }
@@ -469,6 +564,7 @@ interface NotesTabContentProps {
 function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
   const updateCard = useDataStore((s) => s.updateCard);
   const createCard = useDataStore((s) => s.createCard);
+  const createReference = useDataStore((s) => s.createReference);
   const toast = useToastStore((s) => s.toast);
   const { pendingNoteText, clearPendingNoteText } = usePendingNoteText();
   const [isExporting, setIsExporting] = useState(false);
@@ -509,25 +605,62 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     updateCard(card.id, { notes: isEmpty ? undefined : html });
   }, [card.id, updateCard]);
 
-  // Helper: Parse notes HTML into individual highlight blocks
-  // Each highlight is: <blockquote>...</blockquote><p><em>Highlighted on...</em></p><p></p>
-  const parseHighlightBlocks = useCallback((html: string): string[] => {
+  // Helper: Parse notes HTML into individual content blocks
+  // Handles both:
+  // - Highlights: <blockquote>...</blockquote><p><em>Highlighted on...</em></p>
+  // - Regular notes: <p>...</p> (non-empty paragraphs not part of a highlight)
+  const parseContentBlocks = useCallback((html: string): string[] => {
     if (!html) return [];
     const blocks: string[] = [];
-    // Match blockquote + following paragraph(s) until next blockquote or end
-    const pattern = /<blockquote>[\s\S]*?<\/blockquote>[\s\S]*?(?=<blockquote>|$)/g;
+
+    // First, extract all blockquote-based highlights (blockquote + following metadata)
+    // These get priority since they're distinct units
+    const highlightPattern = /<blockquote>[\s\S]*?<\/blockquote>(?:<p><em>Highlighted on[\s\S]*?<\/em><\/p>)?(?:<p><\/p>)?/g;
+    let lastIndex = 0;
     let match;
-    while ((match = pattern.exec(html)) !== null) {
+
+    while ((match = highlightPattern.exec(html)) !== null) {
+      // Check for any regular content BEFORE this highlight
+      const beforeContent = html.slice(lastIndex, match.index).trim();
+      if (beforeContent && beforeContent !== '<p></p>') {
+        // Parse any paragraphs in this section
+        const paragraphs = beforeContent.match(/<p>(?!<\/p>)[\s\S]*?<\/p>/g);
+        if (paragraphs) {
+          paragraphs.forEach(p => {
+            // Skip empty paragraphs and highlight metadata that might have been orphaned
+            if (p !== '<p></p>' && !p.includes('<em>Highlighted on')) {
+              blocks.push(p);
+            }
+          });
+        }
+      }
+
+      // Add the highlight block
       blocks.push(match[0].trim());
+      lastIndex = match.index + match[0].length;
     }
+
+    // Check for any remaining content after the last highlight
+    const afterContent = html.slice(lastIndex).trim();
+    if (afterContent && afterContent !== '<p></p>') {
+      const paragraphs = afterContent.match(/<p>(?!<\/p>)[\s\S]*?<\/p>/g);
+      if (paragraphs) {
+        paragraphs.forEach(p => {
+          if (p !== '<p></p>' && !p.includes('<em>Highlighted on')) {
+            blocks.push(p);
+          }
+        });
+      }
+    }
+
     return blocks;
   }, []);
 
-  // Count current highlights
-  const currentHighlights = useMemo(() => parseHighlightBlocks(card.notes || ''), [card.notes, parseHighlightBlocks]);
-  const totalHighlightCount = currentHighlights.length;
+  // Count current content blocks (both highlights and regular notes)
+  const currentContentBlocks = useMemo(() => parseContentBlocks(card.notes || ''), [card.notes, parseContentBlocks]);
+  const totalBlockCount = currentContentBlocks.length;
   const exportedCount = card.exportedHighlightCount || 0;
-  const newHighlightCount = totalHighlightCount - exportedCount;
+  const newBlockCount = totalBlockCount - exportedCount;
 
   // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
@@ -542,10 +675,15 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
     setIsExporting(true);
     try {
+      // Add a source line at the top linking back to the original card
+      const sourceTitle = card.title || 'Untitled';
+      const sourceHeader = `<p><em>Source: ${sourceTitle}</em></p><hr/>`;
+      const contentWithSource = `${sourceHeader}${notesContent}`;
+
       const newNote = await createCard({
         type: 'md-note',
-        title: `Notes on: ${card.title}`,
-        content: notesContent,
+        title: `Notes on: ${sourceTitle}`,
+        content: contentWithSource,
         workspaceId: card.workspaceId,
         tags: [],
         url: '',
@@ -554,15 +692,24 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
         isFileCard: false,
       });
 
-      // Store the exported note ID and count of highlights exported
+      // Create a reference from the new note to the source card (backlink)
+      await createReference({
+        workspaceId: card.workspaceId,
+        sourceId: newNote.id,
+        targetId: card.id,
+        targetType: 'card',
+        linkText: card.title || 'Untitled',
+      });
+
+      // Store the exported note ID and count of content blocks exported
       await updateCard(card.id, {
         exportedNoteId: newNote.id,
-        exportedHighlightCount: totalHighlightCount,
+        exportedHighlightCount: totalBlockCount,
       });
 
       toast({
         type: 'success',
-        message: 'Note created',
+        message: 'Note created and linked',
       });
     } catch (error) {
       console.error('Failed to export notes:', error);
@@ -573,9 +720,9 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [card.notes, card.title, card.workspaceId, card.id, totalHighlightCount, createCard, updateCard, toast]);
+  }, [card.notes, card.title, card.workspaceId, card.id, totalBlockCount, createCard, createReference, updateCard, toast]);
 
-  // Update existing exported note by appending only NEW highlights
+  // Update existing exported note by appending only NEW content blocks
   const handleUpdateNote = useCallback(async () => {
     if (!card.exportedNoteId) {
       toast({
@@ -595,9 +742,9 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       return;
     }
 
-    // Get only the new highlights (after the previously exported count)
-    const newHighlights = currentHighlights.slice(exportedCount);
-    if (newHighlights.length === 0) {
+    // Get only the new content blocks (after the previously exported count)
+    const newBlocks = currentContentBlocks.slice(exportedCount);
+    if (newBlocks.length === 0) {
       toast({
         type: 'info',
         message: 'No new notes to add',
@@ -607,8 +754,8 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
     setIsUpdating(true);
     try {
-      // Join new highlights into content
-      const deltaContent = newHighlights.join('');
+      // Join new blocks into content
+      const deltaContent = newBlocks.join('');
 
       // Append to the exported note
       const existingContent = exportedNote.content || '';
@@ -618,11 +765,11 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       await updateCard(card.exportedNoteId, { content: newContent });
 
       // Update the exported count
-      await updateCard(card.id, { exportedHighlightCount: totalHighlightCount });
+      await updateCard(card.id, { exportedHighlightCount: totalBlockCount });
 
       toast({
         type: 'success',
-        message: `Added ${newHighlights.length} new highlight${newHighlights.length > 1 ? 's' : ''}`,
+        message: `Added ${newBlocks.length} new note${newBlocks.length > 1 ? 's' : ''}`,
       });
     } catch (error) {
       console.error('Failed to update note:', error);
@@ -633,11 +780,11 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsUpdating(false);
     }
-  }, [card.exportedNoteId, card.id, noteExists, currentHighlights, exportedCount, totalHighlightCount, exportedNote, updateCard, toast]);
+  }, [card.exportedNoteId, card.id, noteExists, currentContentBlocks, exportedCount, totalBlockCount, exportedNote, updateCard, toast]);
 
   const hasNotes = card.notes && card.notes !== '<p></p>';
-  // Can update if: has notes, has exported note, note exists, AND there are new highlights
-  const canUpdate = hasNotes && card.exportedNoteId && noteExists && newHighlightCount > 0;
+  // Can update if: has notes, has exported note, note exists, AND there are new content blocks
+  const canUpdate = hasNotes && card.exportedNoteId && noteExists && newBlockCount > 0;
 
   return (
     <div className="flex flex-col h-full">
