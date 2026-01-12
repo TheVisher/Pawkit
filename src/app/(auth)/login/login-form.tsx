@@ -75,7 +75,30 @@ function LoginFormInner() {
   };
 
   return (
-    <Card className="border-zinc-800 bg-zinc-900/50">
+    <div className="space-y-4 w-full max-w-md">
+      {/* V2 Migration Notice */}
+      <div className="p-4 bg-red-950/80 border border-red-800 rounded-lg text-sm">
+        <p className="font-semibold text-red-200 mb-2">
+          Welcome to Pawkit 2.0!
+        </p>
+        <p className="text-red-300/90 mb-3">
+          This is a completely rebuilt version of Pawkit. If you were using the previous version,
+          your data is still available at{' '}
+          <a
+            href="https://v1.getpawkit.com"
+            className="text-red-200 underline hover:text-white font-medium"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            v1.getpawkit.com
+          </a>
+        </p>
+        <p className="text-red-300/80 text-xs">
+          Need help migrating your data? Reach out to us and we&apos;ll assist you.
+        </p>
+      </div>
+
+      <Card className="border-zinc-800 bg-zinc-900/50">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl text-zinc-100">Welcome back</CardTitle>
         <CardDescription className="text-zinc-400">
@@ -182,6 +205,7 @@ function LoginFormInner() {
         </p>
       </CardFooter>
     </Card>
+    </div>
   );
 }
 
