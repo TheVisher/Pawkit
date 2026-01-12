@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSidebarSections } from "@/lib/stores/ui-store";
 
 interface SidebarSectionProps {
   title: string;
+  id?: string;
   icon?: LucideIcon;
   children: React.ReactNode;
   action?: React.ReactNode;
@@ -16,19 +17,22 @@ interface SidebarSectionProps {
 
 export function SidebarSection({
   title,
+  id,
   icon: Icon,
   children,
   action,
   defaultOpen = false,
   className,
 }: SidebarSectionProps) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const { sectionStates, toggle } = useSidebarSections();
+  const sectionId = id || title.toLowerCase().replace(/\s+/g, "-");
+  const isOpen = sectionStates[sectionId] ?? defaultOpen;
 
   return (
     <div className={cn("mb-1", className)}>
       <div
         className="flex items-center justify-between px-3 py-2 cursor-pointer transition-colors group relative rounded-xl select-none"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => toggle(sectionId)}
       >
         <div className="flex items-center gap-3 text-text-secondary group-hover:text-text-primary transition-colors relative z-10">
           {Icon && <Icon className="h-5 w-5" />}

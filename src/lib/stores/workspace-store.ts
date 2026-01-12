@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified } from '@/lib/db';
 import type { LocalWorkspace } from '@/lib/db';
+import { triggerSync } from '@/lib/services/sync-queue';
 
 interface WorkspaceState {
   // State
@@ -106,6 +107,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       retryCount: 0,
       createdAt: new Date(),
     });
+    triggerSync();
 
     set({ workspaces: [...workspaces, workspace] });
 
@@ -141,6 +143,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       retryCount: 0,
       createdAt: new Date(),
     });
+    triggerSync();
 
     // Update state
     set({
@@ -171,6 +174,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       retryCount: 0,
       createdAt: new Date(),
     });
+    triggerSync();
 
     // Update state
     const remaining = workspaces.filter((w) => w.id !== id);

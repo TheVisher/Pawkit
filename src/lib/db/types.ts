@@ -20,12 +20,20 @@ export interface SyncMetadata {
 // CORE ENTITIES
 // =============================================================================
 
+/**
+ * User preferences stored per workspace (synced across devices)
+ */
+export interface WorkspacePreferences {
+  recentTags?: string[];  // Recently used tags for quick access
+}
+
 export interface LocalWorkspace extends SyncMetadata {
   id: string;
   name: string;
   icon?: string;
   userId: string;
   isDefault: boolean;
+  preferences?: WorkspacePreferences;
   createdAt: Date;
   updatedAt: Date;
 }

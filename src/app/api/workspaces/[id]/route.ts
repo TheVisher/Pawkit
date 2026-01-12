@@ -163,6 +163,11 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (updates.name !== undefined) updateData.name = updates.name;
     if ('icon' in updates) updateData.icon = updates.icon;
     if (updates.isDefault !== undefined) updateData.isDefault = updates.isDefault;
+    if ('preferences' in updates) {
+      // Merge with existing preferences to avoid losing data
+      const existingPrefs = (existingWorkspace.preferences as Record<string, unknown>) || {};
+      updateData.preferences = { ...existingPrefs, ...updates.preferences };
+    }
 
     // 7. Update the workspace
     const workspace = await prisma.workspace.update({

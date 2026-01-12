@@ -57,6 +57,10 @@ model Workspace {
   user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   isDefault Boolean @default(false)
 
+  // User preferences synced across devices
+  // Example: { recentTags: ["work", "important", "todo"] }
+  preferences Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

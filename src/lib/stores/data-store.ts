@@ -315,8 +315,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.add(collection);
 
-    // Queue sync
+    // Queue sync and trigger immediately (create is a discrete action)
     await addToQueue('collection', collection.id, 'create');
+    triggerSync();
 
     return collection;
   },
@@ -334,8 +335,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.put(updated);
 
-    // Queue sync
+    // Queue sync and trigger immediately (update is a discrete action)
     await addToQueue('collection', id, 'update', updates as Record<string, unknown>);
+    triggerSync();
   },
 
   deleteCollection: async (id) => {
@@ -347,8 +349,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Soft delete in Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.put(deleted);
 
-    // Queue sync
+    // Queue sync and trigger immediately (delete is a discrete action)
     await addToQueue('collection', id, 'delete');
+    triggerSync();
   },
 
   // ==========================================================================
@@ -410,8 +413,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie (useLiveQuery in DataContext will auto-update)
     await db.calendarEvents.add(event);
 
-    // Queue sync
+    // Queue sync and trigger immediately (create is a discrete action)
     await addToQueue('event', event.id, 'create');
+    triggerSync();
 
     return event;
   },
@@ -429,8 +433,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie (useLiveQuery in DataContext will auto-update)
     await db.calendarEvents.put(updated);
 
-    // Queue sync
+    // Queue sync and trigger immediately (update is a discrete action)
     await addToQueue('event', id, 'update', updates as Record<string, unknown>);
+    triggerSync();
   },
 
   deleteEvent: async (id) => {
@@ -442,8 +447,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Soft delete in Dexie (useLiveQuery in DataContext will auto-update)
     await db.calendarEvents.put(deleted);
 
-    // Queue sync
+    // Queue sync and trigger immediately (delete is a discrete action)
     await addToQueue('event', id, 'delete');
+    triggerSync();
   },
 
   // ==========================================================================
@@ -462,8 +468,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie
     await db.references.add(ref);
 
-    // Queue sync
+    // Queue sync and trigger immediately (create is a discrete action)
     await addToQueue('reference', ref.id, 'create');
+    triggerSync();
 
     return ref;
   },
@@ -477,8 +484,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Soft delete in Dexie
     await db.references.put(deleted);
 
-    // Queue sync
+    // Queue sync and trigger immediately (delete is a discrete action)
     await addToQueue('reference', id, 'delete');
+    triggerSync();
   },
 
   deleteReferencesBySource: async (sourceId) => {
@@ -494,6 +502,11 @@ export const useDataStore = create<DataState>((set, get) => ({
       const deleted = markDeleted(ref);
       await db.references.put(deleted);
       await addToQueue('reference', ref.id, 'delete');
+    }
+
+    // Trigger sync once after all deletions are queued
+    if (refs.length > 0) {
+      triggerSync();
     }
   },
 

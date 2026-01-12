@@ -8,6 +8,13 @@
 import { z } from 'zod';
 
 /**
+ * Schema for workspace preferences (synced across devices)
+ */
+export const workspacePreferencesSchema = z.object({
+  recentTags: z.array(z.string()).optional(),
+}).passthrough(); // Allow future preference fields
+
+/**
  * Schema for creating a new workspace
  * Client can provide their own ID (for offline-first sync)
  */
@@ -21,6 +28,7 @@ export const createWorkspaceSchema = z.object({
   // Optional fields
   icon: z.string().nullish(), // Emoji or icon identifier
   isDefault: z.boolean().default(false),
+  preferences: workspacePreferencesSchema.nullish(),
 });
 
 /**
@@ -31,6 +39,7 @@ export const updateWorkspaceSchema = z.object({
   name: z.string().min(1).optional(),
   icon: z.string().nullish(),
   isDefault: z.boolean().optional(),
+  preferences: workspacePreferencesSchema.nullish(),
 });
 
 /**
