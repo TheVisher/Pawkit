@@ -29,7 +29,12 @@ interface RecentCardItemProps {
 
 function RecentCardItem({ card, onClick }: RecentCardItemProps) {
   const isUrl = card.type === 'url';
-  const timeAgo = formatDistanceToNow(new Date(card.createdAt), { addSuffix: true });
+  const [timeAgo, setTimeAgo] = useState<string>('');
+
+  // Calculate time on client only to avoid hydration mismatch
+  useEffect(() => {
+    setTimeAgo(formatDistanceToNow(new Date(card.createdAt), { addSuffix: true }));
+  }, [card.createdAt]);
 
   return (
     <button
