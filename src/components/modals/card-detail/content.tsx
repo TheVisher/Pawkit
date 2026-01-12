@@ -243,6 +243,8 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
           onClose={onClose}
           showFullReader={showFullReader}
           setShowFullReader={setShowFullReader}
+          onRequestExpandImage={() => setShowExpandedImage(true)}
+          hasImage={!!currentImage && !imageError}
         />
       </div>
     </div>

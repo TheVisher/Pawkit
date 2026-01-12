@@ -28,6 +28,8 @@ interface ArticleContentProps {
   onClose: () => void;
   showFullReader: boolean;
   setShowFullReader: (show: boolean) => void;
+  onRequestExpandImage?: () => void;
+  hasImage?: boolean;
   className?: string;
 }
 
@@ -39,6 +41,8 @@ export function ArticleContent({
   onClose,
   showFullReader,
   setShowFullReader,
+  onRequestExpandImage,
+  hasImage,
   className,
 }: ArticleContentProps) {
   const updateCard = useDataStore((s) => s.updateCard);
@@ -52,6 +56,15 @@ export function ArticleContent({
   const progressBarRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(card.readProgress || 0);
   const scrollPositionRef = useRef(card.lastScrollPosition || 0);
+
+  // Track if we've already auto-expanded to fullscreen image view
+  // This prevents bouncing back after user manually collapses
+  const hasAutoExpandedRef = useRef(false);
+
+  // Reset auto-expand tracking when card changes (modal opened for different card)
+  useEffect(() => {
+    hasAutoExpandedRef.current = false;
+  }, [card.id]);
 
   // Derived state
   const articleContent = card.articleContent || '';
@@ -80,6 +93,34 @@ export function ArticleContent({
       queueArticleExtraction(card.id);
     }
   }, [card.id, card.url, card.status, hasArticleContent]);
+
+  // Auto-expand image as fallback when article extraction has failed
+  // This provides a nicer UX than showing "Article not available" error
+  // Only triggers ONCE on initial load - respects user's manual toggle after that
+  useEffect(() => {
+    // Only trigger if:
+    // 1. No article content AND not a recent card that might still be extracting
+    // 2. Card has an image to show
+    // 3. We have a callback to expand the image
+    // 4. Not currently manually extracting
+    // 5. Haven't already auto-expanded (prevents bounce-back on user collapse)
+    if (
+      !hasArticleContent &&
+      !mightBeExtracting &&
+      !isExtractingArticle &&
+      hasImage &&
+      onRequestExpandImage &&
+      !hasAutoExpandedRef.current
+    ) {
+      // Mark as auto-expanded BEFORE triggering to prevent race conditions
+      hasAutoExpandedRef.current = true;
+      // Small delay to let the modal render first
+      const timer = setTimeout(() => {
+        onRequestExpandImage();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [hasArticleContent, mightBeExtracting, isExtractingArticle, hasImage, onRequestExpandImage]);
 
   // Sanitize article content with DOMPurify before rendering
   const sanitizedContent = useMemo(() => {
