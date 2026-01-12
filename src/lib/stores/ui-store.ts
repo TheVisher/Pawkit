@@ -36,9 +36,16 @@ interface UIState {
   leftSidebarAnchored: boolean;
   rightSidebarAnchored: boolean;
 
-  // Right sidebar expansion (not persisted - resets on reload)
+  // Right sidebar expansion (persisted)
   rightSidebarExpandedMode: RightSidebarExpandedMode;
   settingsTab: SettingsTab;
+
+  // Right sidebar section expanded states (persisted)
+  // Section IDs: 'tags', 'sort-by', 'group-by', 'content-type', 'card-display', 'advanced-filters', 'quick-filter', 'reading-status'
+  sidebarSectionStates: Record<string, boolean>;
+
+  // Pawkit tree expanded states (persisted)
+  expandedPawkitIds: string[];
 
   // Display preferences (persisted)
   cardSize: CardSize;
@@ -60,6 +67,10 @@ interface UIState {
   setRightSidebarExpandedMode: (mode: RightSidebarExpandedMode) => void;
   toggleSettingsMode: () => void;
   setSettingsTab: (tab: SettingsTab) => void;
+  setSidebarSectionExpanded: (sectionId: string, expanded: boolean) => void;
+  toggleSidebarSection: (sectionId: string) => void;
+  togglePawkitExpanded: (id: string) => void;
+  setPawkitExpanded: (id: string, expanded: boolean) => void;
   setCardSize: (size: CardSize) => void;
   openModal: (modal: ModalType, data?: Record<string, unknown>) => void;
   closeModal: () => void;
@@ -77,6 +88,8 @@ export const useUIStore = create<UIState>()(
       rightSidebarAnchored: false,
       rightSidebarExpandedMode: null,
       settingsTab: null,
+      sidebarSectionStates: {},
+      expandedPawkitIds: [],
       cardSize: 'medium',
       activeModal: null,
       modalData: null,
@@ -117,6 +130,40 @@ export const useUIStore = create<UIState>()(
 
       setSettingsTab: (tab) => set({ settingsTab: tab }),
 
+      // Sidebar section actions
+      setSidebarSectionExpanded: (sectionId, expanded) =>
+        set((state) => ({
+          sidebarSectionStates: {
+            ...state.sidebarSectionStates,
+            [sectionId]: expanded,
+          },
+        })),
+
+      toggleSidebarSection: (sectionId) =>
+        set((state) => ({
+          sidebarSectionStates: {
+            ...state.sidebarSectionStates,
+            [sectionId]: !state.sidebarSectionStates[sectionId],
+          },
+        })),
+
+      // Pawkit tree actions
+      togglePawkitExpanded: (id) =>
+        set((state) => ({
+          expandedPawkitIds: state.expandedPawkitIds.includes(id)
+            ? state.expandedPawkitIds.filter((i) => i !== id)
+            : [...state.expandedPawkitIds, id],
+        })),
+
+      setPawkitExpanded: (id, expanded) =>
+        set((state) => ({
+          expandedPawkitIds: expanded
+            ? state.expandedPawkitIds.includes(id)
+              ? state.expandedPawkitIds
+              : [...state.expandedPawkitIds, id]
+            : state.expandedPawkitIds.filter((i) => i !== id),
+        })),
+
       // Display actions
       setCardSize: (size) => set({ cardSize: size }),
 
@@ -139,6 +186,9 @@ export const useUIStore = create<UIState>()(
         rightSidebarOpen: state.rightSidebarOpen,
         leftSidebarAnchored: state.leftSidebarAnchored,
         rightSidebarAnchored: state.rightSidebarAnchored,
+        rightSidebarExpandedMode: state.rightSidebarExpandedMode,
+        sidebarSectionStates: state.sidebarSectionStates,
+        expandedPawkitIds: state.expandedPawkitIds,
         cardSize: state.cardSize,
       }),
     }
@@ -155,6 +205,8 @@ export const selectLeftSidebarAnchored = (state: UIState) => state.leftSidebarAn
 export const selectRightSidebarAnchored = (state: UIState) => state.rightSidebarAnchored;
 export const selectRightSidebarExpandedMode = (state: UIState) => state.rightSidebarExpandedMode;
 export const selectSettingsTab = (state: UIState) => state.settingsTab;
+export const selectSidebarSectionStates = (state: UIState) => state.sidebarSectionStates;
+export const selectExpandedPawkitIds = (state: UIState) => state.expandedPawkitIds;
 export const selectCardSize = (state: UIState) => state.cardSize;
 export const selectActiveModal = (state: UIState) => state.activeModal;
 export const selectModalData = (state: UIState) => state.modalData;
@@ -240,6 +292,28 @@ export function useLayoutAnchors() {
       leftAnchored: state.leftSidebarAnchored,
       rightAnchored: state.rightSidebarAnchored,
       rightExpandedMode: state.rightSidebarExpandedMode,
+    }))
+  );
+}
+
+// Hook for right sidebar section expanded states
+export function useSidebarSections() {
+  return useUIStore(
+    useShallow((state) => ({
+      sectionStates: state.sidebarSectionStates,
+      setExpanded: state.setSidebarSectionExpanded,
+      toggle: state.toggleSidebarSection,
+    }))
+  );
+}
+
+// Hook for Pawkit tree expanded states in left sidebar
+export function usePawkitTreeExpanded() {
+  return useUIStore(
+    useShallow((state) => ({
+      expandedIds: state.expandedPawkitIds,
+      toggle: state.togglePawkitExpanded,
+      setExpanded: state.setPawkitExpanded,
     }))
   );
 }

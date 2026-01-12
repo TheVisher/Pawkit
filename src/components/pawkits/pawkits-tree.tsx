@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCollections } from "@/lib/hooks/use-live-data";
 import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
+import { usePawkitTreeExpanded } from "@/lib/stores/ui-store";
 import { PawkitTreeItem } from "./pawkit-tree-item";
 import type { LocalCollection } from "@/lib/db";
 import { CreatePawkitButton } from "./create-pawkit-button";
@@ -11,7 +12,7 @@ import { CreatePawkitButton } from "./create-pawkit-button";
 export function PawkitsTree() {
   const workspace = useCurrentWorkspace();
   const collections = useCollections(workspace?.id);
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const { expandedIds, toggle } = usePawkitTreeExpanded();
 
   // Build tree structure
   const rootCollections = useMemo(() => {
@@ -26,22 +27,10 @@ export function PawkitsTree() {
       .sort((a, b) => a.position - b.position);
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
   const renderItem = (collection: LocalCollection, level: number = 0) => {
     const children = getChildCollections(collection.id);
     const hasChildren = children.length > 0;
-    const isExpanded = expandedIds.has(collection.id);
+    const isExpanded = expandedIds.includes(collection.id);
 
     return (
       <div key={collection.id}>
@@ -50,7 +39,7 @@ export function PawkitsTree() {
           childCollections={children} // Pass empty if not expanded? No, item needs to know if children exist
           level={level}
           isExpanded={isExpanded}
-          onToggleExpand={toggleExpand}
+          onToggleExpand={toggle}
           // We handle recursion here manually to pass props correctly
         />
         <AnimatePresence initial={false}>

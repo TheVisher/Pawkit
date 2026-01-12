@@ -28,6 +28,7 @@ export {
 // Types
 export type {
   SyncMetadata,
+  WorkspacePreferences,
   LocalWorkspace,
   LocalViewSettings,
   LocalCard,

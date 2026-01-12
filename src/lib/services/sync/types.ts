@@ -40,6 +40,9 @@ export interface ServerWorkspace {
   icon?: string;
   userId: string;
   isDefault: boolean;
+  preferences?: {
+    recentTags?: string[];
+  };
   createdAt: string;
   updatedAt: string;
 }

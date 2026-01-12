@@ -97,6 +97,7 @@ function serverWorkspaceToLocal(server: ServerWorkspace & { deleted?: boolean })
     icon: server.icon,
     userId: server.userId,
     isDefault: server.isDefault,
+    preferences: server.preferences,
     createdAt: new Date(server.createdAt),
     updatedAt: new Date(server.updatedAt),
     ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
