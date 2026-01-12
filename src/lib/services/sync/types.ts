@@ -11,7 +11,8 @@ export const SYNC_CHANNEL_NAME = 'pawkit-sync';
 export const METADATA_LAST_SYNC_KEY = 'lastSyncTime';
 
 // Entity sync order (critical for foreign key dependencies)
-export const ENTITY_ORDER = ['workspaces', 'collections', 'cards', 'events'] as const;
+// References come after events since they reference cards
+export const ENTITY_ORDER = ['workspaces', 'collections', 'cards', 'events', 'references'] as const;
 export type EntityName = (typeof ENTITY_ORDER)[number];
 
 // Map entity names to queue entity types
@@ -20,6 +21,7 @@ export const ENTITY_TYPE_MAP: Record<EntityName, string> = {
   collections: 'collection',
   cards: 'card',
   events: 'event',
+  references: 'reference',
 };
 
 // API endpoints for each entity
@@ -28,6 +30,7 @@ export const ENTITY_ENDPOINTS: Record<EntityName, string> = {
   collections: '/api/collections',
   cards: '/api/cards',
   events: '/api/events',
+  references: '/api/references',
 };
 
 // =============================================================================
@@ -112,8 +115,21 @@ export interface ServerEvent {
   updatedAt: string;
 }
 
+export interface ServerReference {
+  id: string;
+  workspaceId: string;
+  sourceId: string;
+  targetId: string;
+  targetType: 'card' | 'pawkit' | 'date';
+  linkText: string;
+  deleted: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Union type for any server entity
-export type ServerEntity = ServerWorkspace | ServerCollection | ServerCard | ServerEvent;
+export type ServerEntity = ServerWorkspace | ServerCollection | ServerCard | ServerEvent | ServerReference;
 
 // =============================================================================
 // BROADCAST MESSAGE TYPES
