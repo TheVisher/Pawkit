@@ -15,6 +15,8 @@ import { db, createSyncMetadata } from '@/lib/db';
 import type { LocalCard } from '@/lib/db/types';
 import { addToQueue, triggerSync } from './sync-queue';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
+import { fetchMetadata, validateUrl, type MetadataResult } from '@/lib/metadata';
+import { queueImagePersistence, needsPersistence } from '@/lib/metadata/image-persistence';
 
 /**
  * Notify the portal that data has changed (for real-time updates)
@@ -251,14 +253,7 @@ async function extractAspectRatioForCard(cardId: string, imageUrl: string): Prom
   }
 }
 
-interface MetadataResponse {
-  title: string | null;
-  description: string | null;
-  image: string | null;
-  images: string[] | null; // Gallery images for product pages
-  favicon: string | null;
-  domain: string;
-}
+// MetadataResult is now imported from @/lib/metadata
 
 interface ArticleResponse {
   success: boolean;
@@ -336,40 +331,9 @@ function processArticleQueue(): void {
 }
 
 /**
- * Fetch with retry for rate limiting (429 errors)
- */
-async function fetchWithRetry(
-  url: string,
-  options: RequestInit,
-  maxRetries = 3
-): Promise<Response> {
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const response = await fetch(url, options);
-
-    if (response.ok) {
-      return response;
-    }
-
-    // Retry on rate limiting with exponential backoff
-    if (response.status === 429) {
-      const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500; // 1s, 2s, 4s + jitter
-      console.log(`[MetadataService] Rate limited, retrying in ${Math.round(delay)}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      continue;
-    }
-
-    // Don't retry other errors
-    lastError = new Error(`API returned ${response.status}`);
-    break;
-  }
-
-  throw lastError || new Error('Max retries exceeded');
-}
-
-/**
  * Fetch metadata for a single card
+ * Uses the local fetchMetadata function from @/lib/metadata
+ * with site-specific handlers and generic OG/Twitter/JSON-LD fallback
  */
 async function fetchMetadataForCard(cardId: string): Promise<void> {
   try {
@@ -386,20 +350,16 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
 
     console.log('[MetadataService] Fetching metadata for:', card.url);
 
-    // Call API with retry logic for rate limiting
-    const response = await fetchWithRetry('/api/metadata', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ url: card.url }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}`);
+    // Validate URL first (SSRF protection)
+    const validation = validateUrl(card.url);
+    if (!validation.valid) {
+      console.warn('[MetadataService] Invalid URL:', validation.error);
+      throw new Error(validation.error || 'Invalid URL');
     }
 
-    const metadata: MetadataResponse = await response.json();
+    // Use local fetchMetadata with site-specific handlers
+    // This is a direct function call, no network roundtrip to our API
+    const metadata: MetadataResult = await fetchMetadata(card.url);
 
     // Update card with metadata directly in Dexie (works from portal or main app)
     const updates: Partial<LocalCard> = {
@@ -436,6 +396,7 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     console.log('[MetadataService] Updated card:', cardId, {
       title: metadata.title?.substring(0, 30),
       hasImage: !!metadata.image,
+      source: metadata.source,
     });
 
     // Trigger sync to push metadata updates to server
@@ -448,6 +409,13 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     // This happens async after save - user sees card immediately, aspectRatio updates when ready
     if (metadata.image) {
       queueAspectRatioExtraction(cardId, metadata.image);
+    }
+
+    // Queue image persistence if needed (non-blocking background task)
+    // This handles expiring URLs from TikTok, Instagram, etc.
+    if (metadata.image && (metadata.shouldPersistImage || needsPersistence(metadata.image))) {
+      // Queue runs in background - returns immediately
+      queueImagePersistence(cardId, metadata.image);
     }
 
     // Queue article extraction after metadata is done

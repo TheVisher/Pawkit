@@ -19,6 +19,8 @@ import {
   FolderMinus,
   BookOpen,
   BookX,
+  RefreshCw,
+  ImagePlus,
 } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -27,6 +29,7 @@ import { updateReadTag } from '@/lib/utils/system-tags';
 import type { LocalCard } from '@/lib/db';
 import { AddToPawkitSubmenu } from './add-to-pawkit-submenu';
 import { ScheduleSubmenu } from './schedule-submenu';
+import { queueMetadataFetch, clearMetadataCache } from '@/lib/services/metadata-service';
 
 interface CardContextMenuProps {
   card: LocalCard;
@@ -40,6 +43,7 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   const deleteCard = useDataStore((s) => s.deleteCard);
   const removeCardFromCollection = useDataStore((s) => s.removeCardFromCollection);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openEditThumbnail = useModalStore((s) => s.openEditThumbnail);
   const toast = useToastStore((s) => s.toast);
 
   const isBookmark = card.type === 'url' && card.url;
@@ -58,6 +62,18 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
       await navigator.clipboard.writeText(card.url);
       toast({ type: 'success', message: 'URL copied to clipboard' });
     }
+  };
+
+  const handleRefetchMetadata = () => {
+    // Clear the cache entry so the card can be refetched
+    clearMetadataCache();
+    // Queue the card for metadata fetching
+    queueMetadataFetch(card.id);
+    toast({ type: 'info', message: 'Refreshing metadata...' });
+  };
+
+  const handleEditThumbnail = () => {
+    openEditThumbnail(card.id);
   };
 
   const handleTogglePin = async () => {
@@ -128,6 +144,14 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
               <Copy className="size-4" />
               Copy URL
               <ContextMenuShortcut>C</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem onClick={handleRefetchMetadata}>
+              <RefreshCw className="size-4" />
+              Refetch Metadata
+            </ContextMenuItem>
+            <ContextMenuItem onClick={handleEditThumbnail}>
+              <ImagePlus className="size-4" />
+              Edit Thumbnail
             </ContextMenuItem>
           </>
         )}
