@@ -68,6 +68,10 @@ interface UIState {
   // Used to pass selected text from article editor to notes tab
   pendingNoteText: string | null;
 
+  // Tag sidebar state (not persisted)
+  // Used for tag editing in the right sidebar on /tags page
+  selectedTagForSidebar: string | null;
+
   // Actions
   toggleLeftSidebar: () => void;
   toggleRightSidebar: () => void;
@@ -91,6 +95,7 @@ interface UIState {
   triggerMuuriLayout: () => void;
   setPendingNoteText: (text: string | null) => void;
   clearPendingNoteText: () => void;
+  setSelectedTagForSidebar: (tag: string | null) => void;
 }
 
 export const useUIStore = create<UIState>()(
@@ -112,6 +117,7 @@ export const useUIStore = create<UIState>()(
       commandPaletteOpen: false,
       muuriLayoutVersion: 0,
       pendingNoteText: null,
+      selectedTagForSidebar: null,
 
       // Sidebar actions
       toggleLeftSidebar: () =>
@@ -205,6 +211,9 @@ export const useUIStore = create<UIState>()(
       // Pending note text actions - for create note from selection
       setPendingNoteText: (text) => set({ pendingNoteText: text }),
       clearPendingNoteText: () => set({ pendingNoteText: null }),
+
+      // Tag sidebar actions
+      setSelectedTagForSidebar: (tag) => set({ selectedTagForSidebar: tag }),
     }),
     {
       name: 'pawkit-ui-preferences',
@@ -242,6 +251,7 @@ export const selectModalData = (state: UIState) => state.modalData;
 export const selectCommandPaletteOpen = (state: UIState) => state.commandPaletteOpen;
 export const selectMuuriLayoutVersion = (state: UIState) => state.muuriLayoutVersion;
 export const selectPendingNoteText = (state: UIState) => state.pendingNoteText;
+export const selectSelectedTagForSidebar = (state: UIState) => state.selectedTagForSidebar;
 
 // =============================================================================
 // HOOKS
@@ -291,6 +301,15 @@ export function useCardDetailSidebar() {
       cardDetailTab: state.cardDetailTab,
       setTab: state.setCardDetailTab,
       setExpandedMode: state.setRightSidebarExpandedMode,
+    }))
+  );
+}
+
+export function useTagSidebar() {
+  return useUIStore(
+    useShallow((state) => ({
+      selectedTag: state.selectedTagForSidebar,
+      setSelectedTag: state.setSelectedTagForSidebar,
     }))
   );
 }

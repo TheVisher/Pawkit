@@ -49,7 +49,7 @@ export type LinkStatusFilter =
   | "broken"
   | "redirect"
   | "unchecked";
-export type ViewType = "cards" | "pawkit" | "pawkits-overview" | "home" | "calendar" | "other";
+export type ViewType = "cards" | "pawkit" | "pawkits-overview" | "home" | "calendar" | "tags" | "other";
 
 export interface ViewConfig {
   type: ViewType;
@@ -193,6 +193,14 @@ const VIEW_CONFIGS: Record<ViewType, Omit<ViewConfig, "title">> = {
     showPawkitOverviewSettings: false,
     showTags: false,
   },
+  tags: {
+    type: "tags",
+    showContentFilters: false,
+    showCardDisplay: false,
+    showSubPawkitSettings: false,
+    showPawkitOverviewSettings: false,
+    showTags: false,
+  },
   other: {
     type: "other",
     showContentFilters: false,
@@ -223,6 +231,10 @@ export function getViewConfig(pathname: string): ViewConfig {
   // Calendar
   if (pathname === "/calendar") {
     return { ...VIEW_CONFIGS.calendar, title: "Calendar" };
+  }
+  // Tags
+  if (pathname === "/tags") {
+    return { ...VIEW_CONFIGS.tags, title: "Tag Health" };
   }
   // Default
   return { ...VIEW_CONFIGS.other, title: "Options" };
