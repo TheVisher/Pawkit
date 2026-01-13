@@ -12,6 +12,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { CalendarDays, AlertTriangle, AlertCircle } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
+import { getEarliestUncheckedTaskDate } from './parse-task-items';
 
 // =============================================================================
 // CONSTANTS
@@ -346,8 +347,21 @@ export function getSystemTagsForCard(_card: LocalCard): SystemTag[] {
 /**
  * Get the effective scheduled date for a card
  * Handles both old scheduledDate (Date) and new scheduledDates (string[]) formats
+ * For todo cards, derives the date from content date headers
  */
 function getEffectiveScheduledDate(card: LocalCard): Date | string | null {
+  const tags = card.tags || [];
+
+  // For todo cards, derive scheduled date from content date headers
+  // This allows todo cards to become overdue based on their task dates
+  if (tags.includes(TODO_TAG)) {
+    const contentDate = getEarliestUncheckedTaskDate(card.content);
+    if (contentDate) {
+      return contentDate;
+    }
+    // Fall through to check card-level dates
+  }
+
   // New format: scheduledDates is an array of ISO date strings (YYYY-MM-DD)
   if (card.scheduledDates && card.scheduledDates.length > 0) {
     // Return the earliest date for schedule tag purposes

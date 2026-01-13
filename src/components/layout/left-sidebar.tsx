@@ -415,6 +415,8 @@ export function LeftSidebar() {
 
       {/* User Menu */}
       <div className="p-2">
+        {/* Only render DropdownMenu after mount to prevent Radix ID hydration mismatch */}
+        {mounted ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -538,6 +540,20 @@ export function LeftSidebar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        ) : (
+          // Static fallback during SSR/hydration
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-3 text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary"
+          >
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-bg-surface-3 text-text-secondary text-xs">
+                U
+              </AvatarFallback>
+            </Avatar>
+            <span className="truncate text-sm">Workspace</span>
+          </Button>
+        )}
       </div>
     </div>
   );
