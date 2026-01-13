@@ -4,6 +4,24 @@ import { useEffect, useState, useRef } from 'react';
 import { useDebugStore } from '@/lib/stores/debug-store';
 import { CheckboxControl, MetricDisplay } from '../controls';
 
+// Chrome-specific memory API type declaration
+interface PerformanceMemory {
+  jsHeapSizeLimit: number;
+  totalJSHeapSize: number;
+  usedJSHeapSize: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
+
+/**
+ * Type guard to check if performance.memory is available (Chrome only)
+ */
+function hasMemoryAPI(perf: Performance): perf is PerformanceWithMemory {
+  return 'memory' in perf && (perf as PerformanceWithMemory).memory !== undefined;
+}
+
 interface FrameMetrics {
   fps: number;
   minFps: number;
@@ -113,11 +131,11 @@ export function MetricsSection() {
     }
 
     const updateMemory = () => {
-      // @ts-expect-error - Chrome-only API
-      if (performance.memory) {
-        // @ts-expect-error - Chrome-only API
+      if (hasMemoryAPI(performance)) {
         const mem = performance.memory;
-        setMemory(Math.round(mem.usedJSHeapSize / 1024 / 1024));
+        if (mem) {
+          setMemory(Math.round(mem.usedJSHeapSize / 1024 / 1024));
+        }
       }
     };
 

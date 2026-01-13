@@ -3,6 +3,18 @@
  * Re-exports all sync-related functionality
  */
 
+// Extend Window interface to include debug helpers
+declare global {
+  interface Window {
+    __pawkitSync?: {
+      clearQueue: () => Promise<void>;
+      fullSync: () => Promise<void>;
+      processQueueNow: () => Promise<void>;
+      repairUnsyncedReferences: () => Promise<number>;
+    };
+  }
+}
+
 export { syncService } from './sync-service';
 
 // Re-export types for external use
@@ -60,7 +72,7 @@ export async function repairUnsyncedReferences(): Promise<number> {
 
 // Expose debug helpers on window for console access
 if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>).__pawkitSync = {
+  window.__pawkitSync = {
     clearQueue: clearAllSyncQueue,
     fullSync,
     processQueueNow,

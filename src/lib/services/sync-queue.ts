@@ -14,12 +14,22 @@ const log = createModuleLogger('SyncQueue');
 // Maximum retry attempts before marking as failed
 const MAX_RETRIES = 3;
 
+// Maximum version conflict retries before giving up on a specific entity
+const MAX_VERSION_CONFLICT_RETRIES = 5;
+
+// Base delay for exponential backoff on version conflicts (ms)
+const VERSION_CONFLICT_BASE_DELAY_MS = 500;
+
 // Debounce delay for immediate syncs (ms)
 export const QUEUE_DEBOUNCE_MS = 3000;
 
 // Debounce timer for triggerSync
 let triggerSyncTimer: ReturnType<typeof setTimeout> | null = null;
 let triggerSyncPromise: Promise<void> | null = null;
+
+// Track version conflict retry counts per entity (entityId -> retryCount)
+// This prevents infinite re-queue loops on persistent conflicts
+const versionConflictRetries = new Map<string, number>();
 
 /**
  * Manually trigger a sync (e.g., when modal closes)
@@ -176,13 +186,19 @@ export async function processQueue(): Promise<QueueProcessResult> {
       // Increment retry count
       const newRetryCount = (item.retryCount || 0) + 1;
 
+      // Skip if item has no id (should never happen for items from DB)
+      if (item.id === undefined) {
+        log.error(`Queue item for ${item.entityId} has no id`);
+        continue;
+      }
+
       if (newRetryCount >= MAX_RETRIES) {
         // Mark as permanently failed
         result.failed++;
-        result.errors.push({ id: item.id!, error: errorMessage });
+        result.errors.push({ id: item.id, error: errorMessage });
 
         // Update item with error
-        await db.syncQueue.update(item.id!, {
+        await db.syncQueue.update(item.id, {
           retryCount: newRetryCount,
           lastError: errorMessage,
         });
@@ -191,7 +207,7 @@ export async function processQueue(): Promise<QueueProcessResult> {
         useSyncStore.getState().addFailedEntity(item.entityId);
       } else {
         // Update retry count for later retry
-        await db.syncQueue.update(item.id!, {
+        await db.syncQueue.update(item.id, {
           retryCount: newRetryCount,
           lastError: errorMessage,
         });
@@ -215,6 +231,13 @@ export async function processQueue(): Promise<QueueProcessResult> {
 async function processQueueItem(item: SyncQueueItem): Promise<void> {
   const { entityType, entityId, operation, payload } = item;
 
+  // Ensure item has an id (required for all queue operations)
+  if (item.id === undefined) {
+    log.error(`Cannot process queue item without id for entity ${entityId}`);
+    return;
+  }
+  const itemId = item.id; // Now we know it's defined
+
   // Track that this entity is actively syncing
   useSyncStore.getState().addActivelySyncing(entityId);
 
@@ -232,7 +255,7 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       const entity = await getLocalEntity(entityType, entityId);
       if (!entity) {
         // Entity was deleted locally, remove from queue
-        await db.syncQueue.delete(item.id!);
+        await db.syncQueue.delete(itemId);
         return;
       }
       body = JSON.stringify(prepareForServer(entity, entityType));
@@ -281,7 +304,7 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       // Check for idempotent create (200 OK means already exists)
       if (operation === 'create' && response.status === 200) {
         // Already exists on server, this is fine (idempotent)
-        await db.syncQueue.delete(item.id!);
+        await db.syncQueue.delete(itemId);
         // For cards, update version from server response
         if (entityType === 'card') {
           try {
@@ -327,23 +350,42 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
           if (item.skipConflictCheck) {
             log.debug(`Accepting server version for card ${entityId} (skipConflictCheck=true)`);
             await db.cards.update(entityId, { _synced: true });
-            await db.syncQueue.delete(item.id!);
+            await db.syncQueue.delete(itemId);
+            // Clear conflict retry count on success
+            versionConflictRetries.delete(entityId);
             return;
           }
 
+          // Track version conflict retries with exponential backoff
+          const currentRetryCount = versionConflictRetries.get(entityId) || 0;
+          const newRetryCount = currentRetryCount + 1;
+
+          if (newRetryCount >= MAX_VERSION_CONFLICT_RETRIES) {
+            // Give up after max retries - accept server version to break the loop
+            log.warn(`Version conflict retry limit reached for card ${entityId} (${MAX_VERSION_CONFLICT_RETRIES} retries) - accepting server version`);
+            await db.cards.update(entityId, { _synced: true });
+            await db.syncQueue.delete(itemId);
+            versionConflictRetries.delete(entityId);
+            return;
+          }
+
+          versionConflictRetries.set(entityId, newRetryCount);
+
           // For regular updates: local is source of truth - re-queue to push local changes
           // This overwrites server with local data without creating duplicate cards
-          log.warn(`Version conflict for card ${entityId} - re-queueing to push local changes (no duplicate created)`);
+          log.warn(`Version conflict for card ${entityId} (retry ${newRetryCount}/${MAX_VERSION_CONFLICT_RETRIES}) - re-queueing with backoff`);
 
           // Remove the current queue item first
-          await db.syncQueue.delete(item.id!);
+          await db.syncQueue.delete(itemId);
 
           // Re-queue with skipConflictCheck so it sends without expectedVersion
           // This will overwrite server with our local data
           if (localCard && payload) {
             await addToQueue('card', entityId, 'update', payload, { skipConflictCheck: true });
-            // Trigger sync to process immediately
-            setTimeout(() => triggerSync(), 100);
+            // Exponential backoff: 500ms, 1s, 2s, 4s, 8s...
+            const backoffDelay = VERSION_CONFLICT_BASE_DELAY_MS * Math.pow(2, newRetryCount - 1);
+            log.debug(`Scheduling retry for card ${entityId} in ${backoffDelay}ms`);
+            setTimeout(() => triggerSync(), backoffDelay);
           }
           return;
         }
@@ -352,7 +394,7 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       // Handle 404 for update/delete - entity doesn't exist on server
       if (response.status === 404 && (operation === 'update' || operation === 'delete')) {
         // Entity doesn't exist on server, remove from queue
-        await db.syncQueue.delete(item.id!);
+        await db.syncQueue.delete(itemId);
         // Mark as synced locally to prevent re-queueing on future edits
         await markEntitySynced(entityType, entityId);
         log.debug(`Entity ${entityId} not found on server, marked as synced locally`);
@@ -365,7 +407,10 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
     }
 
     // Success - remove from queue and mark as synced
-    await db.syncQueue.delete(item.id!);
+    await db.syncQueue.delete(itemId);
+
+    // Clear version conflict retry count on success
+    versionConflictRetries.delete(entityId);
 
     // Skip marking as synced for delete operations (entity no longer exists)
     if (operation !== 'delete' && operation !== 'permanent-delete') {
@@ -522,7 +567,8 @@ export async function addToQueue(
     .equals(entityId)
     .first();
 
-  if (existing) {
+  if (existing && existing.id !== undefined) {
+    const existingId = existing.id;
     // Merge operations intelligently
     if (existing.operation === 'create' && operation === 'update') {
       // Keep create, payload will be fetched fresh
@@ -530,17 +576,17 @@ export async function addToQueue(
     }
     if (existing.operation === 'create' && operation === 'delete') {
       // Never synced, just delete the queue item
-      await db.syncQueue.delete(existing.id!);
+      await db.syncQueue.delete(existingId);
       return;
     }
     if (existing.operation === 'create' && operation === 'permanent-delete') {
       // Never synced, just delete the queue item
-      await db.syncQueue.delete(existing.id!);
+      await db.syncQueue.delete(existingId);
       return;
     }
     if (existing.operation === 'update' && operation === 'delete') {
       // Replace update with delete
-      await db.syncQueue.update(existing.id!, {
+      await db.syncQueue.update(existingId, {
         operation: 'delete',
         payload: undefined,
       });
@@ -548,14 +594,14 @@ export async function addToQueue(
     }
     if (existing.operation === 'update' && operation === 'update') {
       // Merge payloads
-      await db.syncQueue.update(existing.id!, {
+      await db.syncQueue.update(existingId, {
         payload: { ...existing.payload, ...payload },
       });
       return;
     }
     if (existing.operation === 'delete' && operation === 'permanent-delete') {
       // Upgrade soft delete to permanent delete
-      await db.syncQueue.update(existing.id!, {
+      await db.syncQueue.update(existingId, {
         operation: 'permanent-delete',
         payload: undefined,
       });
@@ -563,7 +609,7 @@ export async function addToQueue(
     }
     if (existing.operation === 'update' && operation === 'permanent-delete') {
       // Replace update with permanent delete
-      await db.syncQueue.update(existing.id!, {
+      await db.syncQueue.update(existingId, {
         operation: 'permanent-delete',
         payload: undefined,
       });
@@ -608,8 +654,8 @@ export async function getFailedCount(): Promise<number> {
 export async function clearFailedItems(): Promise<void> {
   const items = await db.syncQueue.toArray();
   const failedIds = items
-    .filter((item) => item.retryCount >= MAX_RETRIES)
-    .map((item) => item.id!);
+    .filter((item) => item.retryCount >= MAX_RETRIES && item.id !== undefined)
+    .map((item) => item.id as number);
 
   await db.syncQueue.bulkDelete(failedIds);
 
@@ -629,7 +675,8 @@ export async function retryFailedItems(): Promise<void> {
   const failed = items.filter((item) => item.retryCount >= MAX_RETRIES);
 
   for (const item of failed) {
-    await db.syncQueue.update(item.id!, {
+    if (item.id === undefined) continue;
+    await db.syncQueue.update(item.id, {
       retryCount: 0,
       lastError: undefined,
     });
@@ -729,14 +776,15 @@ export async function forceSyncEntity(entityId: string): Promise<boolean> {
     .equals(entityId)
     .first();
 
-  if (!queueItem) {
+  if (!queueItem || queueItem.id === undefined) {
     log.debug(`No queue item found for entity ${entityId}`);
     return false;
   }
+  const queueItemId = queueItem.id;
 
   // Reset retry count if failed
   if ((queueItem.retryCount || 0) >= MAX_RETRIES) {
-    await db.syncQueue.update(queueItem.id!, {
+    await db.syncQueue.update(queueItemId, {
       retryCount: 0,
       lastError: undefined,
     });
@@ -747,7 +795,7 @@ export async function forceSyncEntity(entityId: string): Promise<boolean> {
 
   // Process this specific item immediately
   try {
-    const freshItem = await db.syncQueue.get(queueItem.id!);
+    const freshItem = await db.syncQueue.get(queueItemId);
     if (freshItem) {
       await processQueueItem(freshItem);
       return true;

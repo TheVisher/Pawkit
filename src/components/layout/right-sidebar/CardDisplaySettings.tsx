@@ -5,7 +5,7 @@
  * Controls for card layout, size, padding, and visibility toggles
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   Sliders,
@@ -63,6 +63,8 @@ export function CardDisplaySettings({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // Track if listener is attached to prevent duplicates
+  const listenerAttachedRef = useRef(false);
 
   // Update dropdown position when opening
   useEffect(() => {
@@ -75,26 +77,44 @@ export function CardDisplaySettings({
     }
   }, [viewDropdownOpen]);
 
+  // Stable callback for click outside handler
+  const handleClickOutside = useCallback((e: MouseEvent) => {
+    const target = e.target as Node;
+    // Check if click is outside both button and dropdown
+    if (
+      buttonRef.current &&
+      !buttonRef.current.contains(target) &&
+      dropdownRef.current &&
+      !dropdownRef.current.contains(target)
+    ) {
+      setViewDropdownOpen(false);
+    }
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
-    if (!viewDropdownOpen) return;
+    if (!viewDropdownOpen) {
+      // Cleanup when dropdown closes
+      if (listenerAttachedRef.current) {
+        document.removeEventListener("mousedown", handleClickOutside);
+        listenerAttachedRef.current = false;
+      }
+      return;
+    }
 
-    const handleClickOutside = (e: MouseEvent) => {
-      const target = e.target as Node;
-      // Check if click is outside both button and dropdown
-      if (
-        buttonRef.current &&
-        !buttonRef.current.contains(target) &&
-        dropdownRef.current &&
-        !dropdownRef.current.contains(target)
-      ) {
-        setViewDropdownOpen(false);
+    // Only attach if not already attached
+    if (!listenerAttachedRef.current) {
+      document.addEventListener("mousedown", handleClickOutside);
+      listenerAttachedRef.current = true;
+    }
+
+    return () => {
+      if (listenerAttachedRef.current) {
+        document.removeEventListener("mousedown", handleClickOutside);
+        listenerAttachedRef.current = false;
       }
     };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [viewDropdownOpen]);
+  }, [viewDropdownOpen, handleClickOutside]);
 
   return (
     <SidebarSection title="Card Display" icon={Sliders} defaultOpen={true}>

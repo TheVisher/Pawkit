@@ -55,6 +55,21 @@ let currentRefreshId = 0;
 let persistDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let persistColorsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
+/**
+ * Clear all pending debounce timers
+ * Called when switching workspaces to prevent stale persist operations
+ */
+function clearPendingTimers(): void {
+  if (persistDebounceTimer) {
+    clearTimeout(persistDebounceTimer);
+    persistDebounceTimer = null;
+  }
+  if (persistColorsDebounceTimer) {
+    clearTimeout(persistColorsDebounceTimer);
+    persistColorsDebounceTimer = null;
+  }
+}
+
 // Generate auto color from tag name hash
 function generateTagColor(tag: string): string {
   const hash = Math.abs(tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
@@ -81,11 +96,17 @@ export const useTagStore = create<TagState>()((set, get) => ({
    */
   refreshTags: async (workspaceId: string) => {
     const refreshId = ++currentRefreshId;
+    const currentWs = get().currentWorkspaceId;
+
+    // Clear pending timers when workspace changes to prevent stale persist operations
+    if (currentWs !== workspaceId) {
+      clearPendingTimers();
+    }
+
     set({ isLoading: true, currentWorkspaceId: workspaceId });
 
     try {
       // Load recent tags from workspace preferences (if workspace changed)
-      const currentWs = get().currentWorkspaceId;
       if (currentWs !== workspaceId) {
         await get()._loadRecentTags(workspaceId);
       }
@@ -211,6 +232,7 @@ export const useTagStore = create<TagState>()((set, get) => ({
       clearTimeout(persistDebounceTimer);
     }
     persistDebounceTimer = setTimeout(() => {
+      persistDebounceTimer = null; // Clear reference after execution
       get()._persistRecentTags();
     }, 1000); // 1 second debounce
   },
@@ -494,6 +516,7 @@ export const useTagStore = create<TagState>()((set, get) => ({
       clearTimeout(persistColorsDebounceTimer);
     }
     persistColorsDebounceTimer = setTimeout(() => {
+      persistColorsDebounceTimer = null; // Clear reference after execution
       get()._persistTagColors();
     }, 500);
   },

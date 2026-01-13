@@ -7,6 +7,22 @@ import { db } from '@/lib/db';
 import type { LocalCard, LocalCalendarEvent } from '@/lib/db';
 import { extractDatesFromCard } from './card-date-extraction';
 
+/**
+ * Deep equality comparison for recurrence objects
+ * Works regardless of property order, handles null/undefined
+ */
+function recurrenceEquals(
+  a: LocalCalendarEvent['recurrence'],
+  b: LocalCalendarEvent['recurrence']
+): boolean {
+  // Handle null/undefined cases
+  if (a === b) return true;
+  if (!a || !b) return false;
+
+  // Compare properties directly (order-independent)
+  return a.freq === b.freq && a.interval === b.interval;
+}
+
 // Minimal unicode prefixes by field type
 const EVENT_PREFIXES: Record<string, string> = {
   birthday: '○',
@@ -118,12 +134,12 @@ export async function syncCardToCalendar(
     const existing = existingMap.get(eventData.id);
 
     if (existing) {
-      // Check if update needed
+      // Check if update needed (use deep equality for recurrence to avoid property order issues)
       if (
         existing.title !== eventData.title ||
         existing.date !== eventData.date ||
         existing.color !== eventData.color ||
-        JSON.stringify(existing.recurrence) !== JSON.stringify(eventData.recurrence)
+        !recurrenceEquals(existing.recurrence, eventData.recurrence)
       ) {
         await db.calendarEvents.update(eventData.id, {
           ...eventData,
