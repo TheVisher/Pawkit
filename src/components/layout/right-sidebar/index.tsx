@@ -62,6 +62,9 @@ import {
 } from "./sections";
 import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { SettingsPanel } from "./SettingsPanel";
+import { TagsSidebar } from "@/components/tags/tags-sidebar";
+import { useTagSidebar } from "@/lib/stores/ui-store";
+import { useTagStore } from "@/lib/stores/tag-store";
 
 export function RightSidebar() {
   const pathname = usePathname();
@@ -76,8 +79,16 @@ export function RightSidebar() {
   const { isOpen, isAnchored, toggleAnchored, setOpen, setExpandedMode, expandedMode } = useRightSidebar();
   const { isSettingsMode, toggleSettings } = useRightSidebarSettings();
   const { isCardDetailMode, cardDetailTab, setTab: setCardDetailTab } = useCardDetailSidebar();
+  const { selectedTag: selectedTagForSidebar, setSelectedTag: setSelectedTagForSidebar } = useTagSidebar();
   const { theme, setTheme } = useTheme();
   const workspace = useCurrentWorkspace();
+
+  // Tag store data for tags sidebar
+  const tagStoreUniqueTags = useTagStore((s) => s.uniqueTags);
+  const tagStoreTagCounts = useTagStore((s) => s.tagCounts);
+  const renameTagAction = useTagStore((s) => s.renameTag);
+  const deleteTagAction = useTagStore((s) => s.deleteTag);
+  const [isTagProcessing, setIsTagProcessing] = useState(false);
 
   // Get active card from modal store
   const activeCardId = useModalStore((s) => s.activeCardId);
@@ -318,6 +329,44 @@ export function RightSidebar() {
   }, [workspace, saveViewSettings]);
 
   const handleToggleOpen = () => setOpen(!isOpen);
+
+  // Tag sidebar handlers
+  const handleTagSidebarRename = useCallback(async (oldTag: string, newTag: string) => {
+    if (!workspace?.id) return;
+    setIsTagProcessing(true);
+    try {
+      await renameTagAction(workspace.id, oldTag, newTag);
+    } finally {
+      setIsTagProcessing(false);
+    }
+  }, [workspace?.id, renameTagAction]);
+
+  const handleTagSidebarDelete = useCallback(async (tag: string) => {
+    if (!workspace?.id) return;
+    setIsTagProcessing(true);
+    try {
+      await deleteTagAction(workspace.id, tag);
+      setSelectedTagForSidebar(null);
+    } finally {
+      setIsTagProcessing(false);
+    }
+  }, [workspace?.id, deleteTagAction, setSelectedTagForSidebar]);
+
+  const handleDeleteUnusedTags = useCallback(async () => {
+    // Unused tags are pending tags with count 0
+    // We just clear them from the store by refreshing
+    if (!workspace?.id) return;
+    setIsTagProcessing(true);
+    try {
+      // Delete all tags with count 0
+      const unusedTags = tagStoreUniqueTags.filter((tag) => (tagStoreTagCounts[tag] || 0) === 0);
+      for (const tag of unusedTags) {
+        await deleteTagAction(workspace.id, tag);
+      }
+    } finally {
+      setIsTagProcessing(false);
+    }
+  }, [workspace?.id, tagStoreUniqueTags, tagStoreTagCounts, deleteTagAction]);
 
   // Cycle through themes
   const cycleTheme = () => {
@@ -601,6 +650,19 @@ export function RightSidebar() {
             )}
 
             {viewConfig.type === "calendar" && <CalendarSidebar />}
+
+            {viewConfig.type === "tags" && (
+              <TagsSidebar
+                selectedTag={selectedTagForSidebar}
+                tagCounts={tagStoreTagCounts}
+                uniqueTags={tagStoreUniqueTags}
+                onClose={() => setSelectedTagForSidebar(null)}
+                onRenameTag={handleTagSidebarRename}
+                onDeleteTag={handleTagSidebarDelete}
+                onDeleteUnusedTags={handleDeleteUnusedTags}
+                isProcessing={isTagProcessing}
+              />
+            )}
           </div>
         )}
       </div>

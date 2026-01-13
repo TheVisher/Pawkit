@@ -53,6 +53,9 @@ export function Omnibar({ isCompact }: OmnibarProps) {
     handleKitModeAction,
     // Context awareness
     isOnTagsPage,
+    // Tag creation state
+    pendingTagCreation,
+    similarTagsWarning,
   } = useOmnibar(isCompact);
 
   // Don't render until mounted to prevent hydration issues
@@ -149,6 +152,9 @@ export function Omnibar({ isCompact }: OmnibarProps) {
                 onToggleKitMode={handleToggleKitMode}
                 onKitModeAction={handleKitModeAction}
                 isOnTagsPage={isOnTagsPage}
+                // Tag creation state
+                pendingTagCreation={pendingTagCreation}
+                similarTagsWarning={similarTagsWarning}
               />
             )}
           </AnimatePresence>

@@ -14,12 +14,14 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useTagStore } from '@/lib/stores/tag-store';
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, type SearchResults } from '../types';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { detectTodo } from '@/lib/utils/todo-detection';
 import { addTaskToContent } from '@/lib/utils/parse-task-items';
+import { suggestSimilarTags, validateTag, cleanTagInput, findExistingTag } from '@/lib/utils/tag-normalizer';
 
 export interface SearchState {
   quickNoteText: string;
@@ -31,6 +33,9 @@ export interface SearchState {
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   textareaHeight: number;
   isOnTagsPage: boolean;
+  // Tag creation state
+  pendingTagCreation: string | null;
+  similarTagsWarning: string[];
 }
 
 export interface SearchActions {
@@ -45,6 +50,9 @@ export interface SearchActions {
   executeResult: (index: number) => void;
   confirmDiscard: () => void;
   cancelDiscard: () => void;
+  // Tag creation actions
+  confirmTagCreation: () => void;
+  cancelTagCreation: () => void;
 }
 
 export function useSearch(onModeChange?: () => void): SearchState & SearchActions {
@@ -62,6 +70,18 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isDiscardingRef = useRef(false);
 
+  // Tag creation state
+  const [pendingTagCreation, setPendingTagCreation] = useState<string | null>(null);
+  const [similarTagsWarning, setSimilarTagsWarning] = useState<string[]>([]);
+
+  // Clear similar tags warning when input changes
+  useEffect(() => {
+    if (pendingTagCreation && quickNoteText.trim() !== pendingTagCreation) {
+      setPendingTagCreation(null);
+      setSimilarTagsWarning([]);
+    }
+  }, [quickNoteText, pendingTagCreation]);
+
   // Store hooks
   const toast = useToastStore((s) => s.toast);
   const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar);
@@ -72,6 +92,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const currentWorkspace = useCurrentWorkspace();
   const cards = useCards(currentWorkspace?.id);
   const collections = useCollections(currentWorkspace?.id);
+  const uniqueTags = useTagStore((s) => s.uniqueTags);
+  const createTag = useTagStore((s) => s.createTag);
 
   // Debounce search query
   const debouncedQuery = useDebounce(quickNoteText, 150);
@@ -327,6 +349,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     setSelectedIndex(-1);
     setShowDiscardConfirm(false);
     setTextareaHeight(0);
+    setPendingTagCreation(null);
+    setSimilarTagsWarning([]);
     textareaRef.current?.blur();
     setTimeout(() => { isDiscardingRef.current = false; }, 0);
   }, []);
@@ -525,6 +549,71 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   }, [quickNoteText, currentWorkspace, createCard, updateCard, toast, isUrl, normalizeUrlFn, cards, openCardDetail, resetSearch]);
 
   // ==========================================================================
+  // TAG CREATION (for tags page)
+  // ==========================================================================
+
+  const handleTagCreation = useCallback(() => {
+    const tagInput = quickNoteText.trim();
+    if (!tagInput) return;
+
+    const cleaned = cleanTagInput(tagInput);
+
+    // Validate tag
+    const validationError = validateTag(cleaned);
+    if (validationError) {
+      toast({ type: 'error', message: validationError });
+      return;
+    }
+
+    // Check if tag already exists (exact match, case-insensitive)
+    const existingTag = findExistingTag(cleaned, uniqueTags);
+    if (existingTag) {
+      toast({ type: 'warning', message: `Tag "${existingTag}" already exists` });
+      return;
+    }
+
+    // Check for similar tags
+    const similarTags = suggestSimilarTags(cleaned, uniqueTags, 3);
+
+    if (similarTags.length > 0) {
+      // Show warning and wait for confirmation
+      setPendingTagCreation(cleaned);
+      setSimilarTagsWarning(similarTags);
+      toast({
+        type: 'warning',
+        message: `Similar tag${similarTags.length > 1 ? 's' : ''} exist${similarTags.length === 1 ? 's' : ''}: ${similarTags.join(', ')}. Press Enter again to create anyway.`,
+      });
+    } else {
+      // No similar tags, create directly
+      createTag(cleaned);
+      toast({ type: 'success', message: `Tag "${cleaned}" created` });
+      // Clear URL filter before resetting (resetSearch sets isQuickNoteMode=false which prevents URL cleanup)
+      if (isOnTagsPage) {
+        router.replace('/tags', { scroll: false });
+      }
+      resetSearch();
+    }
+  }, [quickNoteText, uniqueTags, toast, createTag, resetSearch, isOnTagsPage, router]);
+
+  const confirmTagCreation = useCallback(() => {
+    if (!pendingTagCreation) return;
+
+    createTag(pendingTagCreation);
+    toast({ type: 'success', message: `Tag "${pendingTagCreation}" created` });
+    // Clear URL filter before resetting
+    if (isOnTagsPage) {
+      router.replace('/tags', { scroll: false });
+    }
+    resetSearch();
+  }, [pendingTagCreation, createTag, toast, resetSearch, isOnTagsPage, router]);
+
+  const cancelTagCreation = useCallback(() => {
+    setPendingTagCreation(null);
+    setSimilarTagsWarning([]);
+    textareaRef.current?.focus();
+  }, []);
+
+  // ==========================================================================
   // KEYBOARD HANDLERS
   // ==========================================================================
 
@@ -547,6 +636,12 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       e.preventDefault();
       if (selectedIndex >= 0 && totalResultsCount > 0) {
         executeResult(selectedIndex);
+      } else if (isOnTagsPage && pendingTagCreation) {
+        // On tags page with pending tag creation, confirm it
+        confirmTagCreation();
+      } else if (isOnTagsPage && quickNoteText.trim() && !quickNoteText.startsWith('/') && !quickNoteText.startsWith('#') && !quickNoteText.startsWith('@')) {
+        // On tags page, try to create a tag
+        handleTagCreation();
       } else if (isOnTagsPage) {
         resetSearch();
       } else if (quickNoteText.trim() && !quickNoteText.startsWith('/') && !quickNoteText.startsWith('#') && !quickNoteText.startsWith('@')) {
@@ -559,6 +654,12 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       e.preventDefault();
       e.stopPropagation();
       e.nativeEvent.stopImmediatePropagation();
+
+      // If there's a pending tag creation, cancel it first
+      if (pendingTagCreation) {
+        cancelTagCreation();
+        return;
+      }
 
       if (isOnTagsPage) {
         resetSearch();
@@ -573,7 +674,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         resetSearch();
       }
     }
-  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch]);
+  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation]);
 
   const handleQuickNoteBlur = useCallback((e: React.FocusEvent) => {
     if (isDiscardingRef.current) return;
@@ -625,6 +726,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     textareaRef,
     textareaHeight,
     isOnTagsPage,
+    pendingTagCreation,
+    similarTagsWarning,
 
     // Actions
     setQuickNoteText,
@@ -638,6 +741,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     executeResult,
     confirmDiscard,
     cancelDiscard,
+    confirmTagCreation,
+    cancelTagCreation,
   };
 }
 
@@ -649,7 +754,8 @@ export function getSearchHeight(
   quickNoteText: string,
   textareaHeight: number,
   searchResults: SearchResults | null,
-  isOnTagsPage: boolean
+  isOnTagsPage: boolean,
+  similarTagsWarning: string[] = []
 ): number {
   if (!isQuickNoteMode) return 48;
 
@@ -660,6 +766,13 @@ export function getSearchHeight(
 
   if (textareaHeight > 28) {
     height += textareaHeight - 28;
+  }
+
+  // Similar tags warning on tags page (takes priority over normal tag creation hint)
+  if (isOnTagsPage && similarTagsWarning.length > 0) {
+    // Layout: "Similar tags exist:" row (24px) + tags row (28px) + keyboard hints row (24px) + padding (16px)
+    height += 92;
+    return Math.min(Math.max(48, height), 600);
   }
 
   if (isOnTagsPage && hasTypedContent && !isPrefixCommand) {

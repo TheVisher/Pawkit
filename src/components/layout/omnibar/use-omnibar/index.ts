@@ -173,7 +173,8 @@ export function useOmnibar(isCompact: boolean) {
       search.quickNoteText,
       search.textareaHeight,
       search.searchResults,
-      search.isOnTagsPage
+      search.isOnTagsPage,
+      search.similarTagsWarning
     );
   }, [addMode.isAddMode, kitMode.isKitMode, search]);
 
@@ -199,6 +200,9 @@ export function useOmnibar(isCompact: boolean) {
     searchResults: search.searchResults,
     textareaRef: search.textareaRef,
     isOnTagsPage: search.isOnTagsPage,
+    // Tag creation state
+    pendingTagCreation: search.pendingTagCreation,
+    similarTagsWarning: search.similarTagsWarning,
 
     // Add mode state
     isAddMode: addMode.isAddMode,

@@ -1,12 +1,12 @@
 'use client';
 
-import { Suspense, useState, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MoreVertical, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { useTagStore } from '@/lib/stores/tag-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useTagSidebar } from '@/lib/stores/ui-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
-import { TagBadge } from '@/components/tags/tag-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -61,15 +61,18 @@ function TagsPageContent() {
   // Get search query from URL params (set by omnibar)
   const searchQuery = searchParams.get('q') || '';
 
+  // Tag sidebar state from UI store
+  const { selectedTag, setSelectedTag } = useTagSidebar();
+
   // Local state
   const [sortBy, setSortBy] = useState<SortBy>('alphabetical');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Dialog states
+  // Dialog states (for mobile/fallback)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tagToEdit, setTagToEdit] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
 
   // Refresh tags on mount
   useEffect(() => {
@@ -84,6 +87,13 @@ function TagsPageContent() {
       router.replace('/tags');
     }
   }, [searchParams, router]);
+
+  // Clear selected tag if it no longer exists
+  useEffect(() => {
+    if (selectedTag && !uniqueTags.includes(selectedTag)) {
+      setSelectedTag(null);
+    }
+  }, [selectedTag, uniqueTags]);
 
   // Filter and sort tags
   const filteredTags = useMemo(() => {
@@ -138,7 +148,7 @@ function TagsPageContent() {
     });
   }, [groupedTags]);
 
-  // Handlers
+  // Handlers for dialogs (mobile fallback)
   const openRenameDialog = (tag: string) => {
     setTagToEdit(tag);
     setNewTagName(tag);
@@ -181,6 +191,11 @@ function TagsPageContent() {
     }
   };
 
+  // Tag click handler - sets selected tag in UI store for sidebar
+  const handleTagClick = useCallback((tag: string) => {
+    setSelectedTag(tag);
+  }, [setSelectedTag]);
+
   const subtitle = uniqueTags.length === 0
     ? 'Organize your content'
     : `${uniqueTags.length} tag${uniqueTags.length === 1 ? '' : 's'}`;
@@ -208,89 +223,117 @@ function TagsPageContent() {
 
   return (
     <div className="flex-1">
-      {/* Header with collision-aware offset */}
-      <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
-        {/* Custom header layout: title measured for collision, actions stay right */}
-        <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
-          <div className="flex items-start justify-between gap-4">
-            {/* Title area - measured for collision */}
-            <div ref={headerRef} className="w-fit space-y-0.5">
-              <div className="text-xs text-text-muted">{subtitle}</div>
-              <h1 className="text-2xl font-semibold text-text-primary">Tags</h1>
-            </div>
-            {/* Actions - always on the right */}
-            <div className="flex items-center gap-2 shrink-0">
-              {headerActions}
+      {/* Main Content Area */}
+      <div className="flex-1 min-w-0">
+        {/* Header with collision-aware offset */}
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+          {/* Custom header layout: title measured for collision, actions stay right */}
+          <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+            <div className="flex items-start justify-between gap-4">
+              {/* Title area - measured for collision */}
+              <div ref={headerRef} className="w-fit space-y-0.5">
+                <div className="text-xs text-text-muted">{subtitle}</div>
+                <h1 className="text-2xl font-semibold text-text-primary">Tags</h1>
+              </div>
+              {/* Actions - always on the right */}
+              <div className="flex items-center gap-2 shrink-0">
+                {headerActions}
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="px-4 md:px-6 pt-4 pb-6">
-        {isLoading ? (
-          <div className="text-center py-12 text-text-muted">
-            Loading tags...
-          </div>
-        ) : filteredTags.length === 0 ? (
-          <div className="text-center py-12 text-text-muted">
-            {searchQuery ? 'No tags match your search' : 'No tags yet. Use + in the omnibar to create your first tag.'}
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {sortedLetters.map((letter) => (
-              <div key={letter || 'all'}>
-                {sortBy === 'alphabetical' && letter && (
-                  <h2 className="text-lg font-semibold text-text-muted mb-3">
-                    {letter}
-                  </h2>
-                )}
-
-                <div className="flex flex-wrap gap-2">
-                  {groupedTags[letter].map((tag) => (
-                    <div
-                      key={tag}
-                      className="group flex items-center gap-0.5"
-                    >
-                      <TagBadge tag={tag} size="md" />
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className={cn(
-                              'h-6 w-6 md:h-5 md:w-5 flex items-center justify-center rounded-full',
-                              'text-text-muted hover:text-text-primary hover:bg-bg-surface-2',
-                              // Visible on mobile (touch), hover-only on desktop
-                              'opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity',
-                              '-ml-0.5'
-                            )}
-                          >
-                            <MoreVertical className="h-3.5 w-3.5 md:h-3 md:w-3" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          <DropdownMenuItem onClick={() => openRenameDialog(tag)}>
-                            <Edit2 className="mr-2 h-4 w-4" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => openDeleteDialog(tag)}
-                            className="text-red-400 focus:text-red-400"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+        <div className="px-4 md:px-6 pt-4 pb-6">
+          {isLoading ? (
+            <div className="text-center py-12 text-text-muted">
+              Loading tags...
+            </div>
+          ) : filteredTags.length === 0 ? (
+            <div className="text-center py-12 text-text-muted">
+              {searchQuery ? 'No tags match your search' : 'No tags yet. Use + in the omnibar to create your first tag.'}
+            </div>
+          ) : (
+            /* Wall-style layout like Capacities */
+            <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 2xl:columns-5 gap-6">
+              {sortedLetters.map((letter) => (
+                <div key={letter || 'all'} className="break-inside-avoid mb-6">
+                  {/* Letter Header */}
+                  {sortBy === 'alphabetical' && letter && (
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className="text-xl font-bold text-text-muted">{letter}</span>
+                      <div className="flex-1 h-px bg-border-subtle" />
                     </div>
-                  ))}
+                  )}
+
+                  {/* Tags as row items */}
+                  <div className="space-y-0.5">
+                    {groupedTags[letter].map((tag) => (
+                      <div key={tag} className="group relative">
+                        <button
+                          onClick={() => handleTagClick(tag)}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg',
+                            'text-left text-sm transition-all',
+                            'hover:bg-bg-surface-2',
+                            selectedTag === tag && 'bg-[var(--color-accent)]/10'
+                          )}
+                        >
+                          {/* Color indicator dot */}
+                          <span
+                            className="w-2 h-2 rounded-full shrink-0"
+                            style={{ backgroundColor: `hsl(${Math.abs(tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 360}, 60%, 50%)` }}
+                          />
+                          <span className={cn(
+                            'flex-1 truncate',
+                            selectedTag === tag ? 'text-text-primary font-medium' : 'text-text-secondary'
+                          )}>
+                            {tag}
+                          </span>
+                          <span className="text-text-muted text-xs tabular-nums">
+                            {tagCounts[tag] || 0}
+                          </span>
+                        </button>
+
+                        {/* Mobile-only dropdown trigger */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              className={cn(
+                                'absolute right-1 top-1/2 -translate-y-1/2',
+                                'h-6 w-6 md:hidden flex items-center justify-center rounded-full',
+                                'text-text-muted hover:text-text-primary hover:bg-bg-surface-2',
+                                'opacity-0 group-hover:opacity-100 transition-opacity'
+                              )}
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openRenameDialog(tag)}>
+                              <Edit2 className="mr-2 h-4 w-4" />
+                              Rename
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => openDeleteDialog(tag)}
+                              className="text-red-400 focus:text-red-400"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Mobile Dialogs */}
       <ResponsiveDialog
         open={renameDialogOpen}
         onOpenChange={setRenameDialogOpen}
@@ -338,7 +381,7 @@ function TagsPageContent() {
           </>
         }
       >
-        <div /> 
+        <div />
       </ResponsiveDialog>
     </div>
   );

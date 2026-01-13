@@ -49,6 +49,9 @@ interface IdleContentProps {
   onKitModeAction: (actionId: string) => void;
   // Context awareness
   isOnTagsPage?: boolean;
+  // Tag creation state
+  pendingTagCreation?: string | null;
+  similarTagsWarning?: string[];
 }
 
 export function IdleContent({
@@ -82,6 +85,9 @@ export function IdleContent({
   onKitModeAction,
   // Context awareness
   isOnTagsPage = false,
+  // Tag creation state
+  pendingTagCreation = null,
+  similarTagsWarning = [],
 }: IdleContentProps) {
   const hasContent = quickNoteText.length > 0;
   const isPrefixCommand = quickNoteText.startsWith('/') || quickNoteText.startsWith('#') || quickNoteText.startsWith('@');
@@ -148,7 +154,7 @@ export function IdleContent({
               onChange={(e) => setQuickNoteText(e.target.value)}
               onKeyDown={onQuickNoteKeyDown}
               onBlur={onQuickNoteBlur}
-              placeholder={isOnTagsPage ? "Filter tags..." : "Search or quick note..."}
+              placeholder={isOnTagsPage ? "Filter or create tags..." : "Search or quick note..."}
               className="flex-1 bg-transparent text-sm text-text-muted placeholder:text-text-muted focus:outline-none"
               onFocus={() => setIsQuickNoteMode(true)}
             />
@@ -189,11 +195,38 @@ export function IdleContent({
         </motion.button>
       </div>
 
-      {/* Tags Page Filter Indicator */}
+      {/* Tags Page Filter/Create Indicator */}
       {isQuickNoteMode && isFilteringTags && (
-        <div className="flex items-center gap-2 px-3 py-2 mt-1 border-t border-[var(--glass-border)]">
-          <Hash className="h-4 w-4 text-[var(--color-accent)]" />
-          <span className="text-sm text-text-muted">Filtering tags...</span>
+        <div className="px-3 py-2 mt-1 border-t border-[var(--glass-border)]">
+          {pendingTagCreation ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-yellow-400 shrink-0" />
+                <span className="text-sm text-text-muted">Similar tags exist:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pl-6">
+                {similarTagsWarning.map((tag) => (
+                  <span key={tag} className="px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 text-xs font-medium">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 pl-6 text-xs text-text-muted">
+                <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] text-text-primary font-medium">Enter</kbd>
+                <span>create anyway</span>
+                <span className="mx-1">|</span>
+                <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] text-text-primary font-medium">Esc</kbd>
+                <span>cancel</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Plus className="h-4 w-4 text-[var(--color-accent)]" />
+              <span className="text-sm text-text-muted">
+                Press <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] text-text-primary text-xs font-medium">Enter</kbd> to create tag &quot;{quickNoteText.trim()}&quot;
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -346,7 +379,7 @@ function ExpandedContent({
           onChange={(e) => setQuickNoteText(e.target.value)}
           onKeyDown={onQuickNoteKeyDown}
           onBlur={onQuickNoteBlur}
-          placeholder={isOnTagsPage ? "Filter tags..." : "Search or quick note..."}
+          placeholder={isOnTagsPage ? "Filter or create tags..." : "Search or quick note..."}
           className={cn(
             'bg-transparent text-sm resize-none',
             'placeholder:text-text-muted',
