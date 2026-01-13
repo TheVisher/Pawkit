@@ -74,11 +74,71 @@
 - If offline → Everything still works
 - If server is wiped → Local data is preserved and pushed back
 
-### 3. Bidirectional Sync
+### 3. Session-Based Sync (Dec 2025 Update)
+
+**During a session:**
+```
+┌─────────────────────────────────────────────────────┐
+│  SESSION START (Initial Load)                       │
+│  ─────────────────────────────                      │
+│  1. Load from IndexedDB (instant UI)                │
+│  2. Full sync: Pull + Push (get changes from other  │
+│     devices)                                        │
+│  3. Mark session as "synced"                        │
+└─────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────┐
+│  ACTIVE SESSION (After Initial Sync)                │
+│  ────────────────────────────────                   │
+│  • Zustand store = Source of Truth                  │
+│  • Push-only sync: Local changes → Server           │
+│  • NEVER pull from server (prevents overwrite)      │
+│  • Local-only data (like daily notes) is preserved  │
+└─────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────┐
+│  NEXT SESSION (Refresh/New Tab)                     │
+│  ──────────────────────────                         │
+│  • Fresh full sync (pull + push)                    │
+│  • Gets any changes from other devices              │
+│  • Session cycle repeats                            │
+└─────────────────────────────────────────────────────┘
+```
+
+**Why push-only after initial sync?**
+- Prevents server from overwriting local-only data (like daily notes)
+- Zustand is the single source of truth during active session
+- Changes from other devices are synced on next full refresh
+- Local data is NEVER lost during active session
+
+### 4. Future: Cross-Device Sync Notification (TODO)
+
+Currently, changes made on other devices are only synced when you refresh.
+A future enhancement could add a notification system:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  PROPOSED: Sync Notification System                 │
+│  ──────────────────────────────────                 │
+│  1. checkForChanges() already tells us if server    │
+│     has new data                                    │
+│  2. Show "Sync available" banner/icon to user       │
+│  3. User clicks to manually trigger full sync       │
+│  4. This gives user control while keeping them      │
+│     informed                                        │
+│                                                     │
+│  Implementation options:                            │
+│  • Supabase Realtime subscriptions (WebSocket)      │
+│  • Server-Sent Events (SSE) for push notifications  │
+│  • Periodic checkForChanges() with UI indicator     │
+└─────────────────────────────────────────────────────┘
+```
+
+### 5. Bidirectional Sync (Full Sync Only)
 ```
 Local ←→ Server (MERGE, not replace)
 
-On sync:
+On FULL sync (initial load only):
 1. Pull from server
 2. Merge with local (last-write-wins by timestamp)
 3. Push local changes to server

@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build",
+    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build && BUILD_TARGET=pawkit-bridge vite build",
     "build:firefox": "pnpm build && cp manifest.json dist/manifest.json && mkdir -p dist-firefox && cp -r dist/* dist-firefox/",
     "build:chrome": "pnpm build && cp manifest-chrome.json dist/manifest.json && mkdir -p dist-chrome && cp -r dist/* dist-chrome/",
     "build:all": "pnpm build:firefox && pnpm build:chrome",
@@ -29,8 +29,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.19",
-    "@types/react": "^18.2.56",
-    "@types/react-dom": "^18.2.19",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@types/webextension-polyfill": "^0.10.7",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "@typescript-eslint/parser": "^7.0.2",

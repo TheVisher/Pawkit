@@ -1,151 +1,74 @@
 import { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import browser from 'webextension-polyfill'
-import { Eye, EyeOff, Loader2, CheckCircle2, LogIn } from 'lucide-react'
+import { Loader2, CheckCircle2, LogIn, ExternalLink, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import type { SetTokenMessage } from '@/shared/types'
 import '../popup/index.css'
 
-const AUTH_URL = 'https://www.getpawkit.com/extension/auth?source=extension'
+const PAWKIT_URL = 'https://www.getpawkit.com'
+
+interface CheckAuthResponse {
+  ok: boolean
+  error?: string
+  user?: {
+    email: string | null
+  }
+}
 
 function Options() {
-  const [token, setToken] = useState('')
-  const [currentToken, setCurrentToken] = useState('')
-  const [showToken, setShowToken] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [authLoading, setAuthLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    // Load current token
-    const loadToken = async () => {
-      try {
-        const response = await browser.runtime.sendMessage({ type: 'GET_TOKEN' })
-        if (response.token) {
-          setCurrentToken(response.token)
-        }
-      } catch (error) {
-        console.error('Failed to load token:', error)
-      }
-    }
-
-    loadToken()
-
-    // Listen for auth messages from popup
-    const handleMessage = (event: MessageEvent) => {
-      // Verify origin (accept both www and non-www)
-      const allowedOrigins = ['https://getpawkit.com', 'https://www.getpawkit.com']
-      if (!allowedOrigins.includes(event.origin)) {
-        console.log('[Pawkit] Ignoring message from unknown origin:', event.origin)
-        return
-      }
-      console.log('[Pawkit] Received auth message from:', event.origin)
-
-      if (event.data.type === 'PAWKIT_AUTH_SUCCESS' && event.data.token) {
-        handleTokenReceived(event.data.token)
-      }
-    }
-
-    window.addEventListener('message', handleMessage)
-
-    return () => {
-      window.removeEventListener('message', handleMessage)
-    }
+    checkAuthStatus()
   }, [])
 
-  const handleTokenReceived = async (receivedToken: string) => {
-    setAuthLoading(false)
-
-    try {
-      const message: SetTokenMessage = {
-        type: 'SET_TOKEN',
-        token: receivedToken
-      }
-
-      await browser.runtime.sendMessage(message)
-      setCurrentToken(receivedToken)
-      setSaved(true)
-      setError('')
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSaved(false), 3000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save token')
-    }
-  }
-
-  const handleSignInWithPawkit = () => {
-    setAuthLoading(true)
-    setError('')
-
-    // Open auth popup
-    const width = 500
-    const height = 600
-    const left = (window.screen.width - width) / 2
-    const top = (window.screen.height - height) / 2
-
-    window.open(
-      AUTH_URL,
-      'Pawkit Authorization',
-      `width=${width},height=${height},left=${left},top=${top}`
-    )
-  }
-
-  const handleSave = async () => {
-    if (!token.trim()) {
-      setError('Token cannot be empty')
-      return
-    }
-
+  const checkAuthStatus = async () => {
     setLoading(true)
     setError('')
-    setSaved(false)
 
     try {
-      const message: SetTokenMessage = {
-        type: 'SET_TOKEN',
-        token: token.trim()
+      const response = await browser.runtime.sendMessage({ type: 'CHECK_AUTH' }) as CheckAuthResponse
+      setIsAuthenticated(response.ok)
+      if (response.user?.email) {
+        setUserEmail(response.user.email)
       }
-
-      await browser.runtime.sendMessage(message)
-      setCurrentToken(token.trim())
-      setToken('')
-      setSaved(true)
-
-      // Clear success message after 3 seconds
-      setTimeout(() => setSaved(false), 3000)
+      if (!response.ok && response.error) {
+        setError(response.error)
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save token')
+      console.error('Failed to check auth:', err)
+      setIsAuthenticated(false)
+      setError('Failed to check authentication status')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleRevoke = async () => {
-    try {
-      const message: SetTokenMessage = {
-        type: 'SET_TOKEN',
-        token: ''
-      }
+  const handleOpenPawkit = () => {
+    window.open(PAWKIT_URL, '_blank')
+  }
 
-      await browser.runtime.sendMessage(message)
-      setCurrentToken('')
-      setToken('')
-      setSaved(false)
+  const handleLogin = async () => {
+    try {
+      await browser.runtime.sendMessage({ type: 'INITIATE_LOGIN' })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to revoke token')
+      console.error('Failed to initiate login:', err)
     }
   }
 
-  const maskToken = (token: string) => {
-    if (token.length <= 8) return '•'.repeat(token.length)
-    // Show first 4 and last 4 characters with dots in between
-    return token.slice(0, 4) + '•'.repeat(Math.min(20, token.length - 8)) + token.slice(-4)
+  const handleLogout = async () => {
+    try {
+      await browser.runtime.sendMessage({ type: 'LOGOUT' })
+      setIsAuthenticated(false)
+      setUserEmail(null)
+    } catch (err) {
+      console.error('Failed to logout:', err)
+    }
   }
 
   return (
@@ -155,143 +78,82 @@ function Options() {
         <div>
           <h1 className="text-3xl font-bold">Pawkit Web Clipper Settings</h1>
           <p className="text-muted-foreground mt-2">
-            Configure your authentication token to save pages to Pawkit
+            Save pages to your Pawkit with one click
           </p>
         </div>
 
         <Separator />
 
-        {/* Current token status */}
+        {/* Authentication status */}
         <Card>
           <CardHeader>
             <CardTitle>Authentication Status</CardTitle>
             <CardDescription>
-              {currentToken
-                ? 'You are authenticated and ready to save pages'
-                : 'No authentication token set'}
+              Log in once and save pages from anywhere
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {currentToken ? (
+            {loading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Checking authentication...</span>
+              </div>
+            ) : isAuthenticated ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Label>Current Token:</Label>
-                  <code className="text-sm bg-muted px-2 py-1 rounded">
-                    {showToken ? currentToken : maskToken(currentToken)}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowToken(!showToken)}
-                  >
-                    {showToken ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
+                <div className="flex items-center gap-2 text-green-400">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <span className="font-medium">You are logged in</span>
+                </div>
+                {userEmail && (
+                  <p className="text-sm text-muted-foreground">
+                    Signed in as <span className="font-medium">{userEmail}</span>
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  You can now save pages to Pawkit from any website.
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={handleOpenPawkit}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open Pawkit
+                  </Button>
+                  <Button variant="ghost" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Log out
                   </Button>
                 </div>
-                <Button variant="destructive" onClick={handleRevoke}>
-                  Revoke Token
-                </Button>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Set your token below to start saving pages
-              </p>
-            )}
-          </CardContent>
-        </Card>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Log in to Pawkit to start saving pages, articles, and links.
+                </p>
 
-        {/* Sign in with Pawkit */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Easy Setup</CardTitle>
-            <CardDescription>
-              Sign in with your Pawkit account to authorize the extension
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={handleSignInWithPawkit}
-              disabled={authLoading}
-              className="w-full bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9358ef]"
-              size="lg"
-            >
-              {authLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Waiting for authorization...
-                </>
-              ) : (
-                <>
+                {error && (
+                  <div className="text-sm text-amber-400 bg-amber-400/10 border border-amber-400/20 rounded p-2">
+                    {error}
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleLogin}
+                  className="w-full bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9358ef]"
+                  size="lg"
+                >
                   <LogIn className="mr-2 h-5 w-5" />
-                  Sign in with Pawkit
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+                  Log in to Pawkit
+                </Button>
 
-        <div className="flex items-center gap-4">
-          <Separator className="flex-1" />
-          <span className="text-xs text-muted-foreground">OR</span>
-          <Separator className="flex-1" />
-        </div>
-
-        {/* Set new token manually */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Manual Token Setup</CardTitle>
-            <CardDescription>
-              Advanced: Manually paste your authentication token
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="token">Personal Access Token</Label>
-              <Input
-                id="token"
-                type="password"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Paste your token here..."
-                disabled={loading}
-              />
-              <p className="text-xs text-muted-foreground">
-                Your token is stored locally and used to authenticate API requests
-              </p>
-            </div>
-
-            {/* Error message */}
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded p-2">
-                {error}
+                <Button
+                  variant="ghost"
+                  onClick={checkAuthStatus}
+                  className="w-full"
+                >
+                  <Loader2 className="mr-2 h-4 w-4" />
+                  Check again
+                </Button>
               </div>
             )}
-
-            {/* Success message */}
-            {saved && (
-              <div className="flex items-center gap-2 text-sm text-green-400 bg-green-400/10 border border-green-400/20 rounded p-2">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Token saved successfully!</span>
-              </div>
-            )}
-
-            <Button
-              onClick={handleSave}
-              disabled={loading || !token.trim()}
-              className="bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9358ef]"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Token'
-              )}
-            </Button>
           </CardContent>
         </Card>
 
@@ -302,11 +164,31 @@ function Options() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             <ol className="list-decimal list-inside space-y-2">
-              <li>Click "Sign in with Pawkit" to authorize the extension</li>
+              <li>Click "Log in to Pawkit" above (or log in at <a href={PAWKIT_URL} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">getpawkit.com</a>)</li>
+              <li>Once logged in, come back here and click "Check again" if needed</li>
               <li>Click the extension icon on any page to save it to Pawkit</li>
-              <li>Right-click any page or link and select "Save page to Pawkit"</li>
-              <li>Add optional notes before saving</li>
+              <li>Or right-click any page or link and select "Save to Pawkit"</li>
             </ol>
+            <p className="mt-4 pt-4 border-t border-border">
+              <strong>Tip:</strong> You can also pick a custom thumbnail from any page and add notes before saving.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* About */}
+        <Card>
+          <CardHeader>
+            <CardTitle>About</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            <p>
+              Pawkit Web Clipper securely stores your login session. Once you log in,
+              you can save pages from anywhere without needing to keep Pawkit open.
+              Your session stays active until you log out.
+            </p>
+            <p className="mt-2">
+              Version 1.2.0
+            </p>
           </CardContent>
         </Card>
       </div>

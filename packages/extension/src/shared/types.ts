@@ -1,12 +1,20 @@
 /**
  * Shared types for Pawkit Web Clipper extension
+ * V2: Simplified - uses cookie auth, no more extension tokens
  */
+
+export interface Workspace {
+  id: string
+  name: string
+  icon?: string | null
+  isDefault: boolean
+}
 
 export interface CardPayload {
   title: string
   url: string
   notes?: string
-  collections?: string[]
+  tags?: string[] // V2 uses tags instead of collections
   source?: 'webext'
   meta?: {
     ogImage?: string
@@ -20,13 +28,8 @@ export interface SaveCardMessage {
   payload: CardPayload
 }
 
-export interface SetTokenMessage {
-  type: 'SET_TOKEN'
-  token: string
-}
-
-export interface GetTokenMessage {
-  type: 'GET_TOKEN'
+export interface CheckAuthMessage {
+  type: 'CHECK_AUTH'
 }
 
 export interface StartImagePickerMessage {
@@ -50,11 +53,27 @@ export interface GetCollectionsMessage {
   type: 'GET_COLLECTIONS'
 }
 
+export interface InitiateLoginMessage {
+  type: 'INITIATE_LOGIN'
+}
+
+export interface LogoutMessage {
+  type: 'LOGOUT'
+}
+
 export interface Collection {
   id: string
   name: string
   emoji: string | null
   slug: string
+}
+
+// API response type (server returns 'icon' instead of 'emoji')
+export interface CollectionApiResponse {
+  id: string
+  name: string
+  icon?: string | null
+  slug?: string
 }
 
 export interface GetCollectionsResponse {
@@ -63,20 +82,34 @@ export interface GetCollectionsResponse {
   error?: string
 }
 
-export type Message = SaveCardMessage | SetTokenMessage | GetTokenMessage | StartImagePickerMessage | ImageSelectedMessage | ImagePickerCancelledMessage | ReopenPopupMessage | GetCollectionsMessage
+export type Message =
+  | SaveCardMessage
+  | CheckAuthMessage
+  | StartImagePickerMessage
+  | ImageSelectedMessage
+  | ImagePickerCancelledMessage
+  | ReopenPopupMessage
+  | GetCollectionsMessage
+  | InitiateLoginMessage
+  | LogoutMessage
 
 export interface SaveCardResponse {
   ok: boolean
   data?: {
-    id: string
-    title: string
-    url: string
-    [key: string]: unknown
+    card: {
+      id: string
+      title: string
+      url: string
+      [key: string]: unknown
+    }
   }
   error?: string
 }
 
-export interface GetTokenResponse {
+export interface CheckAuthResponse {
   ok: boolean
-  token?: string
+  error?: string
+  user?: {
+    email: string | null
+  }
 }

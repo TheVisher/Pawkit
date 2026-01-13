@@ -1,0 +1,564 @@
+'use client';
+
+import { useMemo, useCallback, useEffect, useRef, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useCollections } from '@/lib/hooks/use-live-data';
+import { useDataContext } from '@/lib/contexts/data-context';
+import {
+  useLayout,
+  useSorting,
+  useGrouping,
+  useViewActions,
+  useCardDisplaySettings,
+  useFilterSettings,
+  useViewStore,
+  cardMatchesContentTypes,
+  cardMatchesUnsortedFilter,
+  cardMatchesReadingFilter,
+  cardMatchesLinkStatusFilter,
+  findDuplicateCardIds,
+} from '@/lib/stores/view-store';
+import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter, ScheduledFilter } from '@/lib/stores/view-store';
+import { isOverdue } from '@/lib/utils/system-tags';
+import type { SystemTag } from '@/lib/utils/system-tags';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
+import { CardGrid } from '@/components/cards/card-grid';
+import { EmptyState } from '@/components/cards/empty-state';
+import { MobileViewOptions } from '@/components/layout/mobile-view-options';
+import { ContentAreaContextMenu } from '@/components/context-menus';
+import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX } from 'lucide-react';
+import type { LocalCard } from '@/lib/db';
+import { cn } from '@/lib/utils';
+
+// Helper to get smart date label (Today, Yesterday, This Week, etc.)
+function getSmartDateLabel(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const cardDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((today.getTime() - cardDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'This Week';
+  if (diffDays < 14) return 'Last Week';
+  if (diffDays < 30) return 'This Month';
+  if (diffDays < 60) return 'Last Month';
+  if (diffDays < 365) return 'This Year';
+  return 'Older';
+}
+
+// Helper to get date label based on grouping type
+function getDateLabel(date: Date, dateGrouping: DateGrouping): string {
+  switch (dateGrouping) {
+    case 'smart':
+      return getSmartDateLabel(date);
+    case 'day':
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    case 'week': {
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      return `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+    case 'month':
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    case 'year':
+      return date.getFullYear().toString();
+    default:
+      return getSmartDateLabel(date);
+  }
+}
+
+// Helper to get content type label
+function getContentTypeLabel(card: LocalCard): string {
+  if (['md-note', 'text-note'].includes(card.type)) return 'Notes';
+  if (card.type === 'file') return 'Files';
+  if (card.type === 'url') return 'Bookmarks';
+  return 'Other';
+}
+
+interface CardGroup {
+  key: string;
+  label: string;
+  cards: LocalCard[];
+}
+
+// Wrapper with Suspense for useSearchParams (Next.js 15+ requirement)
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<LibraryPageLoading />}>
+      <LibraryPageContent />
+    </Suspense>
+  );
+}
+
+function LibraryPageLoading() {
+  return (
+    <div className="flex-1">
+      <div className="pt-5 pb-4 px-4 md:px-6">
+        <div className="h-8 w-32 bg-bg-surface-2 rounded animate-pulse" />
+      </div>
+      <div className="px-4 md:px-6 pt-4 pb-6">
+        <div className="text-center py-12 text-text-muted">Loading library...</div>
+      </div>
+    </div>
+  );
+}
+
+function LibraryPageContent() {
+  const searchParams = useSearchParams();
+  const workspace = useCurrentWorkspace();
+  const collections = useCollections(workspace?.id);
+  // Get cards AND isLoading from the same source to ensure consistency
+  // This prevents the "No bookmarks" flash caused by useDeferredValue lag
+  // isFullyLoaded indicates whether all cards are loaded (not just initial batch)
+  const { cards, isLoading, isFullyLoaded } = useDataContext();
+
+  // Build set of Pawkit slugs for "No Pawkits" filter
+  // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+  const pawkitSlugs = useMemo(() => {
+    return new Set(collections.map((c) => c.slug));
+  }, [collections]);
+
+  // Collision detection for omnibar
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef);
+
+  // Batched view settings (reduces 20+ subscriptions to 5)
+  // See: Phase 2 of performance optimization plan
+  const layout = useLayout();
+  const { sortBy, sortOrder } = useSorting();
+  const { groupBy, dateGrouping } = useGrouping();
+  const { reorderCards, loadViewSettings } = useViewActions();
+  const {
+    contentTypeFilters,
+    selectedTags,
+    showNoTagsOnly,
+    showNoPawkitsOnly,
+    unsortedFilter,
+    readingFilter,
+    linkStatusFilter,
+    scheduledFilter,
+    showDuplicatesOnly,
+    toggleTag,
+    setReadingFilter,
+    setScheduledFilter,
+  } = useFilterSettings();
+
+  // Card order still needs individual selector (not included in batched hooks)
+  const cardOrder = useViewStore((state) => state.cardOrder);
+  const setSelectedTags = useViewStore((state) => state.setSelectedTags);
+  const openAddCard = useModalStore((state) => state.openAddCard);
+
+  // Load library-specific view settings on mount
+  useEffect(() => {
+    if (workspace) {
+      loadViewSettings(workspace.id, 'library');
+    }
+  }, [workspace, loadViewSettings]);
+
+  // Handle tag query parameter from URL (e.g., /library?tag=mytag)
+  useEffect(() => {
+    const tagParam = searchParams.get('tag');
+    if (tagParam) {
+      setSelectedTags([tagParam]);
+    }
+  }, [searchParams, setSelectedTags]);
+
+  // Card display settings
+  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
+
+  // Calculate duplicate card IDs (memoized) - skip expensive O(n²) calculation when filter is disabled
+  const duplicateCardIds = useMemo(() => {
+    if (!showDuplicatesOnly) return new Set<string>();
+    return findDuplicateCardIds(cards);
+  }, [cards.length, showDuplicatesOnly]);
+
+  // Count total cards - cards are already filtered for _deleted in DataContext
+  const totalCards = cards.length;
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return contentTypeFilters.length > 0 ||
+           selectedTags.length > 0 ||
+           showNoTagsOnly ||
+           showNoPawkitsOnly ||
+           unsortedFilter !== 'none' ||
+           readingFilter !== 'all' ||
+           linkStatusFilter !== 'all' ||
+           scheduledFilter !== 'all' ||
+           showDuplicatesOnly;
+  }, [contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly]);
+
+  // Apply content type + tag + unsorted + reading filters
+  // Note: cards are already filtered for _deleted in DataContext
+  const activeCards = useMemo(() => {
+    return cards.filter((card) => {
+      if (!cardMatchesContentTypes(card, contentTypeFilters)) return false;
+      // Tag filter - card must have ALL selected tags
+      if (selectedTags.length > 0) {
+        const cardTags = card.tags || [];
+        if (!selectedTags.every(tag => cardTags.includes(tag))) return false;
+      }
+      // No tags filter - card must have no tags
+      if (showNoTagsOnly) {
+        const cardTags = card.tags || [];
+        if (cardTags.length > 0) return false;
+      }
+      // No Pawkits filter - card must not have any Pawkit tags
+      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+      if (showNoPawkitsOnly) {
+        const cardTags = card.tags || [];
+        const hasAnyPawkitTag = cardTags.some((tag) => pawkitSlugs.has(tag));
+        if (hasAnyPawkitTag) return false;
+      }
+      // Unsorted/Quick filter
+      if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;
+      // Reading status filter
+      if (!cardMatchesReadingFilter(card, readingFilter)) return false;
+      // Link status filter
+      if (!cardMatchesLinkStatusFilter(card, linkStatusFilter)) return false;
+      // Scheduled status filter
+      if (scheduledFilter !== 'all') {
+        const hasSchedule = !!card.scheduledDate;
+        const cardIsOverdue = hasSchedule && isOverdue(card.scheduledDate);
+        if (scheduledFilter === 'scheduled' && (!hasSchedule || cardIsOverdue)) return false;
+        if (scheduledFilter === 'overdue' && !cardIsOverdue) return false;
+        if (scheduledFilter === 'not-scheduled' && hasSchedule) return false;
+      }
+      // Duplicates filter
+      if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
+      return true;
+    });
+  }, [cards, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, pawkitSlugs, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
+
+  // Sort cards based on current sort settings
+  const sortedCards = useMemo(() => {
+    // Manual sort - use cardOrder array
+    if (sortBy === 'manual' && cardOrder.length > 0) {
+      const orderMap = new Map(cardOrder.map((id, index) => [id, index]));
+      return [...activeCards].sort((a, b) => {
+        const indexA = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+        const indexB = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+        return indexA - indexB;
+      });
+    }
+
+    // Automatic sorting by field
+    return [...activeCards].sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'title':
+          comparison = (a.title || '').localeCompare(b.title || '');
+          break;
+        case 'domain':
+          comparison = (a.domain || '').localeCompare(b.domain || '');
+          break;
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'updatedAt':
+        default:
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [activeCards, sortBy, sortOrder, cardOrder]);
+
+  // Progressive rendering - render first batch immediately, then auto-load rest in chunks
+  // This unblocks the main thread for faster LCP while progressively loading more
+  // 12 cards fills viewport (3 rows × 4 cols on desktop) for fast initial paint
+  const INITIAL_DISPLAY_LIMIT = 12;
+  const LOAD_MORE_CHUNK = 20;
+  const [displayLimit, setDisplayLimit] = useState(INITIAL_DISPLAY_LIMIT);
+
+  // Reset display limit when filters/sort change
+  useEffect(() => {
+    setDisplayLimit(INITIAL_DISPLAY_LIMIT);
+  }, [activeCards.length, sortBy, sortOrder]);
+
+  // Infinite scroll - load more when sentinel enters viewport
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    if (displayLimit >= sortedCards.length) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setDisplayLimit(prev => Math.min(prev + LOAD_MORE_CHUNK, sortedCards.length));
+        }
+      },
+      { rootMargin: '400px' } // Trigger 400px before sentinel is visible
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [displayLimit, sortedCards.length]);
+
+  const paginatedCards = useMemo(() => {
+    return sortedCards.slice(0, displayLimit);
+  }, [sortedCards, displayLimit]);
+
+  const hasMoreCards = displayLimit < sortedCards.length;
+
+  // Group cards based on groupBy setting
+  const groupedCards = useMemo((): CardGroup[] => {
+    if (groupBy === 'none') {
+      return [{ key: 'all', label: '', cards: paginatedCards }];
+    }
+
+    const groups = new Map<string, LocalCard[]>();
+
+    for (const card of paginatedCards) {
+      let key: string;
+
+      switch (groupBy) {
+        case 'date': {
+          const date = new Date(card.createdAt);
+          key = getDateLabel(date, dateGrouping);
+          break;
+        }
+        case 'tags': {
+          // Group by first tag, or 'Untagged' if no tags
+          const tags = card.tags || [];
+          key = tags.length > 0 ? tags[0] : 'Untagged';
+          break;
+        }
+        case 'type':
+          key = getContentTypeLabel(card);
+          break;
+        case 'domain':
+          key = card.domain || 'No Domain';
+          break;
+        default:
+          key = 'Other';
+      }
+
+      const existing = groups.get(key) || [];
+      existing.push(card);
+      groups.set(key, existing);
+    }
+
+    // Convert to array and maintain sort order for date groups
+    const result: CardGroup[] = [];
+
+    if (groupBy === 'date') {
+      // For date grouping, maintain chronological order based on sort order
+      const dateOrder = sortOrder === 'desc'
+        ? ['Today', 'Yesterday', 'This Week', 'Last Week', 'This Month', 'Last Month', 'This Year', 'Older']
+        : ['Older', 'This Year', 'Last Month', 'This Month', 'Last Week', 'This Week', 'Yesterday', 'Today'];
+
+      // First add known date groups in order
+      for (const label of dateOrder) {
+        const cards = groups.get(label);
+        if (cards) {
+          result.push({ key: label, label, cards });
+          groups.delete(label);
+        }
+      }
+      // Then add any remaining groups (for non-smart date groupings)
+      for (const [label, cards] of groups) {
+        result.push({ key: label, label, cards });
+      }
+    } else {
+      // For other groupings, sort alphabetically but put 'Untagged'/'No Domain' last
+      const entries = Array.from(groups.entries());
+      entries.sort((a, b) => {
+        if (a[0] === 'Untagged' || a[0] === 'No Domain') return 1;
+        if (b[0] === 'Untagged' || b[0] === 'No Domain') return -1;
+        return a[0].localeCompare(b[0]);
+      });
+      for (const [label, cards] of entries) {
+        result.push({ key: label, label, cards });
+      }
+    }
+
+    return result;
+  }, [sortedCards, groupBy, dateGrouping, sortOrder]);
+
+  // Handle card reorder from drag-and-drop
+  const handleReorder = useCallback((reorderedIds: string[]) => {
+    reorderCards(reorderedIds);
+  }, [reorderCards]);
+
+  // Handle user tag click in card footer - filter by tag
+  const handleTagClick = useCallback((tag: string) => {
+    toggleTag(tag);
+  }, [toggleTag]);
+
+  // Handle system tag click in card footer - filter by status
+  const handleSystemTagClick = useCallback((tag: SystemTag) => {
+    if (tag.type === 'read') {
+      setReadingFilter('read');
+    } else if (tag.type === 'scheduled') {
+      setScheduledFilter('scheduled');
+    } else if (tag.type === 'overdue') {
+      setScheduledFilter('overdue');
+    }
+    // Reading time tags are clickable via regular tag filtering now
+  }, [setReadingFilter, setScheduledFilter]);
+
+  // Get icon for group header based on groupBy type
+  const getGroupIcon = () => {
+    switch (groupBy) {
+      case 'date': return CalendarDays;
+      case 'tags': return Tag;
+      case 'type': return Type;
+      case 'domain': return Globe;
+      default: return null;
+    }
+  };
+
+  const GroupIcon = getGroupIcon();
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex-1">
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+          <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+            <div className="flex items-start justify-between gap-4">
+              <div ref={headerRef} className="w-fit space-y-0.5">
+                <div className="text-xs text-text-muted">Loading...</div>
+                <h1 className="text-2xl font-semibold text-text-primary">Library</h1>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pt-4 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              className="h-48 rounded-2xl animate-pulse bg-bg-surface-2"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading indicator in subtitle when filters are active but not all cards loaded
+  const showLoadingMore = hasActiveFilters && !isFullyLoaded;
+  const subtitle = activeCards.length === 0
+    ? (hasActiveFilters ? (showLoadingMore ? 'Loading...' : 'No matching items') : 'All your saved content')
+    : `${activeCards.length} item${activeCards.length === 1 ? '' : 's'}${showLoadingMore ? ' (loading more...)' : ''}`;
+
+  return (
+    <ContentAreaContextMenu>
+      <div className="flex-1">
+        {/* Header with collision-aware offset */}
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+          {/* Custom header layout: title measured for collision, actions stay right */}
+          <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+            <div className="flex items-start justify-between gap-4">
+              {/* Title area - measured for collision */}
+              <div ref={headerRef} className="w-fit space-y-0.5">
+                <div className="text-xs text-text-muted">{subtitle}</div>
+                <h1 className="text-2xl font-semibold text-text-primary">Library</h1>
+              </div>
+              {/* Actions - always on the right */}
+              <div className="flex items-center gap-2 shrink-0">
+                <MobileViewOptions viewType="library" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Page content - pt-4 creates spacing below header */}
+        <div className="px-4 md:px-6 pt-4 pb-6">
+          {activeCards.length === 0 ? (
+            totalCards === 0 ? (
+              // Truly empty library
+              <EmptyState
+                icon={Bookmark}
+                title="No bookmarks yet"
+                description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
+                actionLabel="Add bookmark"
+                onAction={() => openAddCard('bookmark')}
+              />
+            ) : (
+              // Filters returned no results
+              <EmptyState
+                icon={SearchX}
+                title="No matching items"
+                description="Try adjusting your filters or search criteria to find what you're looking for."
+              />
+            )
+          ) : groupBy === 'none' ? (
+            <>
+              <CardGrid
+                cards={paginatedCards}
+                layout={layout}
+                onReorder={handleReorder}
+                cardSize={cardSize}
+                cardSpacing={cardSpacing}
+                displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                onTagClick={handleTagClick}
+                onSystemTagClick={handleSystemTagClick}
+              />
+              {/* Infinite scroll spacer */}
+              {hasMoreCards && <div ref={loadMoreRef} className="h-20" />}
+            </>
+          ) : layout === 'list' ? (
+            // List view with grouping - pass groups to single CardGrid for inline separators
+            <>
+              <CardGrid
+                cards={paginatedCards}
+                layout={layout}
+                onReorder={handleReorder}
+                cardSize={cardSize}
+                cardSpacing={cardSpacing}
+                displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                groups={groupedCards}
+                groupIcon={GroupIcon || undefined}
+                onTagClick={handleTagClick}
+                onSystemTagClick={handleSystemTagClick}
+              />
+              {hasMoreCards && <div className="h-20" />}
+            </>
+          ) : (
+            // Masonry/Grid view with grouping - separate sections with headers
+            <>
+              <div className="space-y-8">
+                {groupedCards.map((group) => (
+                  <div key={group.key}>
+                    {/* Group header */}
+                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-text-muted)]/15">
+                      {GroupIcon && <GroupIcon className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                      <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                        {group.label}
+                      </h2>
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        {group.cards.length} item{group.cards.length === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    {/* Group cards */}
+                    <CardGrid
+                      cards={group.cards}
+                      layout={layout}
+                      onReorder={handleReorder}
+                      cardSize={cardSize}
+                      cardSpacing={cardSpacing}
+                      displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                      onTagClick={handleTagClick}
+                      onSystemTagClick={handleSystemTagClick}
+                    />
+                  </div>
+                ))}
+              </div>
+              {hasMoreCards && <div className="h-20" />}
+            </>
+          )}
+        </div>
+      </div>
+    </ContentAreaContextMenu>
+  );
+}

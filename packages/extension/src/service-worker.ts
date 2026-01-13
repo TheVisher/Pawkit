@@ -1,11 +1,24 @@
 /**
  * Background service worker for Pawkit Web Clipper
  * Handles API requests, context menus, and message passing
+ *
+ * V2.1: Uses Bearer token auth (sessions stored in browser.storage)
  */
 
 import browser from 'webextension-polyfill'
-import { saveCard, setToken, getToken, getCollections } from './background/api'
-import type { Message, SaveCardResponse, GetTokenResponse, GetCollectionsResponse } from './shared/types'
+import {
+  saveCard,
+  getCollections,
+  checkAuth,
+  storeSession,
+  clearSession,
+  initiateLogin,
+} from './background/api'
+import type { Message, SaveCardResponse, GetCollectionsResponse, CheckAuthResponse } from './shared/types'
+
+// =============================================================================
+// CONTEXT MENU SETUP
+// =============================================================================
 
 // Create context menu on install
 browser.runtime.onInstalled.addListener(() => {
@@ -23,8 +36,12 @@ browser.runtime.onInstalled.addListener(() => {
     contexts: ['image']
   })
 
-  console.log('Pawkit Web Clipper installed')
+  console.log('[Service Worker] Pawkit Web Clipper installed')
 })
+
+// =============================================================================
+// CONTEXT MENU HANDLERS
+// =============================================================================
 
 // Handle context menu clicks
 browser.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -56,28 +73,30 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
 
       const response = await saveCard({
         title,
-        url: pageUrl, // Save page URL as the main link
+        url: pageUrl,
         source: 'webext',
-        notes: `Image URL: ${imageUrl}`, // Store image URL in notes
+        notes: `Image URL: ${imageUrl}`,
         meta: {
-          ogImage: imageUrl // Use the image as the thumbnail
+          ogImage: imageUrl
         }
       })
 
       showNotification(response, title)
     }
   } catch (error) {
-    console.error('Context menu save failed:', error)
+    console.error('[Service Worker] Context menu save failed:', error)
   }
 })
 
-// API response type for notification handling
+// =============================================================================
+// NOTIFICATION HELPER
+// =============================================================================
+
 interface ApiResponse {
   ok: boolean;
   error?: string;
 }
 
-// Helper to show notifications
 function showNotification(response: ApiResponse, title: string) {
   if (response.ok) {
     browser.notifications?.create({
@@ -96,16 +115,52 @@ function showNotification(response: ApiResponse, title: string) {
   }
 }
 
-// Handle messages from popup/options pages
+// =============================================================================
+// MESSAGE HANDLERS
+// =============================================================================
+
+// Session update message type
+interface SessionUpdateMessage {
+  type: 'SESSION_UPDATE';
+  authenticated: boolean;
+  session?: {
+    access_token: string;
+    refresh_token: string;
+    expires_at: number;
+    user: {
+      id: string;
+      email: string | null;
+    };
+  };
+}
+
+// Handle messages from popup/options/content scripts
 browser.runtime.onMessage.addListener(
-  (message: Message & { type: string }, _sender): Promise<SaveCardResponse | GetTokenResponse | GetCollectionsResponse> | undefined => {
+  (message: (Message | SessionUpdateMessage) & { type: string }, _sender): Promise<SaveCardResponse | GetCollectionsResponse | CheckAuthResponse | { ok: boolean }> | undefined => {
+
+    // Handle SESSION_UPDATE from content script on getpawkit.com
+    if (message.type === 'SESSION_UPDATE') {
+      const sessionMsg = message as SessionUpdateMessage
+
+      if (sessionMsg.authenticated && sessionMsg.session) {
+        // Store the new session
+        return storeSession(sessionMsg.session).then(() => {
+          console.log('[Service Worker] Session stored from content script')
+          return { ok: true }
+        })
+      } else {
+        // User logged out - clear session
+        return clearSession().then(() => {
+          console.log('[Service Worker] Session cleared (user logged out)')
+          return { ok: true }
+        })
+      }
+    }
+
     // Handle REOPEN_POPUP - open the extension popup after image selection
     if (message.type === 'REOPEN_POPUP') {
-      // Use browser.action.openPopup() if available (Firefox), otherwise show notification
       if (browser.action?.openPopup) {
         browser.action.openPopup().catch(() => {
-          // Some browsers don't support programmatic popup opening
-          // Show a notification instead
           browser.notifications?.create({
             type: 'basic',
             iconUrl: browser.runtime.getURL('icons/icon-48.png'),
@@ -114,7 +169,6 @@ browser.runtime.onMessage.addListener(
           })
         })
       } else {
-        // Show notification for browsers that don't support openPopup
         browser.notifications?.create({
           type: 'basic',
           iconUrl: browser.runtime.getURL('icons/icon-48.png'),
@@ -125,27 +179,28 @@ browser.runtime.onMessage.addListener(
       return undefined
     }
 
+    // Handle INITIATE_LOGIN - open Pawkit tab for login
+    if (message.type === 'INITIATE_LOGIN') {
+      return initiateLogin().then(() => ({ ok: true }))
+    }
+
+    // Handle LOGOUT - clear stored session
+    if (message.type === 'LOGOUT') {
+      return clearSession().then(() => ({ ok: true }))
+    }
+
     return new Promise(async (resolve) => {
       try {
         switch (message.type) {
           case 'SAVE_CARD': {
-            const response = await saveCard(message.payload)
-
-            // Page uses polling to auto-refresh, no need to notify
-
+            const response = await saveCard((message as Message & { type: 'SAVE_CARD' }).payload)
             resolve(response as SaveCardResponse)
             break
           }
 
-          case 'SET_TOKEN': {
-            await setToken(message.token)
-            resolve({ ok: true })
-            break
-          }
-
-          case 'GET_TOKEN': {
-            const token = await getToken()
-            resolve({ ok: true, token: token || undefined })
+          case 'CHECK_AUTH': {
+            const response = await checkAuth()
+            resolve(response as CheckAuthResponse)
             break
           }
 
@@ -159,7 +214,7 @@ browser.runtime.onMessage.addListener(
             resolve({ ok: false, error: 'Unknown message type' })
         }
       } catch (error) {
-        console.error('Message handler error:', error)
+        console.error('[Service Worker] Message handler error:', error)
         resolve({
           ok: false,
           error: error instanceof Error ? error.message : 'Unknown error'
@@ -169,4 +224,4 @@ browser.runtime.onMessage.addListener(
   }
 )
 
-console.log('Pawkit service worker running')
+console.log('[Service Worker] Pawkit service worker running')

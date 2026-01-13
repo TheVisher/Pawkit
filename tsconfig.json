@@ -16,14 +16,13 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
     "noEmit": true,
     "types": [
       "node",
       "@types/react",
-      "@types/react-dom",
-      "@playwright/test"
+      "@types/react-dom"
     ],
     "plugins": [
       {
@@ -32,7 +31,9 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
   "include": [
@@ -41,7 +42,8 @@
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
