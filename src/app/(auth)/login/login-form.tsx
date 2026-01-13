@@ -12,16 +12,61 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 // Whitelist of allowed redirect paths to prevent open redirect attacks
 const ALLOWED_REDIRECT_PATHS = ['/dashboard', '/library', '/home', '/calendar', '/notes', '/favorites'];
 
+/**
+ * Normalize a path to prevent directory traversal and other bypass attempts
+ * Returns null if the path is invalid/suspicious
+ */
+function normalizePath(path: string): string | null {
+  // Must start with /
+  if (!path.startsWith('/')) return null;
+
+  // Block protocol-relative URLs (//example.com)
+  if (path.startsWith('//')) return null;
+
+  // Block directory traversal patterns
+  if (path.includes('..')) return null;
+  if (path.includes('./')) return null;
+
+  // Block encoded traversal attempts (%2e = ., %2f = /)
+  const decoded = decodeURIComponent(path);
+  if (decoded.includes('..')) return null;
+  if (decoded.includes('./')) return null;
+
+  // Block null bytes and other control characters
+  if (/[\x00-\x1f]/.test(path)) return null;
+
+  // Normalize multiple slashes to single slash
+  const normalized = path.replace(/\/+/g, '/');
+
+  // Remove trailing slash for consistency (except for root)
+  if (normalized.length > 1 && normalized.endsWith('/')) {
+    return normalized.slice(0, -1);
+  }
+
+  return normalized;
+}
+
 function getSafeRedirectPath(requestedPath: string | null): string {
   if (!requestedPath) return '/dashboard';
-  // Only allow relative paths that are in our whitelist
-  if (ALLOWED_REDIRECT_PATHS.includes(requestedPath)) {
-    return requestedPath;
+
+  // Normalize the path first to prevent bypass attempts
+  const normalizedPath = normalizePath(requestedPath);
+  if (!normalizedPath) {
+    console.warn('[Login] Blocked suspicious redirect path:', requestedPath);
+    return '/dashboard';
   }
+
+  // Only allow relative paths that are exactly in our whitelist
+  if (ALLOWED_REDIRECT_PATHS.includes(normalizedPath)) {
+    return normalizedPath;
+  }
+
   // Check if it starts with an allowed path (for nested routes like /library/123)
-  if (ALLOWED_REDIRECT_PATHS.some(allowed => requestedPath.startsWith(allowed + '/'))) {
-    return requestedPath;
+  // Use normalized path to ensure consistent comparison
+  if (ALLOWED_REDIRECT_PATHS.some(allowed => normalizedPath.startsWith(allowed + '/'))) {
+    return normalizedPath;
   }
+
   return '/dashboard';
 }
 

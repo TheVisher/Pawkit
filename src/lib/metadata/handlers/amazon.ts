@@ -62,25 +62,60 @@ const FAVICON_ENDPOINT = (url: string) =>
   `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(url)}`;
 
 /**
+ * Validate that the parsed JSON has the expected Amazon dynamic image format
+ * Format: {"url": [width, height], "url2": [width2, height2], ...}
+ */
+function isValidDynamicImageFormat(obj: unknown): obj is Record<string, [number, number]> {
+  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
+    return false;
+  }
+
+  const entries = Object.entries(obj);
+  if (entries.length === 0) {
+    return false;
+  }
+
+  // Check that at least the first entry has the expected format
+  const [, firstValue] = entries[0];
+  return (
+    Array.isArray(firstValue) &&
+    firstValue.length >= 2 &&
+    typeof firstValue[0] === 'number' &&
+    typeof firstValue[1] === 'number'
+  );
+}
+
+/**
  * Parse Amazon's dynamic image JSON format
  * Format: {"url": [width, height], "url2": [width2, height2], ...}
  * Returns the URL with the largest dimensions
  */
 function parseDynamicImageJson(jsonStr: string): string | null {
   try {
-    const imageObj = JSON.parse(jsonStr) as Record<string, [number, number]>;
-    const entries = Object.entries(imageObj);
+    const parsed: unknown = JSON.parse(jsonStr);
 
-    if (entries.length === 0) {
+    // Validate the parsed structure before using it
+    if (!isValidDynamicImageFormat(parsed)) {
       return null;
     }
+
+    const entries = Object.entries(parsed);
 
     // Find the largest image by comparing width * height
     let largestUrl = entries[0][0];
     let largestSize = entries[0][1][0] * entries[0][1][1];
 
     for (const [url, dimensions] of entries) {
-      const size = dimensions[0] * dimensions[1];
+      // Skip entries that don't have valid dimensions
+      if (!Array.isArray(dimensions) || dimensions.length < 2) {
+        continue;
+      }
+      const width = dimensions[0];
+      const height = dimensions[1];
+      if (typeof width !== 'number' || typeof height !== 'number') {
+        continue;
+      }
+      const size = width * height;
       if (size > largestSize) {
         largestSize = size;
         largestUrl = url;

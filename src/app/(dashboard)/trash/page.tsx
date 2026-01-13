@@ -86,20 +86,65 @@ export default function TrashPage() {
 
   const handleRestoreSelected = async () => {
     const ids = Array.from(selectedIds);
-    await Promise.all(ids.map((id) => restoreCard(id)));
-    setTrashedCards((prev) => prev.filter((c) => !selectedIds.has(c.id)));
-    setSelectedIds(new Set());
-    toast({ type: 'success', message: `${ids.length} items restored` });
+
+    // Track which cards were successfully restored
+    const results = await Promise.allSettled(ids.map((id) => restoreCard(id).then(() => id)));
+
+    const succeededIds = new Set(
+      results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value)
+    );
+    const failedCount = results.filter((r) => r.status === 'rejected').length;
+
+    // Only remove successfully restored cards from UI
+    if (succeededIds.size > 0) {
+      setTrashedCards((prev) => prev.filter((c) => !succeededIds.has(c.id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        succeededIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+
+    if (failedCount > 0) {
+      toast({ type: 'error', message: `${failedCount} items failed to restore` });
+    }
+    if (succeededIds.size > 0) {
+      toast({ type: 'success', message: `${succeededIds.size} items restored` });
+    }
   };
 
   const handleDeleteSelected = async () => {
     const ids = Array.from(selectedIds);
     if (!confirm(`Permanently delete ${ids.length} items? This cannot be undone.`)) return;
 
-    await Promise.all(ids.map((id) => permanentDeleteCard(id)));
-    setTrashedCards((prev) => prev.filter((c) => !selectedIds.has(c.id)));
-    setSelectedIds(new Set());
-    toast({ type: 'success', message: `${ids.length} items deleted` });
+    // Track which cards were successfully deleted
+    const results = await Promise.allSettled(ids.map((id) => permanentDeleteCard(id).then(() => id)));
+
+    const succeededIds = new Set(
+      results
+        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
+        .map((r) => r.value)
+    );
+    const failedCount = results.filter((r) => r.status === 'rejected').length;
+
+    // Only remove successfully deleted cards from UI
+    if (succeededIds.size > 0) {
+      setTrashedCards((prev) => prev.filter((c) => !succeededIds.has(c.id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        succeededIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    }
+
+    if (failedCount > 0) {
+      toast({ type: 'error', message: `${failedCount} items failed to delete` });
+    }
+    if (succeededIds.size > 0) {
+      toast({ type: 'success', message: `${succeededIds.size} items deleted` });
+    }
   };
 
   const toggleSelect = (id: string) => {

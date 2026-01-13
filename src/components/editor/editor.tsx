@@ -1,6 +1,6 @@
 'use client';
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Editor as TipTapEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
@@ -61,7 +61,7 @@ export function Editor({
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const existingRefsRef = useRef(existingRefs);
-  const syncRefsRef = useRef<((editorInstance: any) => Promise<void>) | null>(null);
+  const syncRefsRef = useRef<((editorInstance: TipTapEditor) => Promise<void>) | null>(null);
 
   // Keep existingRefs ref in sync
   useEffect(() => {
@@ -70,7 +70,7 @@ export function Editor({
 
   // Keep sync function ref in sync
   useEffect(() => {
-    syncRefsRef.current = async (editorInstance: any) => {
+    syncRefsRef.current = async (editorInstance: TipTapEditor) => {
       if (!cardId || !workspaceId || !editorInstance) return;
 
       try {

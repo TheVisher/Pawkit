@@ -1,9 +1,13 @@
 /**
  * Link Check API
  * Checks if URLs are still valid and accessible
+ *
+ * SECURITY: Requires authentication to prevent SSRF abuse
+ * Rate limiting is based on user ID, not IP
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { checkLink, checkLinks } from '@/lib/services/link-checker';
 
@@ -12,12 +16,26 @@ export const runtime = 'nodejs';
 
 /**
  * POST - Check single URL or batch of URLs
+ * Requires authentication
  */
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: 10 requests per minute
-    const identifier = request.headers.get('x-forwarded-for') || 'anonymous';
-    const { success, remaining } = checkRateLimit(identifier, 60000, 10);
+    // 1. Authenticate user
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized. Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    // 2. Rate limiting: 10 requests per minute, keyed by user ID (not IP)
+    const { success, remaining } = checkRateLimit(`link-check:${user.id}`, 60000, 10);
 
     if (!success) {
       return NextResponse.json(
@@ -86,8 +104,23 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET - Quick single URL check via query param
+ * Requires authentication
  */
 export async function GET(request: NextRequest) {
+  // 1. Authenticate user first
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json(
+      { error: 'Unauthorized. Authentication required.' },
+      { status: 401 }
+    );
+  }
+
   const url = request.nextUrl.searchParams.get('url');
 
   if (!url) {
@@ -97,10 +130,22 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const fakeRequest = {
-    ...request,
-    json: async () => ({ url }),
-  } as NextRequest;
+  // 2. Rate limiting keyed by user ID
+  const { success, remaining } = checkRateLimit(`link-check:${user.id}`, 60000, 10);
 
-  return POST(fakeRequest);
+  if (!success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Try again later.' },
+      { status: 429, headers: { 'X-RateLimit-Remaining': '0' } }
+    );
+  }
+
+  // 3. Check the URL
+  const result = await checkLink(url);
+  return NextResponse.json({
+    url,
+    ...result,
+  }, {
+    headers: { 'X-RateLimit-Remaining': remaining.toString() },
+  });
 }

@@ -7,7 +7,7 @@
  * to the local database. This enables real-time sync across devices.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { getClient } from '@/lib/supabase/client';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { db, type LocalCard } from '@/lib/db';
@@ -29,12 +29,13 @@ interface CardPayload {
  * Hook to subscribe to Supabase Realtime for card changes
  * Automatically pulls changes when cards are modified on other devices
  */
-// Module-level state to persist across React StrictMode remounts
-let activeChannel: RealtimeChannel | null = null;
-let activeWorkspaceId: string | null = null;
-
 export function useRealtimeSync() {
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
+
+  // Use refs to track channel state across renders and StrictMode remounts
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const workspaceIdRef = useRef<string | null>(null);
+  const isSettingUpRef = useRef(false);
 
   useEffect(() => {
     if (!currentWorkspace) {
@@ -45,77 +46,100 @@ export function useRealtimeSync() {
     const workspaceId = currentWorkspace.id;
 
     // If we already have an active subscription for this workspace, skip setup
-    if (activeChannel && activeWorkspaceId === workspaceId) {
+    if (channelRef.current && workspaceIdRef.current === workspaceId) {
       log.info(`Reusing existing Realtime subscription for workspace ${workspaceId}`);
       return;
     }
 
     // Clean up any existing subscription for a different workspace
-    if (activeChannel && activeWorkspaceId !== workspaceId) {
+    if (channelRef.current && workspaceIdRef.current !== workspaceId) {
       log.info(`Switching workspace, cleaning up old subscription`);
-      supabase.removeChannel(activeChannel);
-      activeChannel = null;
-      activeWorkspaceId = null;
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+      workspaceIdRef.current = null;
+    }
+
+    // Prevent concurrent setup attempts
+    if (isSettingUpRef.current) {
+      log.debug('Setup already in progress, skipping');
+      return;
     }
 
     log.info(`Setting up Realtime subscription for workspace ${workspaceId}`);
+    isSettingUpRef.current = true;
 
     // Get the current session and set up Realtime with auth
     async function setupRealtimeWithAuth() {
-      const { data: { session } } = await supabase.auth.getSession();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session?.access_token) {
-        log.warn('No session found, Realtime will be unauthenticated');
-        return; // Don't try to subscribe without auth
-      }
+        if (!session?.access_token) {
+          log.warn('No session found, Realtime will be unauthenticated');
+          isSettingUpRef.current = false;
+          return; // Don't try to subscribe without auth
+        }
 
-      // Set auth token on the realtime client
-      await supabase.realtime.setAuth(session.access_token);
+        // Set auth token on the realtime client
+        await supabase.realtime.setAuth(session.access_token);
 
-      // Check if another subscription was created while we were awaiting
-      if (activeChannel) {
-        log.debug('Channel already exists, skipping duplicate setup');
-        return;
-      }
+        // Check if another subscription was created while we were awaiting
+        if (channelRef.current) {
+          log.debug('Channel already exists, skipping duplicate setup');
+          isSettingUpRef.current = false;
+          return;
+        }
 
-      // Subscribe to card changes for this workspace
-      // NOTE: We don't use a filter here because Supabase Realtime only sends
-      // the primary key (id) in DELETE events by default (replica identity = DEFAULT).
-      // A workspaceId filter would cause DELETE events to be filtered out.
-      // Instead, we check workspaceId in the handler for INSERT/UPDATE, and for
-      // DELETE events we check if the card exists locally.
-      const channel = supabase
-        .channel(`cards:${workspaceId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: '*', // Listen to INSERT, UPDATE, DELETE
-            schema: 'public',
-            table: 'Card',
-            // No filter - handle workspace filtering in the handler
-          },
-          (payload: RealtimePostgresChangesPayload<CardPayload>) => {
-            handleCardChange(payload);
-          }
-        )
-        .subscribe((status: RealtimeStatus) => {
-          log.info(`Realtime subscription status: ${status}`);
-          if (status === 'SUBSCRIBED') {
-            activeChannel = channel;
-            activeWorkspaceId = workspaceId;
-          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-            if (activeChannel === channel) {
-              activeChannel = null;
-              activeWorkspaceId = null;
+        // Subscribe to card changes for this workspace
+        // NOTE: We don't use a filter here because Supabase Realtime only sends
+        // the primary key (id) in DELETE events by default (replica identity = DEFAULT).
+        // A workspaceId filter would cause DELETE events to be filtered out.
+        // Instead, we check workspaceId in the handler for INSERT/UPDATE, and for
+        // DELETE events we check if the card exists locally.
+        const channel = supabase
+          .channel(`cards:${workspaceId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*', // Listen to INSERT, UPDATE, DELETE
+              schema: 'public',
+              table: 'Card',
+              // No filter - handle workspace filtering in the handler
+            },
+            (payload: RealtimePostgresChangesPayload<CardPayload>) => {
+              handleCardChange(payload);
             }
-          }
-        });
+          )
+          .subscribe((status: RealtimeStatus) => {
+            log.info(`Realtime subscription status: ${status}`);
+            if (status === 'SUBSCRIBED') {
+              channelRef.current = channel;
+              workspaceIdRef.current = workspaceId;
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+              if (channelRef.current === channel) {
+                channelRef.current = null;
+                workspaceIdRef.current = null;
+              }
+            }
+            isSettingUpRef.current = false;
+          });
+      } catch (error) {
+        log.error('Error setting up realtime:', error);
+        isSettingUpRef.current = false;
+      }
     }
 
     setupRealtimeWithAuth();
 
-    // Don't clean up on unmount - let the subscription persist across StrictMode remounts
-    // Cleanup only happens when workspace changes (handled above) or when the app closes
+    // Cleanup function for component unmount
+    return () => {
+      if (channelRef.current) {
+        log.info('Component unmounting, cleaning up Realtime subscription');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+        workspaceIdRef.current = null;
+      }
+      isSettingUpRef.current = false;
+    };
   }, [currentWorkspace]);
 }
 

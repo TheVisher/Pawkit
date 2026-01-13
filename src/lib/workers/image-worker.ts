@@ -10,8 +10,15 @@
  * - Instant colored placeholders on subsequent renders
  */
 
-// Worker context
-const ctx: Worker = self as unknown as Worker;
+// Type for web worker global scope (DedicatedWorkerGlobalScope)
+// This interface extends the minimal Worker interface needed for this file
+interface WorkerGlobalScopeCompat {
+  onmessage: ((this: Worker, ev: MessageEvent) => unknown) | null;
+  postMessage(message: unknown): void;
+}
+
+// Worker context - typed as the web worker's global scope
+const ctx: WorkerGlobalScopeCompat = self as unknown as WorkerGlobalScopeCompat;
 
 interface ImageProcessRequest {
   id: string;          // Card ID for response correlation

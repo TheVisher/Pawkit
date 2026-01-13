@@ -347,41 +347,50 @@ export async function DELETE(request: Request, context: RouteContext) {
 
     // SOFT DELETE - mark as deleted but keep the row
     // This triggers an UPDATE event in Supabase Realtime
-    const result = await prisma.card.updateMany({
-      where: {
-        id,
-        workspace: {
-          userId: user.id,
+    // Use a transaction to make ownership check, soft delete, and version increment atomic
+    const deletedCard = await prisma.$transaction(async (tx) => {
+      // First verify ownership
+      const card = await tx.card.findFirst({
+        where: {
+          id,
+          workspace: {
+            userId: user.id,
+          },
         },
-      },
-      data: {
-        deleted: true,
-        deletedAt: new Date(),
-      },
+        select: { id: true },
+      });
+
+      if (!card) {
+        return null;
+      }
+
+      // Perform soft delete and version increment atomically
+      return tx.card.update({
+        where: { id },
+        data: {
+          deleted: true,
+          deletedAt: new Date(),
+          version: { increment: 1 },
+        },
+        select: {
+          id: true,
+          deleted: true,
+          deletedAt: true,
+        },
+      });
     });
 
-    // If no rows updated, card doesn't exist or isn't owned by user
-    if (result.count === 0) {
+    // If no card returned, it doesn't exist or isn't owned by user
+    if (!deletedCard) {
       return NextResponse.json(
         { error: 'Card not found' },
         { status: 404 }
       );
     }
 
-    // Increment version in a separate query (updateMany doesn't support increment)
-    // This ensures Supabase Realtime UPDATE events are picked up by other devices
-    await prisma.card.update({
-      where: { id },
-      data: { version: { increment: 1 } },
-    });
-
     return NextResponse.json({
       success: true,
-      card: {
-        id,
-        deleted: true,
-        deletedAt: new Date(),
-      },
+      card: deletedCard,
     });
   } catch (error) {
     log.error('DELETE /api/cards/[id] error:', error);
