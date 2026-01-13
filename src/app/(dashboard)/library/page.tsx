@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
+import { useMemo, useCallback, useEffect, useRef, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useCollections } from '@/lib/hooks/use-live-data';
 import { useDataContext } from '@/lib/contexts/data-context';
 import {
@@ -85,7 +86,30 @@ interface CardGroup {
   cards: LocalCard[];
 }
 
+// Wrapper with Suspense for useSearchParams (Next.js 15+ requirement)
 export default function LibraryPage() {
+  return (
+    <Suspense fallback={<LibraryPageLoading />}>
+      <LibraryPageContent />
+    </Suspense>
+  );
+}
+
+function LibraryPageLoading() {
+  return (
+    <div className="flex-1">
+      <div className="pt-5 pb-4 px-4 md:px-6">
+        <div className="h-8 w-32 bg-bg-surface-2 rounded animate-pulse" />
+      </div>
+      <div className="px-4 md:px-6 pt-4 pb-6">
+        <div className="text-center py-12 text-text-muted">Loading library...</div>
+      </div>
+    </div>
+  );
+}
+
+function LibraryPageContent() {
+  const searchParams = useSearchParams();
   const workspace = useCurrentWorkspace();
   const collections = useCollections(workspace?.id);
   // Get cards AND isLoading from the same source to ensure consistency
@@ -126,6 +150,7 @@ export default function LibraryPage() {
 
   // Card order still needs individual selector (not included in batched hooks)
   const cardOrder = useViewStore((state) => state.cardOrder);
+  const setSelectedTags = useViewStore((state) => state.setSelectedTags);
   const openAddCard = useModalStore((state) => state.openAddCard);
 
   // Load library-specific view settings on mount
@@ -134,6 +159,14 @@ export default function LibraryPage() {
       loadViewSettings(workspace.id, 'library');
     }
   }, [workspace, loadViewSettings]);
+
+  // Handle tag query parameter from URL (e.g., /library?tag=mytag)
+  useEffect(() => {
+    const tagParam = searchParams.get('tag');
+    if (tagParam) {
+      setSelectedTags([tagParam]);
+    }
+  }, [searchParams, setSelectedTags]);
 
   // Card display settings
   const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
