@@ -73,12 +73,95 @@ function getTaskItemText(li: Element): string {
 /**
  * Check if text looks like a date header (e.g., "January 3, 2026" or "Someday")
  */
-function isDateHeader(text: string): boolean {
+export function isDateHeader(text: string): boolean {
   // Match common date formats or "Someday"
   if (text.toLowerCase() === 'someday') return true;
   // Match "Month Day, Year" format
   const datePattern = /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}$/i;
   return datePattern.test(text);
+}
+
+/**
+ * Parse a date header string into a Date object
+ * Returns null for "Someday" or invalid formats
+ */
+export function parseDateFromHeader(dateHeader: string): Date | null {
+  if (!dateHeader || dateHeader.toLowerCase() === 'someday') return null;
+
+  // Parse "Month Day, Year" format
+  const parsed = new Date(dateHeader);
+  if (isNaN(parsed.getTime())) return null;
+
+  // Reset to start of day for consistent comparison
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
+}
+
+/**
+ * Get the earliest date with unchecked tasks from a todo card's content
+ * Used to determine the scheduledDate for overdue checking
+ */
+export function getEarliestUncheckedTaskDate(content: string | undefined | null): Date | null {
+  if (!content) return null;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, 'text/html');
+
+  let currentDateHeader: string | undefined;
+  const datesWithUncheckedTasks: Date[] = [];
+
+  const allElements = doc.body.querySelectorAll('h1, h2, h3, li[data-type="taskItem"]');
+  allElements.forEach((el) => {
+    if (el.tagName.match(/^H[123]$/)) {
+      const text = el.textContent?.trim() || '';
+      if (isDateHeader(text)) {
+        currentDateHeader = text;
+      }
+    } else if (el.getAttribute('data-type') === 'taskItem') {
+      const isUnchecked = el.getAttribute('data-checked') !== 'true';
+      const hasText = getTaskItemText(el).trim().length > 0;
+
+      if (isUnchecked && hasText && currentDateHeader) {
+        const date = parseDateFromHeader(currentDateHeader);
+        if (date) {
+          datesWithUncheckedTasks.push(date);
+        }
+      }
+    }
+  });
+
+  if (datesWithUncheckedTasks.length === 0) return null;
+
+  // Return the earliest date
+  return datesWithUncheckedTasks.reduce((earliest, date) =>
+    date < earliest ? date : earliest
+  );
+}
+
+/**
+ * Check if a date header represents an overdue date
+ */
+export function isDateHeaderOverdue(dateHeader: string | undefined): boolean {
+  if (!dateHeader) return false;
+  const date = parseDateFromHeader(dateHeader);
+  if (!date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
+/**
+ * Check if a date header represents today
+ */
+export function isDateHeaderToday(dateHeader: string | undefined): boolean {
+  if (!dateHeader) return false;
+  const date = parseDateFromHeader(dateHeader);
+  if (!date) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date.getTime() === today.getTime();
 }
 
 /**

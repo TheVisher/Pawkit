@@ -6,7 +6,7 @@
  */
 
 import { useMemo, useState, useCallback, KeyboardEvent } from 'react';
-import { CheckSquare, Plus, Check, ArrowUpRight } from 'lucide-react';
+import { CheckSquare, Plus, Check, ArrowUpRight, AlertTriangle, Calendar } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useCards } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
@@ -19,6 +19,8 @@ import {
   addTaskToContent,
   createInitialTodoContent,
   isTaskFromToday,
+  isDateHeaderOverdue,
+  isDateHeaderToday,
   type TaskItem,
 } from '@/lib/utils/parse-task-items';
 import type { LocalCard } from '@/lib/db';
@@ -89,9 +91,11 @@ export function TodoWidget() {
     });
   }, [cards]);
 
-  // Get tasks to display: incomplete tasks + completed tasks from today
-  const visibleTasks = useMemo(() => {
-    const allTasks: TaskItem[] = [];
+  // Get tasks grouped by: overdue, today, other
+  const { overdueTasks, todayTasks, otherTasks, visibleTasks } = useMemo(() => {
+    const overdue: TaskItem[] = [];
+    const today: TaskItem[] = [];
+    const other: TaskItem[] = [];
 
     for (const card of todoCards) {
       const tasks = parseTaskItemsFromCard(card);
@@ -101,17 +105,37 @@ export function TodoWidget() {
         if (!t.checked) return true; // Always show incomplete
         return isTaskFromToday(t); // Show completed only if from today
       });
-      allTasks.push(...visible);
+
+      for (const task of visible) {
+        if (!task.checked && isDateHeaderOverdue(task.dateHeader)) {
+          overdue.push(task);
+        } else if (isDateHeaderToday(task.dateHeader)) {
+          today.push(task);
+        } else {
+          other.push(task);
+        }
+      }
     }
 
-    // Sort: incomplete first, then completed
-    allTasks.sort((a, b) => {
+    // Sort each group: incomplete first
+    const sortTasks = (a: TaskItem, b: TaskItem) => {
       if (a.checked === b.checked) return 0;
       return a.checked ? 1 : -1;
-    });
+    };
 
-    // Limit to 10 items
-    return allTasks.slice(0, 10);
+    overdue.sort(sortTasks);
+    today.sort(sortTasks);
+    other.sort(sortTasks);
+
+    // Combine: overdue first, then today, then other (limited to 10 total)
+    const all = [...overdue, ...today, ...other].slice(0, 10);
+
+    return {
+      overdueTasks: overdue,
+      todayTasks: today,
+      otherTasks: other,
+      visibleTasks: all,
+    };
   }, [todoCards]);
 
   const totalIncomplete = useMemo(() => {
@@ -188,8 +212,15 @@ export function TodoWidget() {
             'disabled:cursor-default disabled:hover:bg-transparent'
           )}
         >
-          <div className="p-2 rounded-lg bg-amber-500/20">
-            <CheckSquare className="h-4 w-4 text-amber-500" />
+          <div className={cn(
+            'p-2 rounded-lg',
+            overdueTasks.length > 0 ? 'bg-red-500/20' : 'bg-amber-500/20'
+          )}>
+            {overdueTasks.length > 0 ? (
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            ) : (
+              <CheckSquare className="h-4 w-4 text-amber-500" />
+            )}
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-1">
@@ -199,7 +230,11 @@ export function TodoWidget() {
               )}
             </div>
             <p className="text-xs text-text-muted">
-              {totalIncomplete} {totalIncomplete === 1 ? 'item' : 'items'} to do
+              {overdueTasks.length > 0 ? (
+                <span className="text-red-400">{overdueTasks.length} overdue</span>
+              ) : (
+                <>{totalIncomplete} {totalIncomplete === 1 ? 'item' : 'items'} to do</>
+              )}
             </p>
           </div>
         </button>
@@ -240,17 +275,62 @@ export function TodoWidget() {
         {/* Task List */}
         {visibleTasks.length > 0 ? (
           <div className="flex-1 space-y-1 overflow-y-auto min-h-0">
-            {visibleTasks.map((task) => (
-              <TodoTaskItem
-                key={task.id}
-                task={task}
-                onToggle={handleToggle}
-                onClick={() => openCardDetail(task.cardId)}
-              />
-            ))}
+            {/* Overdue Section */}
+            {overdueTasks.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5 py-1 px-1.5">
+                  <AlertTriangle className="h-3 w-3 text-red-500" />
+                  <span className="text-xs font-medium text-red-500">
+                    Overdue ({overdueTasks.length})
+                  </span>
+                </div>
+                {overdueTasks.slice(0, 5).map((task) => (
+                  <TodoTaskItem
+                    key={task.id}
+                    task={task}
+                    onToggle={handleToggle}
+                    onClick={() => openCardDetail(task.cardId)}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Today Section */}
+            {todayTasks.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5 py-1 px-1.5">
+                  <Calendar className="h-3 w-3 text-amber-500" />
+                  <span className="text-xs font-medium text-amber-500">Today</span>
+                </div>
+                {todayTasks.slice(0, overdueTasks.length > 0 ? 3 : 5).map((task) => (
+                  <TodoTaskItem
+                    key={task.id}
+                    task={task}
+                    onToggle={handleToggle}
+                    onClick={() => openCardDetail(task.cardId)}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Other Tasks (no date or future) */}
+            {otherTasks.length > 0 && (overdueTasks.length === 0 && todayTasks.length === 0) && (
+              <>
+                {otherTasks.slice(0, 5).map((task) => (
+                  <TodoTaskItem
+                    key={task.id}
+                    task={task}
+                    onToggle={handleToggle}
+                    onClick={() => openCardDetail(task.cardId)}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Show remaining count if more tasks exist */}
             {totalIncomplete > 10 && (
               <p className="text-xs text-text-muted text-center pt-1">
-                +{totalIncomplete - 10} more incomplete
+                +{totalIncomplete - 10} more
               </p>
             )}
           </div>
