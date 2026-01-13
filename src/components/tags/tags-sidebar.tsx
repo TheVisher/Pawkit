@@ -5,7 +5,7 @@
  * Displays tag editing panel when a tag is selected, or tag health dashboard when nothing is selected
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   X,
@@ -113,6 +113,12 @@ function TagEditingPanel({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Reset state when selected tag changes
+  useEffect(() => {
+    setNewName(tag);
+    setShowDeleteConfirm(false);
+  }, [tag]);
 
   const cardCount = tagCounts[tag] || 0;
   const hasChanges = newName.trim() !== tag && newName.trim() !== '';
