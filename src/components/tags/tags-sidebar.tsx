@@ -22,15 +22,19 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TagBadge } from '@/components/tags/tag-badge';
+import { TagColorPicker } from '@/components/tags/tag-color-picker';
 
 interface TagsSidebarProps {
   selectedTag: string | null;
   tagCounts: Record<string, number>;
   uniqueTags: string[];
+  tagColors: Record<string, string>;
   onClose: () => void;
   onRenameTag: (oldTag: string, newTag: string) => Promise<void>;
   onDeleteTag: (tag: string) => Promise<void>;
   onDeleteUnusedTags: () => Promise<void>;
+  onSetTagColor: (tag: string, hsl: string | null) => void;
+  getTagColor: (tag: string) => string;
   isProcessing?: boolean;
 }
 
@@ -38,10 +42,13 @@ export function TagsSidebar({
   selectedTag,
   tagCounts,
   uniqueTags,
+  tagColors,
   onClose,
   onRenameTag,
   onDeleteTag,
   onDeleteUnusedTags,
+  onSetTagColor,
+  getTagColor,
   isProcessing = false,
 }: TagsSidebarProps) {
   return (
@@ -59,9 +66,12 @@ export function TagsSidebar({
             <TagEditingPanel
               tag={selectedTag}
               tagCounts={tagCounts}
+              tagColors={tagColors}
               onClose={onClose}
               onRename={onRenameTag}
               onDelete={onDeleteTag}
+              onSetColor={onSetTagColor}
+              getColor={getTagColor}
               isProcessing={isProcessing}
             />
           </motion.div>
@@ -94,18 +104,24 @@ export function TagsSidebar({
 interface TagEditingPanelProps {
   tag: string;
   tagCounts: Record<string, number>;
+  tagColors: Record<string, string>;
   onClose: () => void;
   onRename: (oldTag: string, newTag: string) => Promise<void>;
   onDelete: (tag: string) => Promise<void>;
+  onSetColor: (tag: string, hsl: string | null) => void;
+  getColor: (tag: string) => string;
   isProcessing: boolean;
 }
 
 function TagEditingPanel({
   tag,
   tagCounts,
+  tagColors,
   onClose,
   onRename,
   onDelete,
+  onSetColor,
+  getColor,
   isProcessing,
 }: TagEditingPanelProps) {
   const router = useRouter();
@@ -207,6 +223,14 @@ function TagEditingPanel({
             </p>
           )}
         </div>
+
+        {/* Tag Color Picker */}
+        <TagColorPicker
+          tag={tag}
+          currentHsl={getColor(tag)}
+          onColorChange={(hsl) => onSetColor(tag, hsl)}
+          isCustom={tag in tagColors}
+        />
 
         {/* Card Count */}
         <div className="p-3 rounded-lg bg-bg-surface-1 border border-border-subtle">

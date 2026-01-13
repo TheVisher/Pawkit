@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'rea
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MoreVertical, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { useTagStore } from '@/lib/stores/tag-store';
+import { TagBadge } from '@/components/tags/tag-badge';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useTagSidebar } from '@/lib/stores/ui-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
@@ -266,30 +267,21 @@ function TagsPageContent() {
                   )}
 
                   {/* Tags as row items */}
-                  <div className="space-y-0.5">
+                  <div className="space-y-1.5">
                     {groupedTags[letter].map((tag) => (
                       <div key={tag} className="group relative">
                         <button
                           onClick={() => handleTagClick(tag)}
                           className={cn(
-                            'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg',
-                            'text-left text-sm transition-all',
+                            'w-full flex items-center justify-between gap-3 px-2 py-1.5 rounded-lg',
+                            'text-left transition-all',
                             'hover:bg-bg-surface-2',
                             selectedTag === tag && 'bg-[var(--color-accent)]/10'
                           )}
                         >
-                          {/* Color indicator dot */}
-                          <span
-                            className="w-2 h-2 rounded-full shrink-0"
-                            style={{ backgroundColor: `hsl(${Math.abs(tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 360}, 60%, 50%)` }}
-                          />
-                          <span className={cn(
-                            'flex-1 truncate',
-                            selectedTag === tag ? 'text-text-primary font-medium' : 'text-text-secondary'
-                          )}>
-                            {tag}
-                          </span>
-                          <span className="text-text-muted text-xs tabular-nums">
+                          {/* Tag badge - same as displayed on cards */}
+                          <TagBadge tag={tag} size="sm" />
+                          <span className="text-text-muted text-xs tabular-nums shrink-0">
                             {tagCounts[tag] || 0}
                           </span>
                         </button>
@@ -299,7 +291,7 @@ function TagsPageContent() {
                           <DropdownMenuTrigger asChild>
                             <button
                               className={cn(
-                                'absolute right-1 top-1/2 -translate-y-1/2',
+                                'absolute right-8 top-1/2 -translate-y-1/2',
                                 'h-6 w-6 md:hidden flex items-center justify-center rounded-full',
                                 'text-text-muted hover:text-text-primary hover:bg-bg-surface-2',
                                 'opacity-0 group-hover:opacity-100 transition-opacity'
