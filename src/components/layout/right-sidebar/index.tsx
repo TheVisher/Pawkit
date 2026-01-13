@@ -86,8 +86,11 @@ export function RightSidebar() {
   // Tag store data for tags sidebar
   const tagStoreUniqueTags = useTagStore((s) => s.uniqueTags);
   const tagStoreTagCounts = useTagStore((s) => s.tagCounts);
+  const tagStoreTagColors = useTagStore((s) => s.tagColors);
   const renameTagAction = useTagStore((s) => s.renameTag);
   const deleteTagAction = useTagStore((s) => s.deleteTag);
+  const setTagColorAction = useTagStore((s) => s.setTagColor);
+  const getTagColorAction = useTagStore((s) => s.getTagColor);
   const [isTagProcessing, setIsTagProcessing] = useState(false);
 
   // Get active card from modal store
@@ -656,10 +659,13 @@ export function RightSidebar() {
                 selectedTag={selectedTagForSidebar}
                 tagCounts={tagStoreTagCounts}
                 uniqueTags={tagStoreUniqueTags}
+                tagColors={tagStoreTagColors}
                 onClose={() => setSelectedTagForSidebar(null)}
                 onRenameTag={handleTagSidebarRename}
                 onDeleteTag={handleTagSidebarDelete}
                 onDeleteUnusedTags={handleDeleteUnusedTags}
+                onSetTagColor={setTagColorAction}
+                getTagColor={getTagColorAction}
                 isProcessing={isTagProcessing}
               />
             )}

@@ -22,6 +22,7 @@ interface TagState {
   // Synced via workspace preferences
   recentTags: string[];
   pendingTags: string[]; // Tags created but not yet assigned to any card
+  tagColors: Record<string, string>; // Custom tag colors as HSL strings
 
   // Current workspace ID for sync operations
   currentWorkspaceId: string | null;
@@ -36,11 +37,15 @@ interface TagState {
   renameTag: (workspaceId: string, oldTag: string, newTag: string) => Promise<number>;
   deleteTag: (workspaceId: string, tag: string) => Promise<number>;
   mergeTags: (workspaceId: string, sourceTags: string[], targetTag: string) => Promise<number>;
+  setTagColor: (tag: string, hsl: string | null) => void; // Set custom color (null to remove)
+  getTagColor: (tag: string) => string; // Get color (custom or auto-generated)
 
   // Internal: persist recentTags to workspace
   _persistRecentTags: () => Promise<void>;
   // Internal: load recentTags from workspace
   _loadRecentTags: (workspaceId: string) => Promise<void>;
+  // Internal: persist tagColors to workspace
+  _persistTagColors: () => Promise<void>;
 }
 
 // Race condition prevention: tracks the latest refresh request
@@ -48,6 +53,13 @@ let currentRefreshId = 0;
 
 // Debounce timer for persisting recent tags
 let persistDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let persistColorsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Generate auto color from tag name hash
+function generateTagColor(tag: string): string {
+  const hash = Math.abs(tag.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
+  return `${hash % 360} 60 50`;
+}
 
 export const useTagStore = create<TagState>()((set, get) => ({
   // Initial state
@@ -58,6 +70,7 @@ export const useTagStore = create<TagState>()((set, get) => ({
   lastRefreshed: null,
   recentTags: [],
   pendingTags: [],
+  tagColors: {},
   currentWorkspaceId: null,
 
   /**
@@ -130,16 +143,15 @@ export const useTagStore = create<TagState>()((set, get) => ({
   },
 
   /**
-   * Load recent tags from workspace preferences in Dexie
+   * Load recent tags and tag colors from workspace preferences in Dexie
    */
   _loadRecentTags: async (workspaceId: string) => {
     try {
       const workspace = await db.workspaces.get(workspaceId);
-      if (workspace?.preferences?.recentTags) {
-        set({ recentTags: workspace.preferences.recentTags });
-      } else {
-        set({ recentTags: [] });
-      }
+      set({
+        recentTags: workspace?.preferences?.recentTags ?? [],
+        tagColors: workspace?.preferences?.tagColors ?? {},
+      });
     } catch (error) {
       console.error('Failed to load recent tags:', error);
     }
@@ -464,6 +476,68 @@ export const useTagStore = create<TagState>()((set, get) => ({
 
     return cards.length;
   },
+
+  /**
+   * Set a custom color for a tag (or remove with null)
+   */
+  setTagColor: (tag: string, hsl: string | null) => {
+    const { tagColors } = get();
+    if (hsl === null) {
+      const { [tag]: _, ...rest } = tagColors;
+      set({ tagColors: rest });
+    } else {
+      set({ tagColors: { ...tagColors, [tag]: hsl } });
+    }
+
+    // Debounce the persist operation
+    if (persistColorsDebounceTimer) {
+      clearTimeout(persistColorsDebounceTimer);
+    }
+    persistColorsDebounceTimer = setTimeout(() => {
+      get()._persistTagColors();
+    }, 500);
+  },
+
+  /**
+   * Get color for a tag (custom or auto-generated)
+   */
+  getTagColor: (tag: string) => {
+    const { tagColors } = get();
+    return tagColors[tag] ?? generateTagColor(tag);
+  },
+
+  /**
+   * Persist tag colors to workspace preferences in Dexie
+   */
+  _persistTagColors: async () => {
+    const { tagColors, currentWorkspaceId } = get();
+    if (!currentWorkspaceId) return;
+
+    try {
+      const workspace = await db.workspaces.get(currentWorkspaceId);
+      if (!workspace) return;
+
+      const updatedPreferences: WorkspacePreferences = {
+        ...workspace.preferences,
+        tagColors,
+      };
+
+      await db.workspaces.update(currentWorkspaceId, {
+        preferences: updatedPreferences,
+        updatedAt: new Date(),
+        _lastModified: new Date(),
+        _synced: false,
+      });
+
+      await addToQueue('workspace', currentWorkspaceId, 'update', {
+        preferences: updatedPreferences,
+      }, { skipConflictCheck: true });
+
+      triggerSync();
+    } catch (error) {
+      console.error('Failed to persist tag colors:', error);
+    }
+  },
 }));
 
 // =============================================================================
@@ -475,6 +549,7 @@ export const selectTagCounts = (state: TagState) => state.tagCounts;
 export const selectTagTree = (state: TagState) => state.tagTree;
 export const selectIsLoading = (state: TagState) => state.isLoading;
 export const selectRecentTags = (state: TagState) => state.recentTags;
+export const selectTagColors = (state: TagState) => state.tagColors;
 
 // =============================================================================
 // HOOKS

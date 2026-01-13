@@ -25,6 +25,7 @@ export interface SyncMetadata {
  */
 export interface WorkspacePreferences {
   recentTags?: string[];  // Recently used tags for quick access
+  tagColors?: Record<string, string>;  // Custom tag colors as HSL strings (e.g., "270 60 55")
 }
 
 export interface LocalWorkspace extends SyncMetadata {
