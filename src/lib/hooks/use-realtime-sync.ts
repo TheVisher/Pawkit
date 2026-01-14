@@ -65,6 +65,7 @@ export function useRealtimeSync() {
       return;
     }
 
+    console.log(`[RealtimeSync] Setting up for workspace ${workspaceId}`); // Debug
     log.info(`Setting up Realtime subscription for workspace ${workspaceId}`);
     isSettingUpRef.current = true;
 
@@ -72,8 +73,10 @@ export function useRealtimeSync() {
     async function setupRealtimeWithAuth() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        console.log(`[RealtimeSync] Session found: ${!!session?.access_token}`); // Debug
 
         if (!session?.access_token) {
+          console.warn('[RealtimeSync] No session - skipping subscription'); // Debug
           log.warn('No session found, Realtime will be unauthenticated');
           isSettingUpRef.current = false;
           return; // Don't try to subscribe without auth
@@ -110,6 +113,7 @@ export function useRealtimeSync() {
             }
           )
           .subscribe((status: RealtimeStatus) => {
+            console.log(`[RealtimeSync] Subscription status: ${status}`); // Debug - shows in prod
             log.info(`Realtime subscription status: ${status}`);
             if (status === 'SUBSCRIBED') {
               channelRef.current = channel;
