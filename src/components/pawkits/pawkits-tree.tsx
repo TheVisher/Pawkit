@@ -8,17 +8,24 @@ import { usePawkitTreeExpanded } from "@/lib/stores/ui-store";
 import { PawkitTreeItem } from "./pawkit-tree-item";
 import type { LocalCollection } from "@/lib/db";
 import { CreatePawkitButton } from "./create-pawkit-button";
+import { Separator } from "@/components/ui/separator";
 
 export function PawkitsTree() {
   const workspace = useCurrentWorkspace();
   const collections = useCollections(workspace?.id);
   const { expandedIds, toggle } = usePawkitTreeExpanded();
 
-  // Build tree structure
-  const rootCollections = useMemo(() => {
-    return collections
-      .filter((c) => !c.parentId && !c._deleted)
+  // Build tree structure - split regular and system Pawkits
+  const { rootCollections, systemCollections } = useMemo(() => {
+    const regular = collections
+      .filter((c) => !c.parentId && !c._deleted && !c.isSystem)
       .sort((a, b) => a.position - b.position);
+
+    const system = collections
+      .filter((c) => c.isSystem && !c._deleted)
+      .sort((a, b) => a.position - b.position);
+
+    return { rootCollections: regular, systemCollections: system };
   }, [collections]);
 
   const getChildCollections = (parentId: string) => {
@@ -37,6 +44,7 @@ export function PawkitsTree() {
         <PawkitTreeItem
           collection={collection}
           childCollections={children} // Pass empty if not expanded? No, item needs to know if children exist
+          allCollections={collections}
           level={level}
           isExpanded={isExpanded}
           onToggleExpand={toggle}
@@ -64,6 +72,21 @@ export function PawkitsTree() {
   return (
     <div className="flex flex-col gap-0.5 pl-4">
       {rootCollections.map((c) => renderItem(c))}
+
+      {/* System Pawkits Section */}
+      {systemCollections.length > 0 && (
+        <>
+          <Separator className="my-2 opacity-50" />
+          {systemCollections.map((c) => (
+            <PawkitTreeItem
+              key={c.id}
+              collection={c}
+              allCollections={collections}
+              level={0}
+            />
+          ))}
+        </>
+      )}
 
       <div className="mt-1 text-xs text-text-muted hover:text-text-primary px-2 transition-colors cursor-pointer">
         <CreatePawkitButton />

@@ -3,16 +3,20 @@
 import { type ReactNode } from 'react';
 import {
   ContextMenu,
+  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
 import {
+  EyeOff,
   FolderPlus,
   Pencil,
   Trash2,
+  WifiOff,
 } from 'lucide-react';
+import { getEffectivePawkitPrivacy } from '@/lib/services/privacy';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
@@ -23,15 +27,34 @@ import type { LocalCollection } from '@/lib/db';
 interface PawkitContextMenuProps {
   collection: LocalCollection;
   children: ReactNode;
+  allCollections?: LocalCollection[];
 }
 
-export function PawkitContextMenu({ collection, children }: PawkitContextMenuProps) {
+export function PawkitContextMenu({ collection, children, allCollections }: PawkitContextMenuProps) {
   const renamePawkit = useDataStore((s) => s.renamePawkit);
   const deleteCollection = useDataStore((s) => s.deleteCollection);
   const createCollection = useDataStore((s) => s.createCollection);
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const toast = useToastStore((s) => s.toast);
   const collections = useCollections(currentWorkspace?.id);
+
+  const privacy = allCollections
+    ? getEffectivePawkitPrivacy(collection, allCollections)
+    : { isPrivate: collection.isPrivate, isLocalOnly: collection.isLocalOnly ?? false, inherited: false };
+
+  const handleTogglePrivate = async () => {
+    if (collection.isSystem) return; // Can't modify system pawkits
+    const updateCollection = useDataStore.getState().updateCollection;
+    await updateCollection(collection.id, { isPrivate: !collection.isPrivate });
+    toast({ type: 'success', message: collection.isPrivate ? 'Made public' : 'Made private' });
+  };
+
+  const handleToggleLocalOnly = async () => {
+    if (collection.isSystem) return;
+    const updateCollection = useDataStore.getState().updateCollection;
+    await updateCollection(collection.id, { isLocalOnly: !collection.isLocalOnly });
+    toast({ type: 'success', message: collection.isLocalOnly ? 'Will sync' : 'Local only' });
+  };
 
   const handleCreateChild = async () => {
     if (!currentWorkspace) return;
@@ -101,6 +124,35 @@ export function PawkitContextMenu({ collection, children }: PawkitContextMenuPro
           <Pencil className="size-4" />
           Rename
         </ContextMenuItem>
+
+        <ContextMenuSeparator />
+
+        {/* Privacy Options */}
+        <ContextMenuCheckboxItem
+          checked={privacy.isPrivate}
+          onCheckedChange={handleTogglePrivate}
+          disabled={collection.isSystem}
+        >
+          <EyeOff className="size-4" />
+          Private
+          {privacy.inherited && (
+            <span className="text-xs text-text-muted ml-auto">(inherited)</span>
+          )}
+        </ContextMenuCheckboxItem>
+
+        <ContextMenuCheckboxItem
+          checked={privacy.isLocalOnly}
+          onCheckedChange={handleToggleLocalOnly}
+          disabled={collection.isSystem}
+        >
+          <WifiOff className="size-4" />
+          Local only
+          {privacy.inherited && (
+            <span className="text-xs text-text-muted ml-auto">(inherited)</span>
+          )}
+        </ContextMenuCheckboxItem>
+
+        <ContextMenuSeparator />
 
         {/* Delete */}
         <ContextMenuItem variant="destructive" onClick={handleDelete}>

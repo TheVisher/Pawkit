@@ -21,6 +21,7 @@ import {
 import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter, ScheduledFilter } from '@/lib/stores/view-store';
 import { isOverdue } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
+import { getCardPrivacy } from '@/lib/services/privacy';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
@@ -197,6 +198,10 @@ function LibraryPageContent() {
   // Note: cards are already filtered for _deleted in DataContext
   const activeCards = useMemo(() => {
     return cards.filter((card) => {
+      // Privacy filter - exclude private cards from Library view
+      const privacy = getCardPrivacy(card, collections);
+      if (privacy.isPrivate) return false;
+
       if (!cardMatchesContentTypes(card, contentTypeFilters)) return false;
       // Tag filter - card must have ALL selected tags
       if (selectedTags.length > 0) {
@@ -233,7 +238,7 @@ function LibraryPageContent() {
       if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
       return true;
     });
-  }, [cards, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, pawkitSlugs, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
+  }, [cards, collections, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, pawkitSlugs, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
 
   // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {

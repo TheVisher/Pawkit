@@ -240,8 +240,9 @@ model Collection {
   icon               String? // Emoji icon
 
   // Privacy & System flags
-  isPrivate Boolean @default(false) // Replaces Den - private collections
-  isSystem  Boolean @default(false) // Cannot delete/rename (e.g., "Uncategorized")
+  isPrivate   Boolean  @default(false) // Replaces Den - private collections
+  isLocalOnly Boolean? // null = inherit from parent, true = never syncs to server
+  isSystem    Boolean  @default(false) // Cannot delete/rename (e.g., "Uncategorized")
 
   // Display options
   hidePreview          Boolean @default(false)

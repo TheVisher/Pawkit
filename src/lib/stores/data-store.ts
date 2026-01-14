@@ -15,6 +15,8 @@ import {
   removeCardFromPawkit,
 } from '@/lib/migrations/tag-architecture-migration';
 import { slugify } from '@/lib/utils';
+import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
+import { ensureSystemPrivatePawkit } from '@/lib/services/privacy';
 
 // Type declaration for debug helpers exposed on window
 declare global {
@@ -154,6 +156,34 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.put(updated);
+
+    // Handle privacy state transitions for tag changes
+    if (updates.tags) {
+      const oldTags = existing.tags || [];
+      const newTags = updates.tags || [];
+
+      const wasLocalOnly = oldTags.includes(SYSTEM_TAGS.LOCAL_ONLY);
+      const isNowLocalOnly = newTags.includes(SYSTEM_TAGS.LOCAL_ONLY);
+
+      // Card became local-only → delete from server
+      if (!wasLocalOnly && isNowLocalOnly) {
+        await addToQueue('card', id, 'delete');
+        triggerSync();
+        return; // Don't queue an update - we just deleted it
+      }
+
+      // Card stopped being local-only → upload to server
+      if (wasLocalOnly && !isNowLocalOnly) {
+        await addToQueue('card', id, 'create');
+        triggerSync();
+        return; // Queue a create, not an update
+      }
+
+      // Ensure system Private Pawkit exists if #private tag is added
+      if (newTags.includes(SYSTEM_TAGS.PRIVATE) && !oldTags.includes(SYSTEM_TAGS.PRIVATE)) {
+        await ensureSystemPrivatePawkit(existing.workspaceId);
+      }
+    }
 
     // Check if this is a local-only update (tags, metadata) that shouldn't trigger conflicts
     const skipConflictCheck = isLocalOnlyUpdate(updates);
