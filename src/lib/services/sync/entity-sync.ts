@@ -236,7 +236,27 @@ export async function upsertItems(
     }
     case 'collections': {
       const localItems = (filteredItems as ServerCollection[]).map(serverCollectionToLocal);
-      await db.collections.bulkPut(localItems);
+      // Preserve local-only fields that shouldn't be overwritten by server data
+      const ids = localItems.map((item) => item.id);
+      const existingCollections = await db.collections.bulkGet(ids);
+      const existingMap = new Map(
+        existingCollections
+          .filter((c): c is LocalCollection => c !== undefined)
+          .map((c) => [c.id, c])
+      );
+      const mergedItems = localItems.map((item) => {
+        const existing = existingMap.get(item.id);
+        if (existing) {
+          // Preserve local-only fields from existing record
+          return {
+            ...item,
+            isLocalOnly: existing.isLocalOnly,
+            useCoverAsBackground: existing.useCoverAsBackground,
+          };
+        }
+        return item;
+      });
+      await db.collections.bulkPut(mergedItems);
       break;
     }
     case 'cards': {

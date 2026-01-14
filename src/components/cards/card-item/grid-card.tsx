@@ -33,6 +33,9 @@ import { TagBadgeList } from '@/components/tags/tag-badge';
 import { getSystemTagsForCard } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useDataContext } from '@/lib/contexts/data-context';
+import { getCardPrivacy } from '@/lib/services/privacy';
+import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
 import { useImageColorWorker, isImageWorkerSupported } from '@/lib/hooks/use-image-color-worker';
 import {
   type CardDisplaySettings,
@@ -140,6 +143,7 @@ export function GridCard({
   // Worker hook for off-main-thread color extraction
   const { extractImageData } = useImageColorWorker();
   const updateCard = useDataStore((s) => s.updateCard);
+  const { collections } = useDataContext();
   const processingRef = useRef(false);
   const idleCallbackIdRef = useRef<number | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -330,6 +334,29 @@ export function GridCard({
     () => getSystemTagsForCard(card),
     [card.tags, card.scheduledDate, card.isRead, card.readProgress]
   );
+
+  // Compute display tags with inherited privacy indicators
+  // Cards inherit privacy from their Pawkits but don't have the tag directly
+  const displayTags = useMemo(() => {
+    const baseTags = card.tags || [];
+    const privacy = getCardPrivacy(card, collections);
+
+    // If privacy is inherited from Pawkit (not from direct tag), add virtual tags for display
+    if (privacy.source === 'pawkit') {
+      const extraTags: string[] = [];
+      if (privacy.isPrivate && !baseTags.includes(SYSTEM_TAGS.PRIVATE)) {
+        extraTags.push(SYSTEM_TAGS.PRIVATE);
+      }
+      if (privacy.isLocalOnly && !baseTags.includes(SYSTEM_TAGS.LOCAL_ONLY)) {
+        extraTags.push(SYSTEM_TAGS.LOCAL_ONLY);
+      }
+      if (extraTags.length > 0) {
+        return [...extraTags, ...baseTags];
+      }
+    }
+    return baseTags;
+  }, [card, collections]);
+
 
   return (
     <button
@@ -633,15 +660,14 @@ export function GridCard({
               </h3>
             )}
 
-            {/* Tags - system tags (read, scheduled, reading time) + user tags */}
+            {/* Tags - system tags (read, scheduled, reading time) + user tags (with inherited privacy) */}
             {settings.showTags && (() => {
-              const userTags = card.tags || [];
-              // Show tags section if we have any tags (system or user)
-              if (systemTags.length === 0 && userTags.length === 0) return null;
+              // Show tags section if we have any tags (system or user/privacy)
+              if (systemTags.length === 0 && displayTags.length === 0) return null;
               return (
                 <div className="mt-1.5">
                   <TagBadgeList
-                    tags={userTags}
+                    tags={displayTags}
                     systemTags={systemTags}
                     maxVisible={4}
                     size="sm"

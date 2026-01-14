@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Link2, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { Link2, FileText, Loader2, AlertCircle, WifiOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
+import { getEffectivePawkitPrivacy } from '@/lib/services/privacy';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
@@ -72,6 +75,29 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
 
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  const [isLocalOnly, setIsLocalOnly] = useState(false);
+
+  // Default local-only based on selected bookmark collection's privacy
+  useEffect(() => {
+    if (bookmarkCollection) {
+      const collection = collections.find(c => c.slug === bookmarkCollection);
+      if (collection) {
+        const privacy = getEffectivePawkitPrivacy(collection, collections);
+        setIsLocalOnly(privacy.isLocalOnly);
+      }
+    }
+  }, [bookmarkCollection, collections]);
+
+  // Default local-only based on selected note collection's privacy
+  useEffect(() => {
+    if (noteCollection) {
+      const collection = collections.find(c => c.slug === noteCollection);
+      if (collection) {
+        const privacy = getEffectivePawkitPrivacy(collection, collections);
+        setIsLocalOnly(privacy.isLocalOnly);
+      }
+    }
+  }, [noteCollection, collections]);
 
   // Mock metadata fetch
   const fetchMetadata = async (url: string) => {
@@ -119,6 +145,10 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
       try {
         domain = new URL(bookmarkUrl).hostname.replace('www.', '');
       } catch {}
+      const tags = bookmarkCollection ? [bookmarkCollection] : [];
+      if (isLocalOnly) {
+        tags.push(SYSTEM_TAGS.LOCAL_ONLY);
+      }
       await createCard({
         workspaceId,
         type: 'url',
@@ -127,7 +157,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
         description: bookmarkDescription || undefined,
         domain,
         status: 'READY',
-        tags: bookmarkCollection ? [bookmarkCollection] : [],
+        tags,
         pinned: false,
         isFileCard: false,
       });
@@ -145,6 +175,10 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
     if (!workspaceId || !noteTitle) return;
     setIsSaving(true);
     try {
+      const tags = noteCollection ? [noteCollection] : [];
+      if (isLocalOnly) {
+        tags.push(SYSTEM_TAGS.LOCAL_ONLY);
+      }
       await createCard({
         workspaceId,
         type: 'md-note',
@@ -152,7 +186,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
         title: noteTitle,
         content: noteContent || undefined,
         status: 'READY',
-        tags: noteCollection ? [noteCollection] : [],
+        tags,
         pinned: false,
         isFileCard: false,
       });
@@ -265,6 +299,21 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
           </Select>
         </div>
 
+        <div className="flex items-center gap-3 mt-4">
+          <Switch
+            id="local-only-bookmark"
+            checked={isLocalOnly}
+            onCheckedChange={(checked: boolean) => setIsLocalOnly(checked)}
+          />
+          <label
+            htmlFor="local-only-bookmark"
+            className="text-sm text-text-secondary flex items-center gap-1.5 cursor-pointer"
+          >
+            <WifiOff className="h-3.5 w-3.5" />
+            Local only (won&apos;t sync to server)
+          </label>
+        </div>
+
         <div className="flex justify-end gap-3 pt-4">
           <Button variant="ghost" onClick={onCancel} className="text-text-secondary">Cancel</Button>
           <Button
@@ -320,6 +369,21 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4">
+          <Switch
+            id="local-only-note"
+            checked={isLocalOnly}
+            onCheckedChange={(checked: boolean) => setIsLocalOnly(checked)}
+          />
+          <label
+            htmlFor="local-only-note"
+            className="text-sm text-text-secondary flex items-center gap-1.5 cursor-pointer"
+          >
+            <WifiOff className="h-3.5 w-3.5" />
+            Local only (won&apos;t sync to server)
+          </label>
         </div>
 
         <div className="flex justify-end gap-3 pt-4">

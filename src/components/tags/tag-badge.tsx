@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Clock, Check, CalendarDays, AlertTriangle, AlertCircle } from 'lucide-react';
+import { X, Clock, Check, CalendarDays, AlertTriangle, AlertCircle, WifiOff, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTagColor, getTagStyle } from '@/lib/utils/tag-colors';
 import { getTagName } from '@/lib/utils/tag-hierarchy';
@@ -35,6 +35,13 @@ export interface TagBadgeProps {
  * Get icon for system tags (reading time, read, scheduled, etc.)
  * Returns null for regular user tags
  */
+/** Privacy system tags */
+const LOCAL_ONLY_TAG = 'local-only';
+const PRIVATE_TAG = 'private';
+
+/** Tags that should display as icon-only (no label text) */
+const ICON_ONLY_TAGS = [LOCAL_ONLY_TAG, PRIVATE_TAG];
+
 function getSystemTagIcon(tag: string) {
   if (isReadingTimeTag(tag)) return Clock;
   if (tag === READ_TAG) return Check;
@@ -42,8 +49,25 @@ function getSystemTagIcon(tag: string) {
   if (tag === DUE_TODAY_TAG) return CalendarDays;
   if (tag === OVERDUE_TAG) return AlertTriangle;
   if (tag === CONFLICT_TAG) return AlertCircle;
+  if (tag === LOCAL_ONLY_TAG) return WifiOff;
+  if (tag === PRIVATE_TAG) return EyeOff;
   return null;
 }
+
+function isIconOnlyTag(tag: string): boolean {
+  return ICON_ONLY_TAGS.includes(tag);
+}
+
+/** Privacy tags get a special neutral grey style */
+function isPrivacyTag(tag: string): boolean {
+  return tag === LOCAL_ONLY_TAG || tag === PRIVATE_TAG;
+}
+
+/** Neutral grey style for privacy indicator tags */
+const PRIVACY_TAG_STYLE: React.CSSProperties = {
+  backgroundColor: 'rgba(148, 163, 184, 0.2)', // Light grey
+  color: 'rgba(255, 255, 255, 0.9)', // White icon
+};
 
 export function TagBadge({
   tag,
@@ -83,22 +107,32 @@ export function TagBadge({
     md: 'w-3.5 h-3.5',
   };
 
+  // Icon-only privacy tags get special styling
+  const isPrivacy = isPrivacyTag(tag);
+  const tagStyle = isPrivacy ? PRIVACY_TAG_STYLE : getTagStyle(tag, customHsl);
+
+  // Icon-only tags need square padding to look like badges
+  const iconOnlySizeClasses = {
+    sm: 'p-1 text-[11px]',
+    md: 'p-1.5 text-xs',
+  };
+
   return (
     <span
       className={cn(
         'inline-flex items-center font-medium rounded-md transition-opacity',
-        sizeClasses[size],
+        isIconOnlyTag(tag) ? iconOnlySizeClasses[size] : sizeClasses[size],
         interactive && 'cursor-pointer hover:opacity-80',
         onClick && 'cursor-pointer',
         className
       )}
-      style={getTagStyle(tag, customHsl)}
+      style={tagStyle}
       onClick={onClick ? handleClick : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      {Icon && <Icon className={cn('flex-shrink-0', size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5')} />}
-      <span className="truncate max-w-[120px]">{displayName}</span>
+      {Icon && <Icon className={cn('flex-shrink-0', size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4')} />}
+      {!isIconOnlyTag(tag) && <span className="truncate max-w-[120px]">{displayName}</span>}
 
       {onRemove && (
         <button

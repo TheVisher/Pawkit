@@ -8,6 +8,7 @@ import type { SyncQueueItem, LocalCard } from '@/lib/db';
 import { useSyncStore } from '@/lib/stores/sync-store';
 import { createModuleLogger } from '@/lib/utils/logger';
 import { addConflictTag, removeConflictTag } from '@/lib/utils/system-tags';
+import { shouldSyncCard } from '@/lib/services/privacy';
 
 const log = createModuleLogger('SyncQueue');
 
@@ -561,6 +562,18 @@ export async function addToQueue(
   payload?: Record<string, unknown>,
   options?: AddToQueueOptions
 ): Promise<void> {
+  // PRIVACY GATE: Never queue local-only cards
+  if (entityType === 'card' && (operation === 'create' || operation === 'update')) {
+    const card = await db.cards.get(entityId);
+    if (card) {
+      const collections = await db.collections.where('workspaceId').equals(card.workspaceId).toArray();
+      if (!shouldSyncCard(card, collections)) {
+        log.debug(`[Privacy] Skipping ${entityId} - local-only card`);
+        return;
+      }
+    }
+  }
+
   // Check if there's already a pending item for this entity
   const existing = await db.syncQueue
     .where('entityId')

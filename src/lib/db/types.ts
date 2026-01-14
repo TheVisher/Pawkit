@@ -179,6 +179,7 @@ export interface LocalCollection extends SyncMetadata {
 
   // Flags
   isPrivate: boolean;
+  isLocalOnly?: boolean;  // null/undefined = inherit from parent, true = never syncs
   isSystem: boolean;
   hidePreview: boolean;
   useCoverAsBackground: boolean;

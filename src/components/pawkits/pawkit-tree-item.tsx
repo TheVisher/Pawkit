@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDroppable } from "@dnd-kit/core";
 import { motion } from "framer-motion";
-import { ChevronRight, ChevronDown, Folder, FolderOpen } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderOpen, EyeOff, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PawkitContextMenu } from "@/components/context-menus";
+import { getEffectivePawkitPrivacy } from "@/lib/services/privacy";
 import type { LocalCollection } from "@/lib/db";
 
 interface PawkitTreeItemProps {
   collection: LocalCollection;
   childCollections?: LocalCollection[];
+  allCollections?: LocalCollection[];
   level?: number;
   isExpanded?: boolean;
   onToggleExpand?: (id: string) => void;
@@ -21,12 +23,16 @@ interface PawkitTreeItemProps {
 export function PawkitTreeItem({
   collection,
   childCollections = [],
+  allCollections,
   level = 0,
   isExpanded = false,
   onToggleExpand,
   cardCount = 0,
 }: PawkitTreeItemProps) {
   const pathname = usePathname();
+  const privacy = allCollections
+    ? getEffectivePawkitPrivacy(collection, allCollections)
+    : { isPrivate: collection.isPrivate, isLocalOnly: collection.isLocalOnly ?? false, inherited: false };
   const isActive = pathname === `/pawkits/${collection.slug}`;
   const hasChildren = childCollections.length > 0;
 
@@ -88,6 +94,12 @@ export function PawkitTreeItem({
 
           {/* Right side: Card count and Expand/Collapse */}
           <div className="flex items-center gap-1 shrink-0 z-10 relative">
+            {privacy.isPrivate && (
+              <EyeOff className="h-3 w-3 text-muted-foreground opacity-70" />
+            )}
+            {privacy.isLocalOnly && (
+              <WifiOff className="h-3 w-3 text-muted-foreground opacity-70" />
+            )}
             {cardCount > 0 && (
               <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
                 {cardCount}
