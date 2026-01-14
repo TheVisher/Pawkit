@@ -16,7 +16,7 @@ import {
 } from '@/lib/migrations/tag-architecture-migration';
 import { slugify } from '@/lib/utils';
 import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
-import { ensureSystemPrivatePawkit } from '@/lib/services/privacy';
+import { ensureSystemPrivatePawkit, getEffectivePawkitPrivacy } from '@/lib/services/privacy';
 
 // Type declaration for debug helpers exposed on window
 declare global {
@@ -366,6 +366,118 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.put(updated);
+
+    // Handle local-only transition: if Pawkit just became local-only,
+    // delete it and all its cards from the server
+    const wasLocalOnly = existing.isLocalOnly === true;
+    const isNowLocalOnly = updates.isLocalOnly === true;
+
+    if (!wasLocalOnly && isNowLocalOnly) {
+      // Get all collections to check for descendants
+      const allCollections = await db.collections
+        .where('workspaceId')
+        .equals(existing.workspaceId)
+        .filter((c) => !c._deleted)
+        .toArray();
+
+      // Find all descendant Pawkit slugs (children, grandchildren, etc.)
+      const descendantSlugs: string[] = [];
+      function findDescendants(parentId: string) {
+        const children = allCollections.filter((c) => c.parentId === parentId);
+        for (const child of children) {
+          descendantSlugs.push(child.slug);
+          findDescendants(child.id);
+        }
+      }
+      findDescendants(id);
+
+      // All slugs affected: this Pawkit + all descendants
+      const affectedSlugs = [existing.slug, ...descendantSlugs];
+
+      // Find all cards that have any of these slugs as tags
+      const cardsToDelete = await db.cards
+        .where('workspaceId')
+        .equals(existing.workspaceId)
+        .filter((card) => {
+          if (card._deleted) return false;
+          const cardTags = card.tags || [];
+          return affectedSlugs.some((slug) => cardTags.includes(slug));
+        })
+        .toArray();
+
+      // Delete collection from server
+      await addToQueue('collection', id, 'delete');
+
+      // Delete all descendant collections from server too
+      for (const slug of descendantSlugs) {
+        const descendantCollection = allCollections.find((c) => c.slug === slug);
+        if (descendantCollection) {
+          await addToQueue('collection', descendantCollection.id, 'delete');
+        }
+      }
+
+      // Delete all affected cards from server
+      for (const card of cardsToDelete) {
+        await addToQueue('card', card.id, 'delete');
+      }
+
+      triggerSync();
+      return; // Don't queue an update - we queued deletes
+    }
+
+    // Handle reverse transition: if Pawkit stopped being local-only,
+    // re-upload it and all its cards to the server
+    if (wasLocalOnly && !isNowLocalOnly) {
+      // Get all collections to check for descendants
+      const allCollections = await db.collections
+        .where('workspaceId')
+        .equals(existing.workspaceId)
+        .filter((c) => !c._deleted)
+        .toArray();
+
+      // Find all descendant Pawkit slugs
+      const descendantSlugs: string[] = [];
+      function findDescendants(parentId: string) {
+        const children = allCollections.filter((c) => c.parentId === parentId);
+        for (const child of children) {
+          descendantSlugs.push(child.slug);
+          findDescendants(child.id);
+        }
+      }
+      findDescendants(id);
+
+      const affectedSlugs = [existing.slug, ...descendantSlugs];
+
+      // Find all cards that have any of these slugs as tags
+      const cardsToCreate = await db.cards
+        .where('workspaceId')
+        .equals(existing.workspaceId)
+        .filter((card) => {
+          if (card._deleted) return false;
+          const cardTags = card.tags || [];
+          return affectedSlugs.some((slug) => cardTags.includes(slug));
+        })
+        .toArray();
+
+      // Re-upload collection to server
+      await addToQueue('collection', id, 'create');
+
+      // Re-upload all descendant collections
+      for (const slug of descendantSlugs) {
+        const descendantCollection = allCollections.find((c) => c.slug === slug);
+        if (descendantCollection) {
+          await addToQueue('collection', descendantCollection.id, 'create');
+        }
+      }
+
+      // Re-upload all affected cards
+      for (const card of cardsToCreate) {
+        await addToQueue('card', card.id, 'create');
+      }
+
+      triggerSync();
+      return; // Don't queue an update - we queued creates
+    }
 
     // Queue sync and trigger immediately (update is a discrete action)
     await addToQueue('collection', id, 'update', updates as Record<string, unknown>);

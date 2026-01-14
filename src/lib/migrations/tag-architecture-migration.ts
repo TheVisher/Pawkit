@@ -12,7 +12,8 @@
 
 import { db } from '@/lib/db/schema';
 import type { LocalCard, LocalCollection } from '@/lib/db/types';
-import { addToQueue } from '@/lib/services/sync-queue';
+import { addToQueue, triggerSync } from '@/lib/services/sync-queue';
+import { getEffectivePawkitPrivacy } from '@/lib/services/privacy';
 import type { UpdateSpec } from 'dexie';
 
 // Legacy card type for migration - includes the old collections field
@@ -392,6 +393,27 @@ export async function addCardToPawkit(
   }
 
   await db.cards.update(cardId, updates);
+
+  // Check if the target Pawkit (or any ancestor) is local-only
+  // If so, we need to delete the card from the server instead of updating it
+  const allCollections = await db.collections
+    .where('workspaceId')
+    .equals(workspaceId)
+    .toArray();
+
+  const pawkitId = slugToId.get(pawkitSlug);
+  if (pawkitId) {
+    const targetPawkit = allCollections.find((c) => c.id === pawkitId);
+    if (targetPawkit) {
+      const privacy = getEffectivePawkitPrivacy(targetPawkit, allCollections);
+      if (privacy.isLocalOnly) {
+        // Card is now in a local-only Pawkit - delete from server
+        await addToQueue('card', cardId, 'delete');
+        triggerSync();
+        return;
+      }
+    }
+  }
 
   // Add to sync queue with skipConflictCheck (Pawkit changes shouldn't trigger conflicts)
   // Only include tags in sync payload (content changes if any should be synced separately)
