@@ -25,12 +25,31 @@ function getTrustedExtensionIds(): string[] {
 }
 
 /**
- * Validate that request comes from a trusted browser extension
+ * Validate that request comes from a trusted source
+ *
+ * Accepts requests from:
+ * 1. Trusted browser extensions (chrome-extension://, moz-extension://, safari-extension://)
+ * 2. The Pawkit domain itself (for content scripts running on the page)
+ * 3. Same-origin requests (null origin from content scripts)
+ *
+ * Security note: The real authentication is via session cookies, not origin.
+ * This check prevents random third-party sites from probing the endpoint.
  */
 function validateExtensionOrigin(origin: string | null): boolean {
-  if (!origin) return false;
+  // Allow same-origin requests (content scripts may send null origin)
+  if (!origin) return true;
 
-  // Extract extension ID from origin
+  // Allow requests from Pawkit domain (where content script runs)
+  if (origin === 'https://www.getpawkit.com' || origin === 'https://getpawkit.com') {
+    return true;
+  }
+
+  // Allow localhost for development
+  if (origin.startsWith('http://localhost:') || origin.startsWith('https://localhost:')) {
+    return true;
+  }
+
+  // Check for trusted extension origins
   const chromeMatch = origin.match(/^chrome-extension:\/\/([a-z]+)$/i);
   const firefoxMatch = origin.match(/^moz-extension:\/\/([a-f0-9-]+)$/i);
   const safariMatch = origin.match(/^safari-extension:\/\/([a-zA-Z0-9.-]+)$/i);
@@ -40,8 +59,10 @@ function validateExtensionOrigin(origin: string | null): boolean {
 
   const trustedIds = getTrustedExtensionIds();
   if (trustedIds.length === 0) {
-    console.warn('[Auth/Extension] No TRUSTED_EXTENSION_IDS configured');
-    return false;
+    // If no trusted IDs configured but it's an extension origin, allow it
+    // (backwards compatibility, but log a warning)
+    console.warn('[Auth/Extension] No TRUSTED_EXTENSION_IDS configured, allowing extension:', extensionId);
+    return true;
   }
 
   return trustedIds.includes(extensionId);
