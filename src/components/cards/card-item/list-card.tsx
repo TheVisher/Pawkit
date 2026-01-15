@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Pin } from 'lucide-react';
 import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
@@ -36,6 +36,11 @@ export function ListCard({
 }: ListCardProps) {
   const [imageError, setImageError] = useState(false);
   const Icon = getCardIcon(card.type);
+
+  // Reset image error state when card or image changes
+  useEffect(() => {
+    setImageError(false);
+  }, [card.id, card.image]);
 
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };

@@ -134,10 +134,20 @@ export function GridCard({
   priority = false,
 }: GridCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [faviconError, setFaviconError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
   const cardRef = useRef<HTMLButtonElement>(null);
   const Icon = getCardIcon(card.type);
+
+  // Reset error states when card or image/favicon changes
+  useEffect(() => {
+    setImageError(false);
+  }, [card.id, card.image]);
+
+  useEffect(() => {
+    setFaviconError(false);
+  }, [card.id, card.favicon]);
   const domain = card.domain || getDomain(card.url);
 
   // Worker hook for off-main-thread color extraction
@@ -152,7 +162,7 @@ export function GridCard({
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
 
   const hasImage = card.image && !imageError;
-  const hasFavicon = card.favicon && !imageError;
+  const hasFavicon = card.favicon && !faviconError;
 
   // Effect: Process cards without dominantColor/aspectRatio/blurDataUri using Web Worker
   // This runs once per card and persists the result to DB
@@ -503,7 +513,7 @@ export function GridCard({
                   width={64}
                   height={64}
                   className="rounded-xl"
-                  onError={() => setImageError(true)}
+                  onError={() => setFaviconError(true)}
                 />
               ) : (
                 <Icon className="w-16 h-16 text-text-muted" />
@@ -541,7 +551,7 @@ export function GridCard({
                   width={18}
                   height={18}
                   className="rounded-sm"
-                  onError={() => setImageError(true)}
+                  onError={() => setFaviconError(true)}
                 />
               ) : (
                 <ExternalLink className="h-4.5 w-4.5" style={{ color: 'var(--color-text-primary)' }} />
