@@ -817,6 +817,8 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
           onChange={handleNotesChange}
           placeholder="Jot down your thoughts, key takeaways, or to-dos..."
           className="h-full"
+          workspaceId={card.workspaceId}
+          cardId={card.id}
         />
       </div>
 

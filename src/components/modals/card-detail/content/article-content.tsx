@@ -365,6 +365,8 @@ export function ArticleContent({
               onChange={handleArticleContentChange}
               onEdit={handleArticleEdit}
               placeholder="No content extracted. You can add your own notes here..."
+              workspaceId={card.workspaceId}
+              cardId={card.id}
             />
           </article>
 

@@ -4,16 +4,27 @@
  * Notes Editor Component
  * Simplified Tiptap editor for user notes in the card detail sidebar.
  * Designed as a scratchpad for thoughts while reading/viewing content.
+ *
+ * Phase 5: Added @ mention support with backlinks.
  */
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Editor as TipTapEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { PawkitMention } from '@/lib/tiptap/extensions/mention';
+import { createMentionSuggestion } from './mention-suggestion';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { useCalendarStore } from '@/lib/stores/calendar-store';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useReferences } from '@/lib/hooks/use-live-data';
+import { syncReferencesFromContent } from '@/lib/utils/mention-parser';
 
 export interface NotesEditorProps {
   content: string;
@@ -21,6 +32,10 @@ export interface NotesEditorProps {
   placeholder?: string;
   className?: string;
   editable?: boolean;
+  /** Workspace ID - enables mention search */
+  workspaceId?: string;
+  /** Card ID - enables reference syncing for @ mentions */
+  cardId?: string;
 }
 
 export function NotesEditor({
@@ -29,9 +44,52 @@ export function NotesEditor({
   placeholder = "Add your notes here...",
   className,
   editable = true,
+  workspaceId,
+  cardId,
 }: NotesEditorProps) {
+  const router = useRouter();
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const setCalendarDate = useCalendarStore((s) => s.setDate);
+
+  // Reference sync dependencies (only used when cardId is provided)
+  const createReference = useDataStore((s) => s.createReference);
+  const deleteReference = useDataStore((s) => s.deleteReference);
+  const updateCard = useDataStore((s) => s.updateCard);
+  const existingRefs = useReferences(cardId);
+
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const existingRefsRef = useRef(existingRefs);
+  const syncRefsRef = useRef<((editorInstance: TipTapEditor) => Promise<void>) | null>(null);
+
+  // Keep existingRefs ref in sync
+  useEffect(() => {
+    existingRefsRef.current = existingRefs;
+  }, [existingRefs]);
+
+  // Keep sync function ref in sync
+  useEffect(() => {
+    syncRefsRef.current = async (editorInstance: TipTapEditor) => {
+      if (!cardId || !workspaceId || !editorInstance) return;
+
+      try {
+        const jsonContent = editorInstance.getJSON();
+        await syncReferencesFromContent(
+          cardId,
+          workspaceId,
+          jsonContent,
+          existingRefsRef.current,
+          {
+            createReference,
+            deleteReference,
+            updateCard,
+          }
+        );
+      } catch (err) {
+        console.error('[NotesEditor] Failed to sync references:', err);
+      }
+    };
+  }, [cardId, workspaceId, createReference, deleteReference, updateCard]);
 
   const editor = useEditor({
     immediatelyRender: false, // Required for SSR/Next.js to avoid hydration mismatches
@@ -77,6 +135,9 @@ export function NotesEditor({
           class: 'flex items-start gap-2',
         },
       }),
+      PawkitMention.configure({
+        suggestion: createMentionSuggestion({ workspaceId }),
+      }),
     ],
     content,
     editable,
@@ -107,6 +168,30 @@ export function NotesEditor({
           'prose-hr:border-[var(--glass-border)]'
         ),
       },
+      handleDOMEvents: {
+        click: (view, event) => {
+          const target = event.target as HTMLElement;
+          const mentionPill = target.closest('[data-pawkit-mention]') as HTMLElement;
+
+          if (mentionPill) {
+            event.preventDefault();
+
+            const mentionType = mentionPill.getAttribute('data-type');
+            const mentionId = mentionPill.getAttribute('data-id');
+
+            if (mentionType && mentionId) {
+              // Dispatch custom event with mention data
+              window.dispatchEvent(
+                new CustomEvent('pawkit-mention-click', {
+                  detail: { type: mentionType, id: mentionId },
+                })
+              );
+            }
+            return true; // Prevent ProseMirror from handling this click
+          }
+          return false;
+        },
+      },
     },
     onUpdate: ({ editor }) => {
       // Debounced save - triggers 500ms after last keystroke
@@ -132,8 +217,10 @@ export function NotesEditor({
         lastSavedContent.current = currentContent;
         onChange(currentContent);
       }
+      // Sync references after saving (async, fire and forget)
+      syncRefsRef.current?.(editor);
     },
-  });
+  }, [workspaceId]); // Recreate editor when workspaceId changes to reinitialize mention extension
 
   // Track the initial content for the ref
   useEffect(() => {
@@ -171,6 +258,34 @@ export function NotesEditor({
       editor?.destroy();
     };
   }, [editor, onChange]);
+
+  // Handle @ mention pill clicks
+  useEffect(() => {
+    const handleMentionEvent = (e: Event) => {
+      const { type, id } = (e as CustomEvent).detail;
+
+      switch (type) {
+        case 'card':
+          openCardDetail(id);
+          break;
+        case 'pawkit':
+          router.push(`/pawkits/${id}`);
+          break;
+        case 'date':
+          try {
+            const date = parseISO(id);
+            setCalendarDate(date);
+            router.push('/calendar');
+          } catch {
+            console.error('Invalid date format:', id);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('pawkit-mention-click', handleMentionEvent);
+    return () => window.removeEventListener('pawkit-mention-click', handleMentionEvent);
+  }, [openCardDetail, router, setCalendarDate]);
 
   if (!editor) {
     return null;
@@ -326,6 +441,69 @@ export function NotesEditor({
 
         .notes-editor-content p:last-child {
           margin-bottom: 0;
+        }
+
+        /* @ Mention Pills - Compact style for sidebar */
+        .notes-editor-content span[data-pawkit-mention],
+        .notes-editor-content .mention-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.125rem;
+          padding: 0.1rem 0.375rem;
+          border-radius: 5px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+          vertical-align: baseline;
+        }
+
+        .notes-editor-content span[data-pawkit-mention]:hover,
+        .notes-editor-content .mention-pill:hover {
+          transform: translateY(-1px);
+        }
+
+        .notes-editor-content .mention-pill-card {
+          background: hsla(185 70% 42% / 0.15);
+          color: hsl(185 70% 38%);
+          border: 1px solid hsla(185 70% 42% / 0.25);
+        }
+
+        .notes-editor-content .mention-pill-card:hover {
+          background: hsla(185 70% 42% / 0.25);
+        }
+
+        .notes-editor-content .mention-pill-pawkit {
+          background: hsla(280 70% 50% / 0.15);
+          color: hsl(280 70% 45%);
+          border: 1px solid hsla(280 70% 50% / 0.25);
+        }
+
+        .notes-editor-content .mention-pill-pawkit:hover {
+          background: hsla(280 70% 50% / 0.25);
+        }
+
+        .notes-editor-content .mention-pill-date {
+          background: hsla(220 70% 50% / 0.15);
+          color: hsl(220 70% 45%);
+          border: 1px solid hsla(220 70% 50% / 0.25);
+        }
+
+        .notes-editor-content .mention-pill-date:hover {
+          background: hsla(220 70% 50% / 0.25);
+        }
+
+        /* Deleted/broken mention state */
+        .notes-editor-content .mention-deleted {
+          background: hsla(0 60% 50% / 0.1);
+          color: hsl(0 50% 40%);
+          border: 1px solid hsla(0 60% 50% / 0.2);
+          text-decoration: line-through;
+          opacity: 0.7;
+        }
+
+        .notes-editor-content .mention-deleted:hover {
+          opacity: 1;
         }
       `}</style>
     </div>

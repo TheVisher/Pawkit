@@ -111,7 +111,7 @@ export function createMentionSuggestion(
             },
             maxWidth: 'none',
             offset: [0, 8],
-            zIndex: 50,
+            zIndex: 9999,
             // Style the tippy container to be invisible (we style the dropdown)
             arrow: false,
             theme: 'transparent',

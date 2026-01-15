@@ -3,12 +3,13 @@
 /**
  * Article Editor Component
  * Simplified Tiptap editor for editing extracted article content.
- * Based on the main Editor but without slash commands, mentions, or drag handles.
+ * Based on the main Editor but without slash commands or drag handles.
  *
  * Phase 4: Added highlighting capability and "Create note from selection" feature.
+ * Phase 5: Added @ mention support with backlinks.
  */
 
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Editor as TipTapEditor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -17,8 +18,17 @@ import Typography from '@tiptap/extension-typography';
 import Highlight from '@tiptap/extension-highlight';
 import { Highlighter, StickyNote } from 'lucide-react';
 import { useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { PawkitMention } from '@/lib/tiptap/extensions/mention';
+import { createMentionSuggestion } from './mention-suggestion';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { useCalendarStore } from '@/lib/stores/calendar-store';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useReferences } from '@/lib/hooks/use-live-data';
+import { syncReferencesFromContent } from '@/lib/utils/mention-parser';
 
 export interface ArticleEditorProps {
   content: string;
@@ -27,6 +37,10 @@ export interface ArticleEditorProps {
   placeholder?: string;
   className?: string;
   editable?: boolean;
+  /** Workspace ID - enables mention search */
+  workspaceId?: string;
+  /** Card ID - enables reference syncing for @ mentions */
+  cardId?: string;
 }
 
 export function ArticleEditor({
@@ -36,10 +50,53 @@ export function ArticleEditor({
   placeholder = "No content extracted. You can add your own notes here...",
   className,
   editable = true,
+  workspaceId,
+  cardId,
 }: ArticleEditorProps) {
+  const router = useRouter();
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const setCalendarDate = useCalendarStore((s) => s.setDate);
+
+  // Reference sync dependencies (only used when cardId is provided)
+  const createReference = useDataStore((s) => s.createReference);
+  const deleteReference = useDataStore((s) => s.deleteReference);
+  const updateCard = useDataStore((s) => s.updateCard);
+  const existingRefs = useReferences(cardId);
+
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const hasEditedRef = useRef(false);
+  const existingRefsRef = useRef(existingRefs);
+  const syncRefsRef = useRef<((editorInstance: TipTapEditor) => Promise<void>) | null>(null);
+
+  // Keep existingRefs ref in sync
+  useEffect(() => {
+    existingRefsRef.current = existingRefs;
+  }, [existingRefs]);
+
+  // Keep sync function ref in sync
+  useEffect(() => {
+    syncRefsRef.current = async (editorInstance: TipTapEditor) => {
+      if (!cardId || !workspaceId || !editorInstance) return;
+
+      try {
+        const jsonContent = editorInstance.getJSON();
+        await syncReferencesFromContent(
+          cardId,
+          workspaceId,
+          jsonContent,
+          existingRefsRef.current,
+          {
+            createReference,
+            deleteReference,
+            updateCard,
+          }
+        );
+      } catch (err) {
+        console.error('[ArticleEditor] Failed to sync references:', err);
+      }
+    };
+  }, [cardId, workspaceId, createReference, deleteReference, updateCard]);
 
   const editor = useEditor({
     immediatelyRender: false, // Required for SSR/Next.js to avoid hydration mismatches
@@ -92,6 +149,9 @@ export function ArticleEditor({
           class: 'article-highlight',
         },
       }),
+      PawkitMention.configure({
+        suggestion: createMentionSuggestion({ workspaceId }),
+      }),
     ],
     content,
     editable,
@@ -121,6 +181,30 @@ export function ArticleEditor({
           // HR
           'prose-hr:border-[var(--glass-border)]'
         ),
+      },
+      handleDOMEvents: {
+        click: (view, event) => {
+          const target = event.target as HTMLElement;
+          const mentionPill = target.closest('[data-pawkit-mention]') as HTMLElement;
+
+          if (mentionPill) {
+            event.preventDefault();
+
+            const mentionType = mentionPill.getAttribute('data-type');
+            const mentionId = mentionPill.getAttribute('data-id');
+
+            if (mentionType && mentionId) {
+              // Dispatch custom event with mention data
+              window.dispatchEvent(
+                new CustomEvent('pawkit-mention-click', {
+                  detail: { type: mentionType, id: mentionId },
+                })
+              );
+            }
+            return true; // Prevent ProseMirror from handling this click
+          }
+          return false;
+        },
       },
     },
     onUpdate: ({ editor }) => {
@@ -153,8 +237,10 @@ export function ArticleEditor({
         lastSavedContent.current = currentContent;
         onChange(currentContent);
       }
+      // Sync references after saving (async, fire and forget)
+      syncRefsRef.current?.(editor);
     },
-  });
+  }, [workspaceId]); // Recreate editor when workspaceId changes to reinitialize mention extension
 
   // Track the initial content for the ref
   useEffect(() => {
@@ -193,6 +279,34 @@ export function ArticleEditor({
       editor?.destroy();
     };
   }, [editor, onChange]);
+
+  // Handle @ mention pill clicks
+  useEffect(() => {
+    const handleMentionEvent = (e: Event) => {
+      const { type, id } = (e as CustomEvent).detail;
+
+      switch (type) {
+        case 'card':
+          openCardDetail(id);
+          break;
+        case 'pawkit':
+          router.push(`/pawkits/${id}`);
+          break;
+        case 'date':
+          try {
+            const date = parseISO(id);
+            setCalendarDate(date);
+            router.push('/calendar');
+          } catch {
+            console.error('Invalid date format:', id);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('pawkit-mention-click', handleMentionEvent);
+    return () => window.removeEventListener('pawkit-mention-click', handleMentionEvent);
+  }, [openCardDetail, router, setCalendarDate]);
 
   // UI store for create note from selection - use individual selectors to avoid infinite loop
   const setCardDetailTab = useUIStore((s) => s.setCardDetailTab);
@@ -418,6 +532,69 @@ export function ArticleEditor({
         .article-editor-content .article-highlight:hover,
         .article-editor-content mark:hover {
           background-color: rgba(251, 191, 36, 0.45);
+        }
+
+        /* @ Mention Pills - Squircle style */
+        .article-editor-content span[data-pawkit-mention],
+        .article-editor-content .mention-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+          padding: 0.125rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.15s, transform 0.1s;
+          vertical-align: baseline;
+        }
+
+        .article-editor-content span[data-pawkit-mention]:hover,
+        .article-editor-content .mention-pill:hover {
+          transform: translateY(-1px);
+        }
+
+        .article-editor-content .mention-pill-card {
+          background: hsla(185 70% 42% / 0.15);
+          color: hsl(185 70% 38%);
+          border: 1px solid hsla(185 70% 42% / 0.25);
+        }
+
+        .article-editor-content .mention-pill-card:hover {
+          background: hsla(185 70% 42% / 0.25);
+        }
+
+        .article-editor-content .mention-pill-pawkit {
+          background: hsla(280 70% 50% / 0.15);
+          color: hsl(280 70% 45%);
+          border: 1px solid hsla(280 70% 50% / 0.25);
+        }
+
+        .article-editor-content .mention-pill-pawkit:hover {
+          background: hsla(280 70% 50% / 0.25);
+        }
+
+        .article-editor-content .mention-pill-date {
+          background: hsla(220 70% 50% / 0.15);
+          color: hsl(220 70% 45%);
+          border: 1px solid hsla(220 70% 50% / 0.25);
+        }
+
+        .article-editor-content .mention-pill-date:hover {
+          background: hsla(220 70% 50% / 0.25);
+        }
+
+        /* Deleted/broken mention state */
+        .article-editor-content .mention-deleted {
+          background: hsla(0 60% 50% / 0.1);
+          color: hsl(0 50% 40%);
+          border: 1px solid hsla(0 60% 50% / 0.2);
+          text-decoration: line-through;
+          opacity: 0.7;
+        }
+
+        .article-editor-content .mention-deleted:hover {
+          opacity: 1;
         }
       `}</style>
     </div>
