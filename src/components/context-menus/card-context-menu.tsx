@@ -150,13 +150,49 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
     }
   };
 
+  // Keyboard shortcut handler for context menu
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Don't handle if modifier keys are pressed (except for Delete)
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+    const key = e.key.toLowerCase();
+
+    switch (key) {
+      case 'e':
+        e.preventDefault();
+        handleEdit();
+        break;
+      case 'o':
+        if (isBookmark) {
+          e.preventDefault();
+          handleOpenInNewTab();
+        }
+        break;
+      case 'c':
+        if (isBookmark) {
+          e.preventDefault();
+          handleCopyUrl();
+        }
+        break;
+      case 'p':
+        e.preventDefault();
+        handleTogglePin();
+        break;
+      case 'delete':
+      case 'backspace':
+        e.preventDefault();
+        handleDelete();
+        break;
+    }
+  };
+
   return (
     <>
       <ContextMenu>
         <ContextMenuTrigger asChild>
           {children}
         </ContextMenuTrigger>
-        <ContextMenuContent>
+        <ContextMenuContent onKeyDown={handleKeyDown}>
           {/* Edit */}
           <ContextMenuItem onClick={handleEdit}>
             <Pencil className="size-4" />
