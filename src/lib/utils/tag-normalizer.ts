@@ -192,6 +192,46 @@ export function isDuplicateTag(
 }
 
 /**
+ * Detect if a tag looks like a corrupted slug (e.g., "name-1768120212610")
+ * This happens when the extension fallback uses collection ID instead of slug
+ * Pattern: alphanumeric-word followed by a 13-digit timestamp
+ */
+export function isCorruptedTag(tag: string): boolean {
+  // Match pattern: word-13digitTimestamp (where timestamp is 1600000000000 to 2000000000000)
+  // This covers timestamps from ~2020 to ~2033
+  const corruptedPattern = /^[\w-]+-1[6789]\d{11}$/;
+  return corruptedPattern.test(tag);
+}
+
+/**
+ * Extract the clean tag from a corrupted tag
+ * e.g., "pkms-1768120212610" -> "pkms"
+ */
+export function cleanCorruptedTag(tag: string): string {
+  if (!isCorruptedTag(tag)) {
+    return tag;
+  }
+  // Remove the -timestamp suffix
+  return tag.replace(/-1[6789]\d{11}$/, '');
+}
+
+/**
+ * Clean an array of tags, fixing any corrupted ones
+ * Returns deduplicated tags with corrupted ones cleaned
+ */
+export function cleanCorruptedTags(tags: string[]): string[] {
+  const cleaned = tags.map(tag => {
+    if (isCorruptedTag(tag)) {
+      console.warn(`[TagNormalizer] Detected corrupted tag: "${tag}" -> cleaning to "${cleanCorruptedTag(tag)}"`);
+      return cleanCorruptedTag(tag);
+    }
+    return tag;
+  });
+  // Deduplicate after cleaning (in case "pkms" and "pkms-timestamp" both existed)
+  return [...new Set(cleaned)];
+}
+
+/**
  * Suggest tag corrections based on existing tags
  * Returns similar existing tags that might be typos
  */

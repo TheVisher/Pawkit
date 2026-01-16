@@ -433,12 +433,18 @@ export async function getCollections(): Promise<{ ok: boolean; data?: Collection
 
   if (result.ok && result.data?.collections) {
     // Extract id, name, icon from the collections list
-    const collections: Collection[] = result.data.collections.map(c => ({
-      id: c.id,
-      name: c.name,
-      emoji: c.icon || null,
-      slug: c.slug || c.id
-    }))
+    // Filter out collections without a valid slug (data integrity issue)
+    // Then map to Collection type - the filter ensures slug is always defined
+    const collections: Collection[] = result.data.collections
+      .filter((c): c is CollectionApiResponse & { slug: string } =>
+        typeof c.slug === 'string' && c.slug.trim() !== ''
+      )
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        emoji: c.icon || null,
+        slug: c.slug
+      }))
     return { ok: true, data: collections }
   }
 

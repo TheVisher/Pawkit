@@ -18,6 +18,27 @@ import { createModuleLogger } from '@/lib/utils/logger';
 const log = createModuleLogger('CardsAPI');
 
 /**
+ * Clean corrupted tags that have timestamp suffixes (e.g., "pkms-1768120212610" -> "pkms")
+ * This is a server-side safeguard against a bug where collection IDs were used as tags
+ */
+function cleanCorruptedTags(tags: string[] | undefined): string[] {
+  if (!tags || tags.length === 0) return [];
+
+  const corruptedPattern = /^([\w-]+)-1[6789]\d{11}$/;
+  const cleaned = tags.map(tag => {
+    const match = tag.match(corruptedPattern);
+    if (match) {
+      log.warn(`Cleaning corrupted tag: "${tag}" -> "${match[1]}"`);
+      return match[1];
+    }
+    return tag;
+  });
+
+  // Deduplicate after cleaning
+  return [...new Set(cleaned)];
+}
+
+/**
  * GET /api/cards
  *
  * List cards for a workspace with optional filtering.
@@ -201,7 +222,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Create the card
+    // 5. Clean any corrupted tags before saving
+    const cleanedTags = cleanCorruptedTags(cardData.tags);
+
+    // 6. Create the card
     const card = await prisma.card.create({
       data: {
         // Use client ID if provided, otherwise Prisma generates one
@@ -218,7 +242,7 @@ export async function POST(request: Request) {
         favicon: cardData.favicon,
         metadata: cardData.metadata as Prisma.InputJsonValue | undefined,
         status: cardData.status,
-        tags: cardData.tags,
+        tags: cleanedTags,
         // collections field removed - Pawkit membership now uses tags
         pinned: cardData.pinned,
         scheduledDate: cardData.scheduledDate
@@ -244,7 +268,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // 6. Return created card
+    // 7. Return created card
     return NextResponse.json({ card }, { status: 201 });
   } catch (error) {
     log.error('POST /api/cards error:', error);

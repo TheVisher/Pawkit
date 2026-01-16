@@ -14,6 +14,27 @@ import { createModuleLogger } from '@/lib/utils/logger';
 
 const log = createModuleLogger('CardAPI');
 
+/**
+ * Clean corrupted tags that have timestamp suffixes (e.g., "pkms-1768120212610" -> "pkms")
+ * This is a server-side safeguard against a bug where collection IDs were used as tags
+ */
+function cleanCorruptedTags(tags: string[] | undefined): string[] | undefined {
+  if (!tags || tags.length === 0) return tags;
+
+  const corruptedPattern = /^([\w-]+)-1[6789]\d{11}$/;
+  const cleaned = tags.map(tag => {
+    const match = tag.match(corruptedPattern);
+    if (match) {
+      log.warn(`Cleaning corrupted tag: "${tag}" -> "${match[1]}"`);
+      return match[1];
+    }
+    return tag;
+  });
+
+  // Deduplicate after cleaning
+  return [...new Set(cleaned)];
+}
+
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
@@ -152,7 +173,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     if ('favicon' in updates) updateData.favicon = updates.favicon;
     if ('metadata' in updates) updateData.metadata = updates.metadata ?? undefined;
     if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.tags !== undefined) updateData.tags = updates.tags;
+    if (updates.tags !== undefined) updateData.tags = cleanCorruptedTags(updates.tags);
     // collections field removed - Pawkit membership now uses tags
     if (updates.pinned !== undefined) updateData.pinned = updates.pinned;
 

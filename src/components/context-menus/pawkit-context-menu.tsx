@@ -99,10 +99,43 @@ export function PawkitContextMenu({ collection, children, allCollections }: Pawk
   };
 
   const handleDelete = async () => {
-    if (confirm(`Delete "${collection.name}"? Cards in this collection won't be deleted.`)) {
-      await deleteCollection(collection.id);
-      toast({ type: 'success', message: `Deleted ${collection.name}` });
+    // Check if this collection has children
+    const children = collections.filter(c => c.parentId === collection.id && !c._deleted);
+    const updateCollection = useDataStore.getState().updateCollection;
+
+    if (children.length > 0) {
+      // Has children - ask what to do with them
+      if (!confirm(`Delete "${collection.name}"? This pawkit has ${children.length} nested pawkit(s). Cards in this collection won't be deleted.`)) {
+        return;
+      }
+
+      const deleteChildren = confirm(`Also delete the ${children.length} nested pawkit(s)?\n\nClick OK to delete them, or Cancel to keep them (they'll become root-level pawkits).`);
+
+      if (deleteChildren) {
+        // Delete all children recursively
+        const deleteRecursive = async (parentId: string) => {
+          const childCollections = collections.filter(c => c.parentId === parentId && !c._deleted);
+          for (const child of childCollections) {
+            await deleteRecursive(child.id);
+            await deleteCollection(child.id);
+          }
+        };
+        await deleteRecursive(collection.id);
+      } else {
+        // Make children root-level by clearing their parentId
+        for (const child of children) {
+          await updateCollection(child.id, { parentId: undefined });
+        }
+      }
+    } else {
+      // No children - simple confirm
+      if (!confirm(`Delete "${collection.name}"? Cards in this collection won't be deleted.`)) {
+        return;
+      }
     }
+
+    await deleteCollection(collection.id);
+    toast({ type: 'success', message: `Deleted ${collection.name}` });
   };
 
   return (

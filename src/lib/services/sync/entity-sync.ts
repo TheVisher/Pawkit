@@ -13,6 +13,7 @@ import type {
   SyncMetadata,
 } from '@/lib/db';
 import { createModuleLogger } from '@/lib/utils/logger';
+import { cleanCorruptedTags } from '@/lib/utils/tag-normalizer';
 import {
   type EntityName,
   type ServerWorkspace,
@@ -134,6 +135,10 @@ function serverCollectionToLocal(server: ServerCollection): LocalCollection {
  * Convert server card to local format
  */
 function serverCardToLocal(server: ServerCard): LocalCard {
+  // Clean any corrupted tags (e.g., "pkms-1768120212610" -> "pkms")
+  // This fixes a bug where the extension used collection ID as fallback when slug was missing
+  const tags = server.tags ? cleanCorruptedTags(server.tags) : [];
+
   return {
     id: server.id,
     workspaceId: server.workspaceId,
@@ -146,7 +151,7 @@ function serverCardToLocal(server: ServerCard): LocalCard {
     image: server.image,
     favicon: server.favicon,
     status: server.status,
-    tags: server.tags,
+    tags,
     // collections field removed - Pawkit membership now uses tags
     pinned: server.pinned,
     scheduledDate: server.scheduledDate ? new Date(server.scheduledDate) : undefined,

@@ -63,7 +63,7 @@ export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps)
                 parentId: parentId === 'none' ? undefined : parentId,
                 isPrivate: false,
                 isSystem: false,
-                icon: 'folder',
+                // icon intentionally left undefined - displays folder icon by default in UI
                 position: collections.length,
                 hidePreview: false,
                 useCoverAsBackground: false,
