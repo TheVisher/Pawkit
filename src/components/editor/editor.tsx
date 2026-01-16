@@ -8,16 +8,23 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Typography from '@tiptap/extension-typography';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import { Color } from '@tiptap/extension-color';
+import TextStyle from '@tiptap/extension-text-style';
 import GlobalDragHandle from 'tiptap-extension-global-drag-handle';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseISO } from 'date-fns';
-import { Bold, Italic, Code, Link as LinkIcon, X, Trash2 } from 'lucide-react';
+import { Bold, Italic, Code, Link as LinkIcon, X, Trash2, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
+import { LinkPopover } from './link-popover';
 import { AutoPhoneLink } from '@/lib/tiptap/extensions/auto-phone-link';
 import { PawkitMention } from '@/lib/tiptap/extensions/mention';
+import { PawkitCodeBlock } from '@/lib/tiptap/extensions/code-block-lowlight';
+import { PawkitImage } from '@/lib/tiptap/extensions/image';
 import { createMentionSuggestion } from './mention-suggestion';
+import { Callout } from '@/lib/tiptap/extensions/callout';
+import { Toggle } from '@/lib/tiptap/extensions/toggle';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -57,7 +64,11 @@ export function Editor({
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [isInTable, setIsInTable] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkPopoverPosition, setLinkPopoverPosition] = useState({ top: 0, left: 0 });
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const existingRefsRef = useRef(existingRefs);
@@ -107,6 +118,7 @@ export function Editor({
           keepMarks: true,
           keepAttributes: false,
         },
+        codeBlock: false, // Disable default code block - using PawkitCodeBlock with syntax highlighting
       }),
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -149,6 +161,8 @@ export function Editor({
         },
       }),
       Typography,
+      TextStyle,
+      Color,
       Table.configure({
         resizable: true,
         HTMLAttributes: {
@@ -158,6 +172,7 @@ export function Editor({
       TableRow,
       TableHeader,
       TableCell,
+      PawkitCodeBlock,
       AutoPhoneLink,
       GlobalDragHandle.configure({
         dragHandleWidth: 1000, // Large value to detect hover across full row
@@ -165,6 +180,15 @@ export function Editor({
       }),
       PawkitMention.configure({
         suggestion: createMentionSuggestion({ workspaceId }),
+      }),
+      Callout,
+      Toggle,
+      PawkitImage.configure({
+        inline: false,
+        allowBase64: true, // Allow base64 for placeholder images during upload
+        HTMLAttributes: {
+          class: 'tiptap-image',
+        },
       }),
     ],
     content,
@@ -360,6 +384,7 @@ export function Editor({
           return;
         }
         setShowToolbar(false);
+        setShowColorPicker(false);
       }
     };
 
@@ -398,25 +423,44 @@ export function Editor({
   const setLink = useCallback(() => {
     if (!editor) return;
 
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
+    // Get the selection position to place the popover
+    const { from } = editor.state.selection;
+    const coords = editor.view.coordsAtPos(from);
+    const editorRect = editor.view.dom.getBoundingClientRect();
 
-    if (url === null) {
-      return;
-    }
-
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    // Position the popover below the selection
+    setLinkPopoverPosition({
+      top: coords.top - editorRect.top + 30,
+      left: coords.left - editorRect.left,
+    });
+    setShowLinkPopover(true);
   }, [editor]);
 
   // Delete table handler
   const deleteTable = useCallback(() => {
     if (!editor) return;
     editor.chain().focus().deleteTable().run();
+  }, [editor]);
+
+  // Color picker colors
+  const textColors = [
+    { label: 'Default', value: null },
+    { label: 'Red', value: '#ef4444' },
+    { label: 'Orange', value: '#f97316' },
+    { label: 'Green', value: '#22c55e' },
+    { label: 'Blue', value: '#3b82f6' },
+    { label: 'Purple', value: '#a855f7' },
+    { label: 'Gray', value: '#6b7280' },
+  ];
+
+  const setTextColor = useCallback((color: string | null) => {
+    if (!editor) return;
+    if (color === null) {
+      editor.chain().focus().unsetColor().run();
+    } else {
+      editor.chain().focus().setColor(color).run();
+    }
+    setShowColorPicker(false);
   }, [editor]);
 
   // Listen for keyboard shortcut custom events
@@ -502,6 +546,58 @@ export function Editor({
             <Code className="h-4 w-4" />
           </button>
           <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
+          <div className="relative">
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                editor.isActive('textStyle')
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--color-text-primary)]'
+              )}
+              title="Text Color"
+            >
+              <Palette className="h-4 w-4" />
+            </button>
+            {showColorPicker && (
+              <div
+                ref={colorPickerRef}
+                className={cn(
+                  'absolute top-full mt-1 left-0 z-50',
+                  'bg-[var(--glass-panel-bg)]',
+                  'backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)]',
+                  'border border-[var(--glass-border)]',
+                  'shadow-[var(--glass-shadow)]',
+                  'rounded-lg p-2',
+                  'animate-in fade-in-0 zoom-in-95 duration-100',
+                  'min-w-[140px]'
+                )}
+              >
+                <div className="flex flex-col gap-1">
+                  {textColors.map((color) => (
+                    <button
+                      key={color.label}
+                      onClick={() => setTextColor(color.value)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-md',
+                        'text-sm text-left transition-colors',
+                        'hover:bg-[var(--glass-bg)]'
+                      )}
+                    >
+                      <div
+                        className="w-4 h-4 rounded border border-[var(--glass-border)]"
+                        style={{
+                          backgroundColor: color.value || 'var(--color-text-primary)',
+                        }}
+                      />
+                      <span className="text-[var(--color-text-primary)]">{color.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
           <button
             onClick={setLink}
             className={cn(
@@ -537,6 +633,14 @@ export function Editor({
           )}
         </div>
       )}
+
+      {/* Link Popover */}
+      <LinkPopover
+        editor={editor}
+        isOpen={showLinkPopover}
+        onClose={() => setShowLinkPopover(false)}
+        position={linkPopoverPosition}
+      />
 
       {/* Slash Command Menu */}
       <SlashCommandMenu editor={editor} />
@@ -929,6 +1033,54 @@ export function Editor({
 
         .tiptap .mention-deleted:hover {
           opacity: 1;
+        }
+
+        /* Image styling */
+        .tiptap img.tiptap-image {
+          max-width: 100%;
+          height: auto;
+          border-radius: 0.5rem;
+          border: 1px solid var(--glass-border);
+          margin: 1rem 0;
+          display: block;
+        }
+
+        /* Uploading state - show loading overlay */
+        .tiptap img.tiptap-image[data-uploading="true"] {
+          opacity: 0.6;
+          position: relative;
+          animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 0.4;
+          }
+        }
+
+        /* Image hover state - show resize affordance */
+        .tiptap img.tiptap-image:hover {
+          border-color: var(--color-accent);
+          cursor: pointer;
+        }
+
+        /* Selected image */
+        .tiptap img.tiptap-image.ProseMirror-selectednode {
+          border-color: var(--color-accent);
+          outline: 2px solid var(--color-accent);
+          outline-offset: 2px;
+        }
+
+        /* Image drag preview */
+        .tiptap img.tiptap-image[draggable="true"] {
+          cursor: grab;
+        }
+
+        .tiptap img.tiptap-image[draggable="true"]:active {
+          cursor: grabbing;
         }
       `}</style>
     </div>

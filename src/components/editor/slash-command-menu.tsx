@@ -14,6 +14,9 @@ import {
   Minus,
   Quote,
   Table2,
+  Info,
+  Image as ImageIcon,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -102,6 +105,27 @@ const commands: Command[] = [
     shortcut: '',
     icon: Table2,
     action: (editor) => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
+  {
+    id: 'callout',
+    label: 'Callout',
+    shortcut: '',
+    icon: Info,
+    action: (editor) => editor.chain().focus().setCallout('info').run(),
+  },
+  {
+    id: 'toggle',
+    label: 'Toggle',
+    shortcut: '',
+    icon: ChevronRight,
+    action: (editor) => editor.chain().focus().setToggle().run(),
+  },
+  {
+    id: 'image',
+    label: 'Image',
+    shortcut: '',
+    icon: ImageIcon,
+    action: (editor) => editor.commands.insertImageFromFile(),
   },
 ];
 

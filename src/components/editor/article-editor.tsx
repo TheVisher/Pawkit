@@ -17,13 +17,14 @@ import Link from '@tiptap/extension-link';
 import Typography from '@tiptap/extension-typography';
 import Highlight from '@tiptap/extension-highlight';
 import { Highlighter, StickyNote } from 'lucide-react';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { PawkitMention } from '@/lib/tiptap/extensions/mention';
 import { createMentionSuggestion } from './mention-suggestion';
+import { LinkPopover } from './link-popover';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -63,6 +64,8 @@ export function ArticleEditor({
   const updateCard = useDataStore((s) => s.updateCard);
   const existingRefs = useReferences(cardId);
 
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkPopoverPosition, setLinkPopoverPosition] = useState({ top: 0, left: 0 });
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const hasEditedRef = useRef(false);
@@ -316,19 +319,17 @@ export function ArticleEditor({
   const setLink = useCallback(() => {
     if (!editor) return;
 
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
+    // Get the selection position to place the popover
+    const { from } = editor.state.selection;
+    const coords = editor.view.coordsAtPos(from);
+    const editorRect = editor.view.dom.getBoundingClientRect();
 
-    if (url === null) {
-      return;
-    }
-
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
-    }
-
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    // Position the popover below the selection
+    setLinkPopoverPosition({
+      top: coords.top - editorRect.top + 30,
+      left: coords.left - editorRect.left,
+    });
+    setShowLinkPopover(true);
   }, [editor]);
 
   // Toggle highlight on selection
@@ -385,6 +386,14 @@ export function ArticleEditor({
 
   return (
     <div className={cn('relative', className)}>
+      {/* Link Popover */}
+      <LinkPopover
+        editor={editor}
+        isOpen={showLinkPopover}
+        onClose={() => setShowLinkPopover(false)}
+        position={linkPopoverPosition}
+      />
+
       {/* Selection Bubble Menu */}
       <BubbleMenu
         editor={editor}

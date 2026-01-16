@@ -277,7 +277,9 @@ export function GridCard({
 
   // Sanitize note content for safe rendering (memoized to avoid parsing on every render)
   const sanitizedContent = useMemo(
-    () => isNoteCard(card.type) ? DOMPurify.sanitize(card.content || '<p>Empty note</p>') : '',
+    () => isNoteCard(card.type) ? DOMPurify.sanitize(card.content || '<p>Empty note</p>', {
+      ADD_ATTR: ['data-callout', 'data-type', 'data-uploading', 'data-language'],
+    }) : '',
     [card.content, card.type]
   );
 

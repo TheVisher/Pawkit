@@ -112,7 +112,11 @@ export function Reader({
     // Sanitize first
     let cleaned = DOMPurify.sanitize(content, {
       ADD_TAGS: ['iframe'],
-      ADD_ATTR: ['allowfullscreen', 'frameborder', 'src', 'loading'],
+      ADD_ATTR: [
+        'allowfullscreen', 'frameborder', 'src', 'loading',
+        // TipTap custom attributes
+        'data-callout', 'data-type', 'data-uploading', 'data-language',
+      ],
     });
 
     // Add lazy loading to images (onerror removed for security - handled via CSS)

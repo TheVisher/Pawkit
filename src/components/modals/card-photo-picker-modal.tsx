@@ -3,11 +3,14 @@
 /**
  * Card Photo Picker Modal
  * For uploading contact photos via file picker, URL, or clipboard paste
+ *
+ * Images are compressed and uploaded to Supabase Storage for efficient storage.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Image from 'next/image';
-import { ImagePlus, Link2, X, Check, MoveVertical, Palette, Upload } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
+import { ImagePlus, Link2, X, Check, MoveVertical, Palette, Upload, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,8 +29,16 @@ import { useCard } from '@/lib/hooks/use-live-data';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { cn } from '@/lib/utils';
 import { GRADIENT_PRESETS } from './card-detail/contact-photo-header';
+import { uploadToSupabase } from '@/lib/metadata/image-persistence';
 
-// Convert file to data URL
+// Image compression options
+const COMPRESSION_OPTIONS = {
+  maxSizeMB: 0.5, // Max 500KB
+  maxWidthOrHeight: 1920, // Max dimension
+  useWebWorker: true,
+};
+
+// Convert file to data URL (for preview only, not for storage)
 async function fileToDataUrl(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -45,8 +56,10 @@ export function CardPhotoPickerModal() {
 
   const [urlInput, setUrlInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('upload');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null); // Supabase URL
   const [imageError, setImageError] = useState(false);
 
   // Adjust settings
@@ -59,32 +72,57 @@ export function CardPhotoPickerModal() {
   useEffect(() => {
     if (isCardPhotoPickerOpen && card) {
       setPreviewImage(card.image || null);
+      setUploadedImageUrl(null); // Reset - will use card.image if exists
       setUrlInput('');
       setActiveTab(card.image ? 'adjust' : 'upload');
       setImagePosition(card.headerImagePosition ?? 50);
       setGradientColor(card.headerGradientColor || GRADIENT_PRESETS[0]);
       setImageError(false);
+      setIsUploading(false);
     }
   }, [isCardPhotoPickerOpen, card]);
 
-  // Handle file selection
+  // Handle file selection - compress and upload to Supabase Storage
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !cardPhotoCardId) return;
+
+    setIsUploading(true);
 
     try {
+      // Show preview immediately using data URL
       const dataUrl = await fileToDataUrl(file);
       setPreviewImage(dataUrl);
       setActiveTab('adjust');
-    } catch (err) {
-      console.error('Failed to read file:', err);
-      toast({ type: 'error', message: 'Failed to read image file' });
-    }
-  }, [toast]);
 
-  // Handle paste from clipboard
+      // Compress the image
+      const compressedFile = await imageCompression(file, COMPRESSION_OPTIONS);
+      console.log(`[PhotoPicker] Compressed ${file.name}: ${(file.size / 1024).toFixed(0)}KB → ${(compressedFile.size / 1024).toFixed(0)}KB`);
+
+      // Upload to Supabase Storage
+      const supabaseUrl = await uploadToSupabase(
+        cardPhotoCardId,
+        compressedFile,
+        compressedFile.type || 'image/jpeg'
+      );
+
+      if (supabaseUrl) {
+        setUploadedImageUrl(supabaseUrl);
+        toast({ type: 'success', message: 'Image uploaded' });
+      } else {
+        toast({ type: 'error', message: 'Failed to upload image' });
+      }
+    } catch (err) {
+      console.error('Failed to process file:', err);
+      toast({ type: 'error', message: 'Failed to process image' });
+    } finally {
+      setIsUploading(false);
+    }
+  }, [cardPhotoCardId, toast]);
+
+  // Handle paste from clipboard - compress and upload to Supabase Storage
   useEffect(() => {
-    if (!isCardPhotoPickerOpen) return;
+    if (!isCardPhotoPickerOpen || !cardPhotoCardId) return;
 
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
@@ -95,14 +133,34 @@ export function CardPhotoPickerModal() {
           e.preventDefault();
           const blob = item.getAsFile();
           if (blob) {
+            setIsUploading(true);
             try {
+              // Show preview immediately
               const dataUrl = await fileToDataUrl(blob);
               setPreviewImage(dataUrl);
               setActiveTab('adjust');
               toast({ type: 'success', message: 'Image pasted from clipboard' });
+
+              // Compress and upload to Supabase
+              const compressedBlob = await imageCompression(blob, COMPRESSION_OPTIONS);
+              console.log(`[PhotoPicker] Compressed pasted image: ${(blob.size / 1024).toFixed(0)}KB → ${(compressedBlob.size / 1024).toFixed(0)}KB`);
+
+              const supabaseUrl = await uploadToSupabase(
+                cardPhotoCardId,
+                compressedBlob,
+                compressedBlob.type || 'image/jpeg'
+              );
+
+              if (supabaseUrl) {
+                setUploadedImageUrl(supabaseUrl);
+              } else {
+                toast({ type: 'error', message: 'Failed to upload image' });
+              }
             } catch (err) {
-              console.error('Failed to read pasted image:', err);
-              toast({ type: 'error', message: 'Failed to read pasted image' });
+              console.error('Failed to process pasted image:', err);
+              toast({ type: 'error', message: 'Failed to process pasted image' });
+            } finally {
+              setIsUploading(false);
             }
           }
           break;
@@ -112,7 +170,7 @@ export function CardPhotoPickerModal() {
 
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [isCardPhotoPickerOpen, toast]);
+  }, [isCardPhotoPickerOpen, cardPhotoCardId, toast]);
 
   // Handle URL input
   const handleUrlSubmit = useCallback(() => {
@@ -123,22 +181,40 @@ export function CardPhotoPickerModal() {
     }
   }, [urlInput]);
 
-  // Save changes
+  // Save changes - use Supabase URL if available, otherwise keep existing URL
   const handleSubmit = async () => {
     if (!cardPhotoCardId) return;
 
     setIsSubmitting(true);
 
     try {
+      // Priority: uploadedImageUrl (new upload) > urlInput (external URL) > existing card.image
+      let finalImageUrl: string | undefined;
+
+      if (uploadedImageUrl) {
+        // New file was uploaded to Supabase
+        finalImageUrl = uploadedImageUrl;
+      } else if (urlInput.trim() && previewImage === urlInput.trim()) {
+        // User entered an external URL
+        finalImageUrl = urlInput.trim();
+      } else if (previewImage && !previewImage.startsWith('data:')) {
+        // Existing URL (not a data URL)
+        finalImageUrl = previewImage;
+      } else if (previewImage) {
+        // Fallback: if somehow we still have a data URL, use it (shouldn't happen)
+        console.warn('[PhotoPicker] Saving data URL - this should not happen');
+        finalImageUrl = previewImage;
+      }
+
       await updateCard(cardPhotoCardId, {
-        image: previewImage || undefined,
+        image: finalImageUrl,
         headerImagePosition: imagePosition,
         headerGradientColor: gradientColor,
       });
 
       toast({
         type: 'success',
-        message: previewImage ? 'Photo updated' : 'Photo removed',
+        message: finalImageUrl ? 'Photo updated' : 'Photo removed',
       });
 
       closeCardPhotoPicker();
@@ -238,7 +314,20 @@ export function CardPhotoPickerModal() {
                   style={{ objectPosition: `center ${imagePosition}%` }}
                   onError={() => setImageError(true)}
                 />
+                {/* Uploading overlay */}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  </div>
+                )}
               </div>
+              {/* Upload status */}
+              {isUploading && (
+                <p className="text-xs text-text-muted text-center">Uploading...</p>
+              )}
+              {uploadedImageUrl && !isUploading && (
+                <p className="text-xs text-green-500 text-center">✓ Uploaded to cloud</p>
+              )}
 
               {/* Position Slider */}
               <div className="space-y-2">
@@ -367,7 +456,7 @@ export function CardPhotoPickerModal() {
               type="button"
               variant="outline"
               onClick={handleRemovePhoto}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isUploading}
               className="sm:mr-auto text-red-400 hover:text-red-300 hover:bg-red-400/10"
             >
               <X className="h-4 w-4 mr-1" />
@@ -378,8 +467,8 @@ export function CardPhotoPickerModal() {
             Cancel
           </Button>
           {activeTab === 'adjust' ? (
-            <Button onClick={handleSubmit} disabled={isSubmitting || !hasPreview}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+            <Button onClick={handleSubmit} disabled={isSubmitting || isUploading || !hasPreview}>
+              {isSubmitting ? 'Saving...' : isUploading ? 'Uploading...' : 'Save'}
             </Button>
           ) : (
             <Button

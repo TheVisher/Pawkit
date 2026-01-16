@@ -245,6 +245,7 @@
 - [x] **Danger Zone** - Data deletion options implemented.
 - [x] **Sidebar sliding highlight** - Added animated background for nav items.
 - [x] **Pawkits Tree expansion** - Smooth slide animations added.
+- [ ] **Task Widget Kanban View** - Toggle between list/kanban view with 3 columns (Tasks → Doing → Done). Add `data-status` attribute to task items in Tiptap. Moving to "Done" checks off the task. Tasks in "Doing" don't show as overdue.
 - [ ] **Keyboard shortcuts** - Global hotkeys for toggling sidebars (Cmd+\, Cmd+/).
 - [ ] **Context Menu** - Right-click on sidebar items (partial implementation).
 - [ ] **Vim-style navigation** - Early planning phase.
