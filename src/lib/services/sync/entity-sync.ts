@@ -266,7 +266,31 @@ export async function upsertItems(
     }
     case 'cards': {
       const localItems = (filteredItems as ServerCard[]).map(serverCardToLocal);
-      await db.cards.bulkPut(localItems);
+
+      // Get existing local cards to check for local-only status
+      const ids = localItems.map((item) => item.id);
+      const existingCards = await db.cards.bulkGet(ids);
+      const existingMap = new Map(
+        existingCards
+          .filter((c): c is LocalCard => c !== undefined)
+          .map((c) => [c.id, c])
+      );
+
+      // Filter out cards that are local-only - don't overwrite them with server data
+      // A card is local-only if it has the #local-only tag
+      const SYSTEM_LOCAL_ONLY_TAG = '#local-only';
+      const cardsToUpsert = localItems.filter((serverCard) => {
+        const existingCard = existingMap.get(serverCard.id);
+        if (existingCard?.tags?.includes(SYSTEM_LOCAL_ONLY_TAG)) {
+          log.debug(`Skipping card/${serverCard.id} (local-only card - preserving local data)`);
+          return false;
+        }
+        return true;
+      });
+
+      if (cardsToUpsert.length > 0) {
+        await db.cards.bulkPut(cardsToUpsert);
+      }
       break;
     }
     case 'events': {

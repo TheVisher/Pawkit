@@ -245,8 +245,13 @@ async function downloadImage(url: string): Promise<{ blob: Blob; contentType: st
 
 /**
  * Upload image to Supabase Storage
+ *
+ * @param cardId - The card ID (used for filename generation)
+ * @param blob - The image blob to upload
+ * @param contentType - The MIME type of the image
+ * @returns The public URL of the uploaded image, or null on failure
  */
-async function uploadToSupabase(
+export async function uploadToSupabase(
   cardId: string,
   blob: Blob,
   contentType: string

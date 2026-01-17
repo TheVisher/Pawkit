@@ -7,22 +7,37 @@ import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Typography from '@tiptap/extension-typography';
+import Highlight from '@tiptap/extension-highlight';
+import { Color } from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import GlobalDragHandle from 'tiptap-extension-global-drag-handle';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { parseISO } from 'date-fns';
-import { Bold, Italic, Code, Link as LinkIcon, X, Trash2 } from 'lucide-react';
+import { Bold, Italic, Code, Link as LinkIcon, X, Trash2, Palette, Highlighter } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
 import { AutoPhoneLink } from '@/lib/tiptap/extensions/auto-phone-link';
 import { PawkitMention } from '@/lib/tiptap/extensions/mention';
+import { PawkitCodeBlock } from '@/lib/tiptap/extensions/code-block-lowlight';
+import { PawkitImage } from '@/lib/tiptap/extensions/image';
 import { createMentionSuggestion } from './mention-suggestion';
+import { Callout } from '@/lib/tiptap/extensions/callout';
+import { Toggle } from '@/lib/tiptap/extensions/toggle';
+import { LinkPopover } from './link-popover';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useReferences } from '@/lib/hooks/use-live-data';
 import { syncReferencesFromContent } from '@/lib/utils/mention-parser';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export interface EditorProps {
   content: string;
@@ -57,8 +72,37 @@ export function Editor({
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const [isInTable, setIsInTable] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
+  const [showLinkPopover, setShowLinkPopover] = useState(false);
+  const [linkPopoverPosition, setLinkPopoverPosition] = useState({ top: 0, left: 0 });
   const toolbarRef = useRef<HTMLDivElement>(null);
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const highlightPickerRef = useRef<HTMLDivElement>(null);
   const lastSavedContent = useRef(content);
+  // Store selection for highlight/link operations (needed when dropdown opens)
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
+
+  // Reset all picker/popover states
+  const resetPickerStates = useCallback(() => {
+    setShowColorPicker(false);
+    setShowHighlightPicker(false);
+    setShowLinkPopover(false);
+    savedSelectionRef.current = null;
+  }, []);
+
+  // Get/set last used highlight color from localStorage
+  const getLastHighlightColor = useCallback(() => {
+    if (typeof window === 'undefined') return '#fef08a';
+    return localStorage.getItem('pawkit-last-highlight-color') || '#fef08a';
+  }, []);
+
+  const setLastHighlightColor = useCallback((color: string) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pawkit-last-highlight-color', color);
+    }
+  }, []);
+
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const existingRefsRef = useRef(existingRefs);
   const syncRefsRef = useRef<((editorInstance: TipTapEditor) => Promise<void>) | null>(null);
@@ -107,6 +151,8 @@ export function Editor({
           keepMarks: true,
           keepAttributes: false,
         },
+        // Disable codeBlock - we use PawkitCodeBlock with syntax highlighting instead
+        codeBlock: false,
       }),
       Placeholder.configure({
         placeholder: ({ node }) => {
@@ -149,6 +195,11 @@ export function Editor({
         },
       }),
       Typography,
+      Highlight.configure({
+        multicolor: true,
+      }),
+      TextStyle,
+      Color,
       Table.configure({
         resizable: true,
         HTMLAttributes: {
@@ -165,6 +216,16 @@ export function Editor({
       }),
       PawkitMention.configure({
         suggestion: createMentionSuggestion({ workspaceId }),
+      }),
+      Callout,
+      Toggle,
+      PawkitCodeBlock,
+      PawkitImage.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: {
+          class: 'tiptap-image',
+        },
       }),
     ],
     content,
@@ -210,6 +271,13 @@ export function Editor({
         if (mod && event.shiftKey && event.key.toLowerCase() === 'x') {
           event.preventDefault();
           window.dispatchEvent(new CustomEvent('editor-toggle-strike'));
+          return true;
+        }
+
+        // Cmd+Shift+H for highlight with last used color
+        if (mod && event.shiftKey && event.key.toLowerCase() === 'h') {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent('editor-toggle-highlight'));
           return true;
         }
 
@@ -310,6 +378,7 @@ export function Editor({
         setShowToolbar(true);
       } else {
         setShowToolbar(false);
+        resetPickerStates();
       }
     },
   });
@@ -360,12 +429,13 @@ export function Editor({
           return;
         }
         setShowToolbar(false);
+        resetPickerStates();
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [editor]);
+  }, [editor, resetPickerStates]);
 
   // Handle @ mention pill clicks
   useEffect(() => {
@@ -398,19 +468,51 @@ export function Editor({
   const setLink = useCallback(() => {
     if (!editor) return;
 
-    const previousUrl = editor.getAttributes('link').href;
-    const url = window.prompt('URL', previousUrl);
+    // Save the current selection
+    const { from, to } = editor.state.selection;
+    savedSelectionRef.current = { from, to };
 
-    if (url === null) {
-      return;
+    // Get position from selection coordinates
+    const popoverWidth = 280;
+    let top = 100;
+    let left = (window.innerWidth - popoverWidth) / 2;
+
+    // Try to get position from toolbar first (if visible)
+    if (toolbarRef.current && showToolbar) {
+      const rect = toolbarRef.current.getBoundingClientRect();
+      top = rect.bottom + 8;
+      left = rect.left;
+    } else {
+      // Fallback: use selection coordinates from the editor
+      try {
+        const coords = editor.view.coordsAtPos(from);
+        const editorRect = editor.view.dom.getBoundingClientRect();
+        top = coords.bottom + 8;
+        left = coords.left;
+      } catch {
+        // If coords fail, use center of viewport
+      }
     }
 
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run();
-      return;
+    // Ensure popover doesn't go off-screen
+    if (left + popoverWidth > window.innerWidth - 16) {
+      left = window.innerWidth - popoverWidth - 16;
     }
+    left = Math.max(8, left);
+    top = Math.max(8, top);
 
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    setLinkPopoverPosition({ top, left });
+    setShowLinkPopover(true);
+  }, [editor, showToolbar]);
+
+  const closeLinkPopover = useCallback(() => {
+    setShowLinkPopover(false);
+    // Restore selection after closing
+    if (editor && savedSelectionRef.current) {
+      const { from, to } = savedSelectionRef.current;
+      editor.chain().focus().setTextSelection({ from, to }).run();
+      savedSelectionRef.current = null;
+    }
   }, [editor]);
 
   // Delete table handler
@@ -419,16 +521,98 @@ export function Editor({
     editor.chain().focus().deleteTable().run();
   }, [editor]);
 
+  // Color picker colors
+  const textColors = [
+    { label: 'Default', value: null },
+    { label: 'Red', value: '#ef4444' },
+    { label: 'Orange', value: '#f97316' },
+    { label: 'Green', value: '#22c55e' },
+    { label: 'Blue', value: '#3b82f6' },
+    { label: 'Purple', value: '#a855f7' },
+    { label: 'Gray', value: '#6b7280' },
+  ];
+
+  const setTextColor = useCallback((color: string | null) => {
+    if (!editor) return;
+    if (color === null) {
+      editor.chain().focus().unsetColor().run();
+    } else {
+      editor.chain().focus().setColor(color).run();
+    }
+    setShowColorPicker(false);
+  }, [editor]);
+
+  // Highlight colors
+  const highlightColors = [
+    { label: 'Yellow', value: '#fef08a' },
+    { label: 'Green', value: '#bbf7d0' },
+    { label: 'Blue', value: '#bfdbfe' },
+    { label: 'Pink', value: '#fbcfe8' },
+    { label: 'Orange', value: '#fed7aa' },
+  ];
+
+  // Save selection when opening highlight picker
+  const openHighlightPicker = useCallback(() => {
+    if (!editor) return;
+    // Save the current selection before dropdown opens
+    const { from, to } = editor.state.selection;
+    savedSelectionRef.current = { from, to };
+    setShowHighlightPicker(true);
+  }, [editor]);
+
+  // Apply highlight with specific color
+  const applyHighlight = useCallback((color: string) => {
+    if (!editor) return;
+    // Restore selection if saved
+    if (savedSelectionRef.current) {
+      const { from, to } = savedSelectionRef.current;
+      editor.chain().focus().setTextSelection({ from, to }).setHighlight({ color }).run();
+      savedSelectionRef.current = null;
+    } else {
+      editor.chain().focus().setHighlight({ color }).run();
+    }
+    setLastHighlightColor(color);
+    setShowHighlightPicker(false);
+  }, [editor, setLastHighlightColor]);
+
+  // Remove highlight
+  const removeHighlight = useCallback(() => {
+    if (!editor) return;
+    // Restore selection if saved
+    if (savedSelectionRef.current) {
+      const { from, to } = savedSelectionRef.current;
+      editor.chain().focus().setTextSelection({ from, to }).unsetHighlight().run();
+      savedSelectionRef.current = null;
+    } else {
+      editor.chain().focus().unsetHighlight().run();
+    }
+    setShowHighlightPicker(false);
+  }, [editor]);
+
+  // Toggle highlight with last used color (for keyboard shortcut)
+  const toggleHighlight = useCallback(() => {
+    if (!editor) return;
+    const lastColor = getLastHighlightColor();
+
+    if (editor.isActive('highlight')) {
+      editor.chain().focus().unsetHighlight().run();
+    } else {
+      editor.chain().focus().setHighlight({ color: lastColor }).run();
+    }
+  }, [editor, getLastHighlightColor]);
+
   // Listen for keyboard shortcut custom events
   useEffect(() => {
     const handleSetLinkEvent = () => setLink();
     const handleToggleStrike = () => editor?.chain().focus().toggleStrike().run();
+    const handleToggleHighlight = () => toggleHighlight();
     const handleUndo = () => editor?.chain().focus().undo().run();
     const handleRedo = () => editor?.chain().focus().redo().run();
     const handleDeleteTable = () => deleteTable();
 
     window.addEventListener('editor-set-link', handleSetLinkEvent);
     window.addEventListener('editor-toggle-strike', handleToggleStrike);
+    window.addEventListener('editor-toggle-highlight', handleToggleHighlight);
     window.addEventListener('editor-undo', handleUndo);
     window.addEventListener('editor-redo', handleRedo);
     window.addEventListener('editor-delete-table', handleDeleteTable);
@@ -436,11 +620,12 @@ export function Editor({
     return () => {
       window.removeEventListener('editor-set-link', handleSetLinkEvent);
       window.removeEventListener('editor-toggle-strike', handleToggleStrike);
+      window.removeEventListener('editor-toggle-highlight', handleToggleHighlight);
       window.removeEventListener('editor-undo', handleUndo);
       window.removeEventListener('editor-redo', handleRedo);
       window.removeEventListener('editor-delete-table', handleDeleteTable);
     };
-  }, [setLink, editor, deleteTable]);
+  }, [setLink, editor, deleteTable, toggleHighlight]);
 
   if (!editor) {
     return null;
@@ -502,7 +687,122 @@ export function Editor({
             <Code className="h-4 w-4" />
           </button>
           <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
-          <button
+                    <div className="relative">
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                editor.isActive('textStyle')
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--color-text-primary)]'
+              )}
+              title="Text Color"
+            >
+              <Palette className="h-4 w-4" />
+            </button>
+            {showColorPicker && (
+              <div
+                ref={colorPickerRef}
+                className={cn(
+                  'absolute top-full mt-1 left-0 z-50',
+                  'bg-[var(--glass-panel-bg)]',
+                  'backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)]',
+                  'border border-[var(--glass-border)]',
+                  'shadow-[var(--glass-shadow)]',
+                  'rounded-lg p-2',
+                  'animate-in fade-in-0 zoom-in-95 duration-100',
+                  'min-w-[140px]'
+                )}
+              >
+                <div className="flex flex-col gap-1">
+                  {textColors.map((color) => (
+                    <button
+                      key={color.label}
+                      onClick={() => setTextColor(color.value)}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-1.5 rounded-md',
+                        'text-sm text-left transition-colors',
+                        'hover:bg-[var(--glass-bg)]'
+                      )}
+                    >
+                      <div
+                        className="w-4 h-4 rounded border border-[var(--glass-border)]"
+                        style={{
+                          backgroundColor: color.value || 'var(--color-text-primary)',
+                        }}
+                      />
+                      <span className="text-[var(--color-text-primary)]">{color.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Highlight - simple inline picker to avoid focus issues */}
+          <div className="relative">
+            <button
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent focus loss
+                if (!showHighlightPicker) {
+                  openHighlightPicker();
+                } else {
+                  setShowHighlightPicker(false);
+                }
+              }}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                editor.isActive('highlight')
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--color-text-primary)]'
+              )}
+              title="Highlight (Cmd+Shift+H)"
+            >
+              <Highlighter className="h-4 w-4" />
+            </button>
+            {showHighlightPicker && (
+              <div
+                className={cn(
+                  'absolute top-full left-0 mt-1 p-2 rounded-lg z-50',
+                  'bg-[var(--glass-panel-bg)]',
+                  'backdrop-blur-[var(--glass-blur)]',
+                  'border border-[var(--glass-border)]',
+                  'shadow-lg'
+                )}
+                onMouseDown={(e) => e.preventDefault()} // Prevent focus loss when clicking inside
+              >
+                <div className="flex gap-1">
+                  {highlightColors.map((color) => (
+                    <button
+                      key={color.value}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        applyHighlight(color.value);
+                      }}
+                      className="w-6 h-6 rounded border border-[var(--glass-border)] hover:scale-110 transition-transform"
+                      style={{ backgroundColor: color.value }}
+                      title={color.label}
+                    />
+                  ))}
+                  {editor.isActive('highlight') && (
+                    <button
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeHighlight();
+                      }}
+                      className="w-6 h-6 rounded border border-[var(--glass-border)] hover:scale-110 transition-transform flex items-center justify-center text-xs"
+                      title="Remove highlight"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
+<button
             onClick={setLink}
             className={cn(
               'p-1.5 rounded-md transition-colors',
@@ -543,6 +843,15 @@ export function Editor({
 
       {/* Editor Content */}
       <EditorContent editor={editor} />
+
+      {/* Link Popover */}
+      <LinkPopover
+        editor={editor}
+        isOpen={showLinkPopover}
+        onClose={closeLinkPopover}
+        position={linkPopoverPosition}
+        savedSelection={savedSelectionRef.current}
+      />
 
       {/* Editor Styles */}
       <style jsx global>{`
@@ -929,6 +1238,141 @@ export function Editor({
 
         .tiptap .mention-deleted:hover {
           opacity: 1;
+        }
+
+        /* Highlight styling - multicolor support */
+        .tiptap mark {
+          padding: 0.125rem 0.25rem;
+          border-radius: 0.25rem;
+          color: #1a1a1a !important;
+          background-color: #fef08a; /* Default yellow if no color specified */
+        }
+
+        /* Ensure inline styles from TipTap work */
+        .tiptap mark[style] {
+          background-color: unset; /* Let inline style take over */
+        }
+
+        /* Data-color attribute support */
+        .tiptap mark[data-color="#fef08a"] { background-color: #fef08a !important; }
+        .tiptap mark[data-color="#bbf7d0"] { background-color: #bbf7d0 !important; }
+        .tiptap mark[data-color="#bfdbfe"] { background-color: #bfdbfe !important; }
+        .tiptap mark[data-color="#fbcfe8"] { background-color: #fbcfe8 !important; }
+        .tiptap mark[data-color="#fed7aa"] { background-color: #fed7aa !important; }
+
+        /* Toggle block styling */
+        .tiptap .toggle-wrapper {
+          margin: 0.5rem 0;
+        }
+
+        .tiptap .toggle {
+          border: 1px solid var(--glass-border);
+          border-radius: 0.5rem;
+          background: var(--glass-bg);
+          overflow: hidden;
+        }
+
+        .tiptap .toggle-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 0.75rem;
+          user-select: none;
+        }
+
+        .tiptap .toggle-chevron-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 1.5rem;
+          height: 1.5rem;
+          border-radius: 0.25rem;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          transition: background-color 0.15s ease;
+          flex-shrink: 0;
+        }
+
+        .tiptap .toggle-chevron-btn:hover {
+          background: var(--color-bg-surface-2);
+        }
+
+        .tiptap .toggle-chevron {
+          color: var(--color-text-muted);
+          transition: transform 0.2s ease;
+        }
+
+        .tiptap .toggle-chevron.open {
+          transform: rotate(90deg);
+        }
+
+        .tiptap .toggle-summary {
+          flex: 1;
+          font-weight: 500;
+          color: var(--color-text-primary);
+        }
+
+        .tiptap .toggle-summary-input {
+          flex: 1;
+          background: transparent;
+          border: none;
+          outline: none;
+          font-weight: 500;
+          color: var(--color-text-primary);
+          font-size: inherit;
+        }
+
+        .tiptap .toggle-content {
+          padding: 0 1rem 0.75rem 2.5rem;
+        }
+
+        /* Callout block styling */
+        .tiptap .callout-wrapper {
+          margin: 0.5rem 0;
+        }
+
+        .tiptap .callout {
+          display: flex;
+          gap: 0.75rem;
+          padding: 0.75rem 1rem;
+          border-radius: 0.5rem;
+          border: 1px solid;
+        }
+
+        .tiptap .callout[data-type="info"] {
+          background: hsla(210 100% 50% / 0.1);
+          border-color: hsla(210 100% 50% / 0.3);
+        }
+
+        .tiptap .callout[data-type="warning"] {
+          background: hsla(45 100% 50% / 0.1);
+          border-color: hsla(45 100% 50% / 0.3);
+        }
+
+        .tiptap .callout[data-type="tip"] {
+          background: hsla(142 70% 45% / 0.1);
+          border-color: hsla(142 70% 45% / 0.3);
+        }
+
+        .tiptap .callout[data-type="danger"] {
+          background: hsla(0 70% 50% / 0.1);
+          border-color: hsla(0 70% 50% / 0.3);
+        }
+
+        .tiptap .callout[data-type="note"] {
+          background: hsla(270 70% 50% / 0.1);
+          border-color: hsla(270 70% 50% / 0.3);
+        }
+
+        .tiptap .callout-icon {
+          flex-shrink: 0;
+          margin-top: 0.125rem;
+        }
+
+        .tiptap .callout-content {
+          flex: 1;
+          min-width: 0;
         }
       `}</style>
     </div>
