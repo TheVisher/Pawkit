@@ -68,6 +68,7 @@
     "@tiptap/react": "^3.14.0",
     "@tiptap/starter-kit": "^3.14.0",
     "@tiptap/suggestion": "^3.15.3",
+    "@types/turndown": "^5.0.6",
     "browser-image-compression": "^2.0.2",
     "cheerio": "^1.1.2",
     "chrono-node": "^2.9.0",
@@ -92,6 +93,7 @@
     "tailwind-merge": "^3.4.0",
     "tippy.js": "^6.3.7",
     "tiptap-extension-global-drag-handle": "^0.1.18",
+    "turndown": "^7.2.2",
     "vaul": "^1.1.2",
     "zod": "^3.25.76",
     "zustand": "^5.0.9"

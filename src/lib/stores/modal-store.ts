@@ -28,13 +28,19 @@ interface ModalStore {
   openCoverImagePicker: (collectionId: string) => void;
   closeCoverImagePicker: () => void;
 
-  // Card Photo Picker Modal (for contact photos)
+  // Universal Image Picker Modal (for contact photos, thumbnails, and new image cards)
+  isImagePickerOpen: boolean;
+  imagePickerCardId: string | null;
+  imagePickerMode: 'thumbnail' | 'contact' | 'new-card';
+  openImagePicker: (cardId: string | null, mode: 'thumbnail' | 'contact' | 'new-card') => void;
+  closeImagePicker: () => void;
+
+  // Legacy aliases for backward compatibility
   isCardPhotoPickerOpen: boolean;
   cardPhotoCardId: string | null;
   openCardPhotoPicker: (cardId: string) => void;
   closeCardPhotoPicker: () => void;
 
-  // Edit Thumbnail Modal (for bookmark cards)
   isEditThumbnailOpen: boolean;
   editThumbnailCardId: string | null;
   openEditThumbnail: (cardId: string) => void;
@@ -69,15 +75,42 @@ export const useModalStore = create<ModalStore>((set) => ({
   openCoverImagePicker: (collectionId) => set({ isCoverImagePickerOpen: true, coverImageCollectionId: collectionId }),
   closeCoverImagePicker: () => set({ isCoverImagePickerOpen: false, coverImageCollectionId: null }),
 
-  // Card Photo Picker Modal
+  // Universal Image Picker Modal
+  isImagePickerOpen: false,
+  imagePickerCardId: null,
+  imagePickerMode: 'thumbnail',
+  openImagePicker: (cardId, mode) => set({
+    isImagePickerOpen: true,
+    imagePickerCardId: cardId,
+    imagePickerMode: mode
+  }),
+  closeImagePicker: () => set({
+    isImagePickerOpen: false,
+    imagePickerCardId: null
+  }),
+
+  // Legacy aliases - delegate to universal image picker
   isCardPhotoPickerOpen: false,
   cardPhotoCardId: null,
-  openCardPhotoPicker: (cardId) => set({ isCardPhotoPickerOpen: true, cardPhotoCardId: cardId }),
-  closeCardPhotoPicker: () => set({ isCardPhotoPickerOpen: false, cardPhotoCardId: null }),
+  openCardPhotoPicker: (cardId) => set({
+    isImagePickerOpen: true,
+    imagePickerCardId: cardId,
+    imagePickerMode: 'contact'
+  }),
+  closeCardPhotoPicker: () => set({
+    isImagePickerOpen: false,
+    imagePickerCardId: null
+  }),
 
-  // Edit Thumbnail Modal
   isEditThumbnailOpen: false,
   editThumbnailCardId: null,
-  openEditThumbnail: (cardId) => set({ isEditThumbnailOpen: true, editThumbnailCardId: cardId }),
-  closeEditThumbnail: () => set({ isEditThumbnailOpen: false, editThumbnailCardId: null }),
+  openEditThumbnail: (cardId) => set({
+    isImagePickerOpen: true,
+    imagePickerCardId: cardId,
+    imagePickerMode: 'thumbnail'
+  }),
+  closeEditThumbnail: () => set({
+    isImagePickerOpen: false,
+    imagePickerCardId: null
+  }),
 }));

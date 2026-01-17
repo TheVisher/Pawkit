@@ -7,15 +7,19 @@
  * - Automatic compression using browser-image-compression
  * - Upload to Supabase Storage
  * - Loading placeholder while uploading
+ * - Resizable images with drag handles
  */
 
 // Type declarations are in image-types.d.ts (auto-included by TypeScript)
-import { Node, mergeAttributes } from '@tiptap/core';
 import Image from '@tiptap/extension-image';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { EditorView } from '@tiptap/pm/view';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import { ReactNodeViewRenderer } from '@tiptap/react';
 import imageCompression from 'browser-image-compression';
 import { uploadToSupabase } from '@/lib/metadata/image-persistence';
 import { nanoid } from 'nanoid';
+import { ImageNodeView } from './image-node-view';
 
 // Image compression options - reusing the same settings as card photo picker
 const COMPRESSION_OPTIONS = {
@@ -64,7 +68,7 @@ async function uploadImage(file: File): Promise<string | null> {
 /**
  * Handle image drop/paste by inserting a placeholder, uploading, then replacing with real URL
  */
-function handleImageFile(file: File, view: any, pos: number) {
+function handleImageFile(file: File, view: EditorView, pos: number) {
   const { schema } = view.state;
 
   // Create a placeholder image node with a data URL
@@ -89,13 +93,13 @@ function handleImageFile(file: File, view: any, pos: number) {
         const { state } = view;
         let placeholderPos: number | null = null;
 
-        state.doc.descendants((node: any, pos: number) => {
+        state.doc.descendants((node: ProseMirrorNode, nodePos: number) => {
           if (
             node.type.name === 'image' &&
             node.attrs.src === dataUrl &&
             node.attrs['data-uploading'] === 'true'
           ) {
-            placeholderPos = pos;
+            placeholderPos = nodePos;
             return false; // Stop iterating
           }
         });
@@ -122,13 +126,13 @@ function handleImageFile(file: File, view: any, pos: number) {
         const { state } = view;
         let placeholderPos: number | null = null;
 
-        state.doc.descendants((node: any, pos: number) => {
+        state.doc.descendants((node: ProseMirrorNode, nodePos: number) => {
           if (
             node.type.name === 'image' &&
             node.attrs.src === dataUrl &&
             node.attrs['data-uploading'] === 'true'
           ) {
-            placeholderPos = pos;
+            placeholderPos = nodePos;
             return false;
           }
         });
@@ -237,6 +241,27 @@ export const PawkitImage = Image.extend({
           };
         },
       },
+      width: {
+        default: null,
+        parseHTML: (element) => {
+          const width = element.getAttribute('width') || element.style.width;
+          if (width) {
+            // Parse numeric value from "400px" or "400"
+            const numericWidth = parseInt(width, 10);
+            return isNaN(numericWidth) ? null : numericWidth;
+          }
+          return null;
+        },
+        renderHTML: (attributes) => {
+          if (!attributes.width) {
+            return {};
+          }
+          return {
+            width: attributes.width,
+            style: `width: ${attributes.width}px`,
+          };
+        },
+      },
     };
   },
 
@@ -244,12 +269,16 @@ export const PawkitImage = Image.extend({
     return [createImageUploadPlugin()];
   },
 
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView);
+  },
+
   addCommands() {
     return {
       ...this.parent?.(),
       insertImageFromFile:
         () =>
-        ({ commands, editor, view }: any) => {
+        ({ view }: { view: EditorView }) => {
           const input = document.createElement('input');
           input.type = 'file';
           input.accept = 'image/*';

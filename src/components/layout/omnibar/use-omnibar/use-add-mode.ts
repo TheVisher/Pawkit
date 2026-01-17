@@ -221,7 +221,8 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
         }
         break;
       case 'upload':
-        console.log('Upload action - coming soon');
+        // Open universal image picker in new-card mode
+        useModalStore.getState().openImagePicker(null, 'new-card');
         break;
       case 'event':
         console.log('Event action - coming soon');

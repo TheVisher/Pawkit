@@ -13,11 +13,26 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import GlobalDragHandle from 'tiptap-extension-global-drag-handle';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { parseISO } from 'date-fns';
-import { Bold, Italic, Code, Link as LinkIcon, X, Trash2, Palette, Highlighter } from 'lucide-react';
+import {
+  Bold,
+  Italic,
+  Code,
+  Link as LinkIcon,
+  X,
+  Trash2,
+  Palette,
+  Highlighter,
+  Plus,
+  Minus,
+  Rows3,
+  Columns3,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
+import { TableControls } from './table-controls';
 import { AutoPhoneLink } from '@/lib/tiptap/extensions/auto-phone-link';
 import { PawkitMention } from '@/lib/tiptap/extensions/mention';
 import { PawkitCodeBlock } from '@/lib/tiptap/extensions/code-block-lowlight';
@@ -31,6 +46,8 @@ import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useReferences } from '@/lib/hooks/use-live-data';
 import { syncReferencesFromContent } from '@/lib/utils/mention-parser';
+import { copyAsMarkdown } from '@/lib/tiptap/markdown';
+import { useToastStore } from '@/lib/stores/toast-store';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +79,7 @@ export function Editor({
   const router = useRouter();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const setCalendarDate = useCalendarStore((s) => s.setDate);
+  const toast = useToastStore((s) => s.toast);
 
   // Reference sync dependencies (only used when cardId is provided)
   const createReference = useDataStore((s) => s.createReference);
@@ -281,6 +299,13 @@ export function Editor({
           return true;
         }
 
+        // Cmd+Shift+C for copy as Markdown
+        if (mod && event.shiftKey && event.key.toLowerCase() === 'c') {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent('editor-copy-as-markdown'));
+          return true;
+        }
+
         // Mod+Shift+Backspace to delete table when inside one
         if (mod && event.shiftKey && event.key === 'Backspace') {
           const { $from } = view.state.selection;
@@ -362,19 +387,19 @@ export function Editor({
         const coords = editor.view.coordsAtPos(from);
         const editorRect = editor.view.dom.getBoundingClientRect();
 
-        // Estimate toolbar width (approx 280px based on buttons, more if table controls shown)
-        const estimatedToolbarWidth = inTable ? 340 : 280;
-        let left = coords.left - editorRect.left;
+        // Use viewport coordinates for fixed positioning (portal)
+        const estimatedToolbarWidth = 400; // Wide enough for all table controls
+        let left = coords.left;
+        let top = coords.top - 50; // Position above selection
 
-        // Clamp to edges
-        if (left + estimatedToolbarWidth > editorRect.width) {
-          left = Math.max(0, editorRect.width - estimatedToolbarWidth);
+        // Clamp to viewport edges
+        if (left + estimatedToolbarWidth > window.innerWidth - 16) {
+          left = window.innerWidth - estimatedToolbarWidth - 16;
         }
+        if (left < 16) left = 16;
+        if (top < 16) top = coords.top + 30; // Flip below if too close to top
 
-        setToolbarPosition({
-          top: coords.top - editorRect.top - 45,
-          left,
-        });
+        setToolbarPosition({ top, left });
         setShowToolbar(true);
       } else {
         setShowToolbar(false);
@@ -601,6 +626,18 @@ export function Editor({
     }
   }, [editor, getLastHighlightColor]);
 
+  // Copy content as Markdown to clipboard
+  const handleCopyAsMarkdown = useCallback(async () => {
+    if (!editor) return;
+    try {
+      await copyAsMarkdown(editor);
+      toast({ type: 'success', message: 'Copied as Markdown' });
+    } catch (error) {
+      console.error('Failed to copy as Markdown:', error);
+      toast({ type: 'error', message: 'Failed to copy' });
+    }
+  }, [editor, toast]);
+
   // Listen for keyboard shortcut custom events
   useEffect(() => {
     const handleSetLinkEvent = () => setLink();
@@ -609,6 +646,7 @@ export function Editor({
     const handleUndo = () => editor?.chain().focus().undo().run();
     const handleRedo = () => editor?.chain().focus().redo().run();
     const handleDeleteTable = () => deleteTable();
+    const handleCopyMarkdown = () => handleCopyAsMarkdown();
 
     window.addEventListener('editor-set-link', handleSetLinkEvent);
     window.addEventListener('editor-toggle-strike', handleToggleStrike);
@@ -616,6 +654,7 @@ export function Editor({
     window.addEventListener('editor-undo', handleUndo);
     window.addEventListener('editor-redo', handleRedo);
     window.addEventListener('editor-delete-table', handleDeleteTable);
+    window.addEventListener('editor-copy-as-markdown', handleCopyMarkdown);
 
     return () => {
       window.removeEventListener('editor-set-link', handleSetLinkEvent);
@@ -624,8 +663,9 @@ export function Editor({
       window.removeEventListener('editor-undo', handleUndo);
       window.removeEventListener('editor-redo', handleRedo);
       window.removeEventListener('editor-delete-table', handleDeleteTable);
+      window.removeEventListener('editor-copy-as-markdown', handleCopyMarkdown);
     };
-  }, [setLink, editor, deleteTable, toggleHighlight]);
+  }, [setLink, editor, deleteTable, toggleHighlight, handleCopyAsMarkdown]);
 
   if (!editor) {
     return null;
@@ -634,11 +674,11 @@ export function Editor({
   return (
     <div className={cn('relative', className)}>
       {/* Floating Toolbar - appears on text selection */}
-      {showToolbar && (
+      {showToolbar && typeof document !== 'undefined' && createPortal(
         <div
           ref={toolbarRef}
           className={cn(
-            'absolute z-50 flex items-center gap-1 px-2 py-1.5 rounded-lg',
+            'fixed z-[9999] flex items-center gap-1 px-2 py-1.5 rounded-lg',
             'bg-[var(--glass-panel-bg)]',
             'backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)]',
             'border border-[var(--glass-border)]',
@@ -646,7 +686,7 @@ export function Editor({
             'animate-in fade-in-0 zoom-in-95 duration-100'
           )}
           style={{
-            top: Math.max(0, toolbarPosition.top),
+            top: toolbarPosition.top,
             left: toolbarPosition.left,
           }}
         >
@@ -823,23 +863,72 @@ export function Editor({
               <X className="h-4 w-4" />
             </button>
           )}
+          {/* Table controls - inline when in table */}
           {isInTable && (
             <>
               <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
               <button
+                onClick={() => editor.chain().focus().addRowBefore().run()}
+                className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--color-text-primary)] transition-colors"
+                title="Add row above"
+              >
+                <Rows3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().addRowAfter().run()}
+                className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:bg-green-500/20 hover:text-green-400 transition-colors"
+                title="Add row below"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().deleteRow().run()}
+                className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                title="Delete row"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
+              <button
+                onClick={() => editor.chain().focus().addColumnBefore().run()}
+                className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:bg-[var(--glass-bg)] hover:text-[var(--color-text-primary)] transition-colors"
+                title="Add column left"
+              >
+                <Columns3 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().addColumnAfter().run()}
+                className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:bg-green-500/20 hover:text-green-400 transition-colors"
+                title="Add column right"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => editor.chain().focus().deleteColumn().run()}
+                className="p-1.5 rounded-md text-[var(--color-text-secondary)] hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                title="Delete column"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+              <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
+              <button
                 onClick={deleteTable}
                 className="p-1.5 rounded-md text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
-                title="Delete Table (Cmd+Shift+Backspace)"
+                title="Delete table"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
             </>
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Slash Command Menu */}
       <SlashCommandMenu editor={editor} />
+
+      {/* Table Controls - Notion-style add/remove row/column buttons */}
+      <TableControls editor={editor} />
 
       {/* Editor Content */}
       <EditorContent editor={editor} />
@@ -1040,81 +1129,80 @@ export function Editor({
           margin: 0;
         }
 
-        /* Table styling - minimal, clean look */
+        /* Table wrapper for horizontal scroll */
+        .tiptap .tableWrapper {
+          overflow-x: auto;
+          margin: 0.5rem 0;
+          max-width: 100%;
+          scrollbar-width: thin;
+          scrollbar-color: var(--glass-border) transparent;
+        }
+
+        .tiptap .tableWrapper::-webkit-scrollbar {
+          height: 6px;
+        }
+
+        .tiptap .tableWrapper::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .tiptap .tableWrapper::-webkit-scrollbar-thumb {
+          background: var(--glass-border);
+          border-radius: 3px;
+        }
+
+        .tiptap .tableWrapper::-webkit-scrollbar-thumb:hover {
+          background: var(--color-text-tertiary);
+        }
+
+        /* Table styling - supports any number of columns with resizing */
         .tiptap table {
           border-collapse: collapse;
-          width: 100%;
-          margin: 0.5rem 0;
-          overflow: hidden;
+          table-layout: fixed;
+          width: max-content;
+          min-width: 100%;
         }
 
         .tiptap table th,
         .tiptap table td {
-          border: none;
-          padding: 0.4rem 0.75rem 0.4rem 0;
+          border: 1px solid color-mix(in srgb, var(--glass-border) 50%, transparent);
+          padding: 0.5rem 0.75rem;
           text-align: left;
           vertical-align: top;
-        }
-
-        /* First column (labels) - fixed width for alignment across sections */
-        .tiptap table td:first-child {
-          width: 160px !important;
-          min-width: 160px !important;
-          max-width: 160px !important;
-          white-space: nowrap;
-          padding-right: 1rem;
-          color: var(--color-text-muted);
-        }
-
-        /* Bold labels in first column */
-        .tiptap table td:first-child strong {
-          font-weight: 500;
-          color: var(--color-text-secondary);
-        }
-
-        /* Second column (values) - takes remaining space */
-        .tiptap table td:last-child {
-          width: 100%;
+          min-width: 100px;
+          width: 150px;
           color: var(--color-text-primary);
-          padding-left: 1rem;
+          position: relative;
+          box-sizing: border-box;
+          overflow: hidden;
         }
 
         .tiptap table th {
           font-weight: 600;
           color: var(--color-text-primary);
-          border-bottom: 1px solid var(--glass-border);
-          padding-bottom: 0.5rem;
+          background: color-mix(in srgb, var(--glass-bg) 50%, transparent);
         }
 
-        /* Subtle row separators - always visible but very light */
-        .tiptap table tr {
-          border-bottom: 1px solid color-mix(in srgb, var(--glass-border) 40%, transparent);
+        /* Subtle row hover */
+        .tiptap table tr:hover td {
+          background: color-mix(in srgb, var(--glass-bg) 30%, transparent);
         }
 
-        .tiptap table tr:last-child {
-          border-bottom: none;
-        }
-
-        /* Subtle vertical divider between label and value columns */
-        .tiptap table td:first-child {
-          border-right: 1px solid color-mix(in srgb, var(--glass-border) 30%, transparent);
-        }
-
-        /* Column resize handle */
+        /* Column resize handle - TipTap creates this element */
         .tiptap .column-resize-handle {
           position: absolute;
           right: -2px;
           top: 0;
-          bottom: 0;
+          bottom: -2px;
           width: 4px;
           background: var(--color-accent);
           cursor: col-resize;
-          opacity: 0;
-          transition: opacity 0.15s;
+          z-index: 20;
         }
 
-        .tiptap table:hover .column-resize-handle {
-          opacity: 1;
+        /* Resize cursor when table is being resized */
+        .tiptap.resize-cursor {
+          cursor: col-resize;
         }
 
         /* Selected cells */

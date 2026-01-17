@@ -31,6 +31,8 @@ import {
   BookX,
   RefreshCw,
   ImagePlus,
+  FileText,
+  Download,
 } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -41,6 +43,7 @@ import type { LocalCard } from '@/lib/db';
 import { AddToPawkitSubmenu } from './add-to-pawkit-submenu';
 import { ScheduleSubmenu } from './schedule-submenu';
 import { queueMetadataFetch, clearMetadataCache } from '@/lib/services/metadata-service';
+import { copyHtmlAsMarkdown, downloadHtmlAsMarkdown } from '@/lib/tiptap/markdown';
 
 interface CardContextMenuProps {
   card: LocalCard;
@@ -66,6 +69,9 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   const isRead = card.isRead;
   const hasArticle = !!card.articleContent;
   const hasEditedArticle = !!card.articleContentEdited;
+  const isNote = card.type === 'md-note' || card.type === 'text-note';
+  // Card has exportable content if it has article content or note content
+  const hasExportableContent = hasArticle || isNote || !!card.content;
 
   const handleOpenInNewTab = () => {
     if (card.url) {
@@ -147,6 +153,45 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
     if (confirm('Delete this card?')) {
       await deleteCard(card.id);
       toast({ type: 'success', message: 'Card deleted' });
+    }
+  };
+
+  // Get the content to export (prefer article content for bookmarks, otherwise use card content)
+  const getExportableContent = (): string => {
+    if (hasArticle && card.articleContent) {
+      return card.articleContent;
+    }
+    return card.content || '';
+  };
+
+  const handleCopyAsMarkdown = async () => {
+    const content = getExportableContent();
+    if (!content) {
+      toast({ type: 'error', message: 'No content to copy' });
+      return;
+    }
+    try {
+      await copyHtmlAsMarkdown(content);
+      toast({ type: 'success', message: 'Copied as Markdown' });
+    } catch (error) {
+      console.error('Failed to copy as Markdown:', error);
+      toast({ type: 'error', message: 'Failed to copy' });
+    }
+  };
+
+  const handleExportAsMarkdown = () => {
+    const content = getExportableContent();
+    if (!content) {
+      toast({ type: 'error', message: 'No content to export' });
+      return;
+    }
+    try {
+      const filename = card.title || 'Untitled';
+      downloadHtmlAsMarkdown(content, filename);
+      toast({ type: 'success', message: 'Exported as Markdown' });
+    } catch (error) {
+      console.error('Failed to export as Markdown:', error);
+      toast({ type: 'error', message: 'Failed to export' });
     }
   };
 
@@ -265,6 +310,21 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
                 </>
               )}
             </ContextMenuItem>
+          )}
+
+          {/* Markdown export options - for cards with content */}
+          {hasExportableContent && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem onClick={handleCopyAsMarkdown}>
+                <FileText className="size-4" />
+                Copy as Markdown
+              </ContextMenuItem>
+              <ContextMenuItem onClick={handleExportAsMarkdown}>
+                <Download className="size-4" />
+                Export as Markdown
+              </ContextMenuItem>
+            </>
           )}
 
           {/* Remove from collection (only show when viewing a collection) */}
