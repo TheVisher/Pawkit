@@ -193,7 +193,50 @@ export function getSupertagsForWidget(
 }
 
 /**
+ * Replace placeholders in a Plate JSON node tree
+ * Handles special characters safely by operating at the JSON level
+ */
+function replacePlaceholdersInNodes(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  nodes: any[],
+  placeholders: Record<string, string>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any[] {
+  const placeholderPattern = /\{\{([^}]+)\}\}/g;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function processNode(node: any): any {
+    if (!node || typeof node !== 'object') return node;
+
+    // Handle text nodes
+    if ('text' in node && typeof node.text === 'string') {
+      let text = node.text;
+      // Replace known placeholders
+      for (const [key, value] of Object.entries(placeholders)) {
+        text = text.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      }
+      // Remove any remaining placeholders
+      text = text.replace(placeholderPattern, '');
+      return { ...node, text };
+    }
+
+    // Handle elements with children
+    if ('children' in node && Array.isArray(node.children)) {
+      return {
+        ...node,
+        children: node.children.map(processNode),
+      };
+    }
+
+    return node;
+  }
+
+  return nodes.map(processNode);
+}
+
+/**
  * Get the template for a supertag, with placeholders replaced
+ * Operates at the JSON level to safely handle special characters in placeholder values
  */
 export function getSupertagTemplate(
   tag: string,
@@ -202,15 +245,26 @@ export function getSupertagTemplate(
   const def = getSupertagDefinition(tag);
   if (!def?.template) return null;
 
-  let template = def.template;
-  for (const [key, value] of Object.entries(placeholders)) {
-    template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  // If no placeholders, return template as-is
+  if (Object.keys(placeholders).length === 0) {
+    return def.template;
   }
 
-  // Remove any remaining placeholders
-  template = template.replace(/{{[^}]+}}/g, '');
-
-  return template;
+  try {
+    // Parse the JSON template
+    const nodes = JSON.parse(def.template);
+    // Replace placeholders at the JSON level (safe for special chars)
+    const processed = replacePlaceholdersInNodes(nodes, placeholders);
+    return JSON.stringify(processed);
+  } catch {
+    // Fallback to string replacement if parsing fails (legacy HTML templates)
+    let template = def.template;
+    for (const [key, value] of Object.entries(placeholders)) {
+      template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    }
+    template = template.replace(/\{\{[^}]+\}\}/g, '');
+    return template;
+  }
 }
 
 /**
