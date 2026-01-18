@@ -11,6 +11,7 @@ import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
 import { EventItem } from './event-item';
+import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -127,14 +128,19 @@ export function DayView() {
   const dayItems = useMemo(() => {
     const items: CalendarItem[] = [];
 
-    // Add calendar events
-    events
-      .filter((event: LocalCalendarEvent) => event.date === dateKey)
-      .forEach((event: LocalCalendarEvent) => {
+    // Expand recurring events for the current day
+    const dayStart = startOfDay(currentDate);
+    const dayEnd = startOfDay(currentDate); // Single day range
+    const expandedEvents = expandRecurringEvents(events, dayStart, dayEnd);
+
+    // Add calendar events (now including recurring occurrences)
+    expandedEvents
+      .filter((event) => event.occurrenceDate === dateKey)
+      .forEach((event) => {
         items.push({
-          id: event.id,
+          id: event.isOccurrence ? `${event.id}-${dateKey}` : event.id,
           title: event.title,
-          date: event.date,
+          date: dateKey,
           color: event.color,
           type: 'event',
           isAllDay: event.isAllDay,
@@ -173,7 +179,7 @@ export function DayView() {
     });
 
     return items;
-  }, [events, cards, dateKey]);
+  }, [events, cards, dateKey, currentDate]);
 
   return (
     <div className="h-full flex flex-col">

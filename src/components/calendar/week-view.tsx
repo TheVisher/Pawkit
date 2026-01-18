@@ -15,6 +15,7 @@ import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
+import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -49,20 +50,30 @@ export function WeekView() {
     return eachDayOfInterval({ start: weekStart, end: weekEnd });
   }, [currentDate]);
 
+  // Calculate the date range for the week view
+  const viewRange = useMemo(() => {
+    const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+    const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+    return { start: weekStart, end: weekEnd };
+  }, [currentDate]);
+
   // Convert events and scheduled cards to CalendarItems
   const itemsByDate = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
 
-    // Add calendar events
-    events.forEach((event: LocalCalendarEvent) => {
-      const dateKey = event.date;
+    // Expand recurring events for the current week
+    const expandedEvents = expandRecurringEvents(events, viewRange.start, viewRange.end);
+
+    // Add calendar events (now including recurring occurrences)
+    expandedEvents.forEach((event) => {
+      const dateKey = event.occurrenceDate;
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
       map.get(dateKey)!.push({
-        id: event.id,
+        id: event.isOccurrence ? `${event.id}-${dateKey}` : event.id,
         title: event.title,
-        date: event.date,
+        date: dateKey,
         color: event.color,
         type: 'event',
         isAllDay: event.isAllDay,
@@ -105,7 +116,7 @@ export function WeekView() {
     });
 
     return map;
-  }, [events, cards]);
+  }, [events, cards, viewRange]);
 
   return (
     <div className="h-full flex flex-col">

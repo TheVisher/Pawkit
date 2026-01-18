@@ -219,6 +219,7 @@ function PawkitEditorInner({
         placeholder={placeholder}
         onBlur={handleBlur}
         disableDefaultStyles
+        autoFocus={false}
       />
     </PlateContainer>
   );

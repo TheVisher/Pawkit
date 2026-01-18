@@ -17,6 +17,7 @@ import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { DayCell } from './day-cell';
+import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -52,20 +53,32 @@ export function MonthView() {
     return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
   }, [currentDate]);
 
+  // Calculate the date range for the current view
+  const viewRange = useMemo(() => {
+    const monthStart = startOfMonth(currentDate);
+    const monthEnd = endOfMonth(currentDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
+    return { start: calendarStart, end: calendarEnd };
+  }, [currentDate]);
+
   // Convert events and scheduled cards to CalendarItems
   const itemsByDate = useMemo(() => {
     const map = new Map<string, CalendarItem[]>();
 
-    // Add calendar events
-    events.forEach((event: LocalCalendarEvent) => {
-      const dateKey = event.date;
+    // Expand recurring events for the current view range
+    const expandedEvents = expandRecurringEvents(events, viewRange.start, viewRange.end);
+
+    // Add calendar events (now including recurring occurrences)
+    expandedEvents.forEach((event) => {
+      const dateKey = event.occurrenceDate;
       if (!map.has(dateKey)) {
         map.set(dateKey, []);
       }
       map.get(dateKey)!.push({
-        id: event.id,
+        id: event.isOccurrence ? `${event.id}-${dateKey}` : event.id,
         title: event.title,
-        date: event.date,
+        date: dateKey,
         color: event.color,
         type: 'event',
         isAllDay: event.isAllDay,
@@ -120,7 +133,7 @@ export function MonthView() {
     });
 
     return map;
-  }, [events, cards]);
+  }, [events, cards, viewRange]);
 
   // Handle day click - navigate to day view
   const handleDayClick = (date: Date) => {
