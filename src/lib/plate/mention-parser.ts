@@ -2,7 +2,6 @@
  * Plate Mention Parser Utility
  *
  * Parses Plate JSON content to extract @ mentions and sync with references.
- * Adapted from Tiptap mention parser for Plate's node structure.
  */
 
 import type { Descendant, TElement, TText } from 'platejs';

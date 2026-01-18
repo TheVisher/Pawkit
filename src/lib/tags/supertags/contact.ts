@@ -331,7 +331,87 @@ export function reorderSections(content: string, newOrder: string[]): string {
 // INFO EXTRACTION (for quick actions)
 // =============================================================================
 
+/**
+ * Extract links from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractLinksFromPlateJson(content: any[]): { url: string; text: string }[] {
+  const links: { url: string; text: string }[] = [];
+
+  function traverse(node: unknown): void {
+    if (!node || typeof node !== 'object') return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const n = node as any;
+
+    if (n.type === 'a' && n.url) {
+      links.push({ url: n.url, text: extractTextFromPlateNode(n) });
+    }
+
+    if (n.children && Array.isArray(n.children)) {
+      for (const child of n.children) {
+        traverse(child);
+      }
+    }
+  }
+
+  for (const node of content) {
+    traverse(node);
+  }
+
+  return links;
+}
+
+/**
+ * Extract contact info from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractContactInfoFromPlateJson(content: any[]): { phone?: string; email?: string } {
+  const result: { phone?: string; email?: string } = {};
+
+  // Extract links first
+  const links = extractLinksFromPlateJson(content);
+
+  // Look for tel: links
+  for (const link of links) {
+    if (link.url.startsWith('tel:') && !result.phone) {
+      result.phone = link.url.replace('tel:', '').replace(/[^\d+]/g, '');
+    }
+    if (link.url.startsWith('mailto:') && !result.email) {
+      const email = link.text || link.url.replace('mailto:', '');
+      if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+        result.email = email;
+      }
+    }
+  }
+
+  // Fall back to text extraction for field values
+  const fieldValues = extractFieldValuesFromPlateJson(content);
+
+  if (!result.phone && fieldValues['Phone']) {
+    const phone = fieldValues['Phone'].replace(/[^\d+]/g, '');
+    if (phone) result.phone = phone;
+  }
+
+  if (!result.email && fieldValues['Email']) {
+    const email = fieldValues['Email'];
+    if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+      result.email = email;
+    }
+  }
+
+  return result;
+}
+
 export function extractContactInfo(content: string): { phone?: string; email?: string } {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return extractContactInfoFromPlateJson(parsed);
+    }
+  }
+
+  // Fall back to HTML parsing
   const result: { phone?: string; email?: string } = {};
 
   // Extract phone - look for tel: links first

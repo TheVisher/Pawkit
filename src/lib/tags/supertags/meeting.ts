@@ -4,6 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
+import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
 
 // =============================================================================
 // TYPES
@@ -134,9 +135,127 @@ export const MEETING_TEMPLATE_TYPES: Record<string, TemplateType> = {
 // INFO EXTRACTION (for quick actions)
 // =============================================================================
 
+/**
+ * Extract all text content from a Plate JSON node recursively
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromPlateNode(node: any): string {
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map(extractTextFromPlateNode).join('');
+  }
+  return '';
+}
+
+/**
+ * Extract links from Plate JSON content with context
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractLinksFromPlateJson(content: any[]): { url: string; context: string }[] {
+  const links: { url: string; context: string }[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function traverse(node: any, parentText: string = ''): void {
+    if (!node || typeof node !== 'object') return;
+
+    if (node.type === 'a' && node.url) {
+      links.push({ url: node.url, context: parentText });
+    }
+
+    if (node.children && Array.isArray(node.children)) {
+      const nodeText = extractTextFromPlateNode(node);
+      for (const child of node.children) {
+        traverse(child, nodeText);
+      }
+    }
+  }
+
+  for (const node of content) {
+    traverse(node, '');
+  }
+
+  return links;
+}
+
+/**
+ * Extract field values from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractFieldValuesFromPlateJson(content: any[]): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const node of content) {
+    if ('type' in node && (node.type === 'ul' || node.type === 'ol' || node.type === 'li')) {
+      const text = extractTextFromPlateNode(node);
+      const lines = text.split(/\n/);
+      for (const line of lines) {
+        const colonMatch = line.match(/^([^:]+):\s*(.*)$/);
+        if (colonMatch) {
+          const label = colonMatch[1].trim();
+          const value = colonMatch[2].trim();
+          if (value && value !== '&nbsp;') {
+            values[label] = value;
+          }
+        }
+      }
+    }
+
+    if ('children' in node && Array.isArray(node.children)) {
+      const childValues = extractFieldValuesFromPlateJson(node.children);
+      Object.assign(values, childValues);
+    }
+  }
+
+  return values;
+}
+
+/**
+ * Extract meeting info from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractMeetingInfoFromPlateJson(content: any[]): { meetingUrl?: string } {
+  const result: { meetingUrl?: string } = {};
+
+  // Extract links
+  const links = extractLinksFromPlateJson(content);
+
+  // Look for meeting URL link
+  for (const link of links) {
+    if (!result.meetingUrl && link.context.toLowerCase().includes('meeting url')) {
+      if (link.url.startsWith('http') || link.url.includes('.')) {
+        result.meetingUrl = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+      }
+    }
+  }
+
+  // Fall back to field value extraction
+  if (!result.meetingUrl) {
+    const fieldValues = extractFieldValuesFromPlateJson(content);
+    if (fieldValues['Meeting URL']) {
+      const url = fieldValues['Meeting URL'];
+      if (url.startsWith('http') || url.includes('.')) {
+        result.meetingUrl = url.startsWith('http') ? url : `https://${url}`;
+      }
+    }
+  }
+
+  return result;
+}
+
 export function extractMeetingInfo(content: string): {
   meetingUrl?: string;
 } {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return extractMeetingInfoFromPlateJson(parsed);
+    }
+  }
+
+  // Fall back to HTML parsing
   const result: { meetingUrl?: string } = {};
 
   // Extract meeting URL

@@ -290,10 +290,18 @@ function isNoteCard(type: string): boolean {
 /**
  * Check if a card has unchecked task items in its content
  * Used to determine if a todo card should be marked as overdue
+ * Supports both Plate JSON and legacy HTML formats
  */
 export function hasUncheckedTasks(content: string | undefined | null): boolean {
   if (!content) return false;
-  // Check for Tiptap taskItem elements with data-checked="false"
+
+  // Check for Plate JSON format (action_item with checked: false)
+  // Pattern matches: "checked":false or "checked": false
+  if (/"checked"\s*:\s*false/.test(content)) {
+    return true;
+  }
+
+  // Check for HTML taskItem elements with data-checked="false"
   // Pattern matches: data-checked="false" or data-checked='false'
   return /data-checked=["']false["']/.test(content);
 }

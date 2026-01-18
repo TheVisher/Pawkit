@@ -77,7 +77,7 @@ function findPaymentHistorySection(content: string): { start: number; end: numbe
 
 /**
  * Check if a year table already exists in the Payment History section
- * Uses text content detection since Tiptap strips data attributes
+ * Uses text content detection for reliable parsing
  */
 function yearTableExists(content: string, year: number): boolean {
   const section = findPaymentHistorySection(content);

@@ -4,6 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
+import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
 
 // =============================================================================
 // TYPES
@@ -141,11 +142,167 @@ export const SUBSCRIPTION_TEMPLATE_TYPES: Record<string, TemplateType> = {
 // INFO EXTRACTION (for quick actions)
 // =============================================================================
 
+/**
+ * Extract all text content from a Plate JSON node recursively
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromPlateNode(node: any): string {
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map(extractTextFromPlateNode).join('');
+  }
+  return '';
+}
+
+/**
+ * Extract links from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractLinksFromPlateJson(content: any[]): { url: string; text: string; context: string }[] {
+  const links: { url: string; text: string; context: string }[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function traverse(node: any, parentText: string = ''): void {
+    if (!node || typeof node !== 'object') return;
+
+    if (node.type === 'a' && node.url) {
+      links.push({
+        url: node.url,
+        text: extractTextFromPlateNode(node),
+        context: parentText,
+      });
+    }
+
+    if (node.children && Array.isArray(node.children)) {
+      const nodeText = extractTextFromPlateNode(node);
+      for (const child of node.children) {
+        traverse(child, nodeText);
+      }
+    }
+  }
+
+  for (const node of content) {
+    traverse(node, '');
+  }
+
+  return links;
+}
+
+/**
+ * Extract field values from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractFieldValuesFromPlateJson(content: any[]): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const node of content) {
+    // Handle list items
+    if ('type' in node && (node.type === 'ul' || node.type === 'ol' || node.type === 'li')) {
+      const text = extractTextFromPlateNode(node);
+      const lines = text.split(/\n/);
+      for (const line of lines) {
+        const colonMatch = line.match(/^([^:]+):\s*(.*)$/);
+        if (colonMatch) {
+          const label = colonMatch[1].trim();
+          const value = colonMatch[2].trim();
+          if (value && value !== '$/month' && value !== '(day of month)' && value !== '&nbsp;') {
+            values[label] = value;
+          }
+        }
+      }
+    }
+
+    // Recurse into children
+    if ('children' in node && Array.isArray(node.children)) {
+      const childValues = extractFieldValuesFromPlateJson(node.children);
+      Object.assign(values, childValues);
+    }
+  }
+
+  return values;
+}
+
+/**
+ * Extract subscription info from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractSubscriptionInfoFromPlateJson(content: any[]): {
+  websiteUrl?: string;
+  accountEmail?: string;
+  cancelUrl?: string;
+} {
+  const result: { websiteUrl?: string; accountEmail?: string; cancelUrl?: string } = {};
+
+  // Extract links
+  const links = extractLinksFromPlateJson(content);
+
+  // Look for specific field links
+  for (const link of links) {
+    const contextLower = link.context.toLowerCase();
+
+    if (!result.websiteUrl && contextLower.includes('website')) {
+      if (link.url.startsWith('http') || link.url.includes('.')) {
+        result.websiteUrl = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+      }
+    }
+
+    if (!result.cancelUrl && contextLower.includes('cancel')) {
+      if (link.url.startsWith('http') || link.url.includes('.')) {
+        result.cancelUrl = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+      }
+    }
+
+    if (!result.accountEmail && link.url.startsWith('mailto:')) {
+      const email = link.text || link.url.replace('mailto:', '');
+      if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+        result.accountEmail = email;
+      }
+    }
+  }
+
+  // Fall back to field value extraction
+  const fieldValues = extractFieldValuesFromPlateJson(content);
+
+  if (!result.websiteUrl && fieldValues['Website']) {
+    const url = fieldValues['Website'];
+    if (url.startsWith('http') || url.includes('.')) {
+      result.websiteUrl = url.startsWith('http') ? url : `https://${url}`;
+    }
+  }
+
+  if (!result.accountEmail && fieldValues['Email']) {
+    const email = fieldValues['Email'];
+    if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+      result.accountEmail = email;
+    }
+  }
+
+  if (!result.cancelUrl && fieldValues['Cancel URL']) {
+    const url = fieldValues['Cancel URL'];
+    if (url.startsWith('http') || url.includes('.')) {
+      result.cancelUrl = url.startsWith('http') ? url : `https://${url}`;
+    }
+  }
+
+  return result;
+}
+
 export function extractSubscriptionInfo(content: string): {
   websiteUrl?: string;
   accountEmail?: string;
   cancelUrl?: string;
 } {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return extractSubscriptionInfoFromPlateJson(parsed);
+    }
+  }
+
+  // Fall back to HTML parsing
   const result: { websiteUrl?: string; accountEmail?: string; cancelUrl?: string } = {};
 
   // Extract website URL

@@ -1,7 +1,7 @@
 /**
  * HTML to Plate Conversion Utilities
  *
- * Handles migration from HTML content (Tiptap) to Plate JSON format.
+ * Handles migration from HTML content to Plate JSON format.
  * Detects content type and converts on load.
  */
 

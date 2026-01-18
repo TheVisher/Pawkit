@@ -3,7 +3,7 @@
  * For task lists and actionable items
  *
  * Note: The todo-widget parses task lists from content.
- * Tasks section must use Tiptap task list format.
+ * Tasks use Plate action_item format (with HTML fallback for legacy content).
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
@@ -22,7 +22,7 @@ export const TODO_SECTIONS: Record<string, TemplateSection> = {
   tasks: {
     id: 'tasks',
     name: 'Tasks',
-    // CRITICAL: Uses Tiptap taskList format for todo-widget integration
+    // Note: HTML template is converted to Plate JSON on save
     listHtml: `<h2>Tasks</h2>
 <ul data-type="taskList">
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p></p></div></li>

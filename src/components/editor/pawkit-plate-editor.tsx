@@ -3,7 +3,7 @@
 /**
  * Pawkit Plate Editor
  *
- * Unified editor component that replaces all Tiptap editors.
+ * Unified Plate-based rich text editor component.
  * Handles HTML-to-JSON migration on load and reference syncing on blur.
  */
 

@@ -4,6 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
+import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
 
 // =============================================================================
 // TYPES
@@ -125,11 +126,161 @@ export const WARRANTY_TEMPLATE_TYPES: Record<string, TemplateType> = {
 // INFO EXTRACTION (for quick actions)
 // =============================================================================
 
+/**
+ * Extract all text content from a Plate JSON node recursively
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromPlateNode(node: any): string {
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map(extractTextFromPlateNode).join('');
+  }
+  return '';
+}
+
+/**
+ * Extract links from Plate JSON content with context
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractLinksFromPlateJson(content: any[]): { url: string; text: string; context: string }[] {
+  const links: { url: string; text: string; context: string }[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function traverse(node: any, parentText: string = ''): void {
+    if (!node || typeof node !== 'object') return;
+
+    if (node.type === 'a' && node.url) {
+      links.push({
+        url: node.url,
+        text: extractTextFromPlateNode(node),
+        context: parentText,
+      });
+    }
+
+    if (node.children && Array.isArray(node.children)) {
+      const nodeText = extractTextFromPlateNode(node);
+      for (const child of node.children) {
+        traverse(child, nodeText);
+      }
+    }
+  }
+
+  for (const node of content) {
+    traverse(node, '');
+  }
+
+  return links;
+}
+
+/**
+ * Extract field values from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractFieldValuesFromPlateJson(content: any[]): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const node of content) {
+    if ('type' in node && (node.type === 'ul' || node.type === 'ol' || node.type === 'li')) {
+      const text = extractTextFromPlateNode(node);
+      const lines = text.split(/\n/);
+      for (const line of lines) {
+        const colonMatch = line.match(/^([^:]+):\s*(.*)$/);
+        if (colonMatch) {
+          const label = colonMatch[1].trim();
+          const value = colonMatch[2].trim();
+          if (value && value !== '&nbsp;') {
+            values[label] = value;
+          }
+        }
+      }
+    }
+
+    if ('children' in node && Array.isArray(node.children)) {
+      const childValues = extractFieldValuesFromPlateJson(node.children);
+      Object.assign(values, childValues);
+    }
+  }
+
+  return values;
+}
+
+/**
+ * Extract warranty info from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractWarrantyInfoFromPlateJson(content: any[]): {
+  supportUrl?: string;
+  supportPhone?: string;
+  supportEmail?: string;
+} {
+  const result: { supportUrl?: string; supportPhone?: string; supportEmail?: string } = {};
+
+  // Extract links
+  const links = extractLinksFromPlateJson(content);
+
+  // Look for specific links
+  for (const link of links) {
+    const contextLower = link.context.toLowerCase();
+
+    if (!result.supportUrl && contextLower.includes('support url')) {
+      if (link.url.startsWith('http') || link.url.includes('.')) {
+        result.supportUrl = link.url.startsWith('http') ? link.url : `https://${link.url}`;
+      }
+    }
+
+    if (!result.supportPhone && link.url.startsWith('tel:')) {
+      result.supportPhone = link.url.replace('tel:', '').replace(/[^\d+]/g, '');
+    }
+
+    if (!result.supportEmail && link.url.startsWith('mailto:')) {
+      const email = link.text || link.url.replace('mailto:', '');
+      if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+        result.supportEmail = email;
+      }
+    }
+  }
+
+  // Fall back to field value extraction
+  const fieldValues = extractFieldValuesFromPlateJson(content);
+
+  if (!result.supportUrl && fieldValues['Support URL']) {
+    const url = fieldValues['Support URL'];
+    if (url.startsWith('http') || url.includes('.')) {
+      result.supportUrl = url.startsWith('http') ? url : `https://${url}`;
+    }
+  }
+
+  if (!result.supportPhone && fieldValues['Support Phone']) {
+    const phone = fieldValues['Support Phone'].replace(/[^\d+]/g, '');
+    if (phone) result.supportPhone = phone;
+  }
+
+  if (!result.supportEmail && fieldValues['Support Email']) {
+    const email = fieldValues['Support Email'];
+    if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+      result.supportEmail = email;
+    }
+  }
+
+  return result;
+}
+
 export function extractWarrantyInfo(content: string): {
   supportUrl?: string;
   supportPhone?: string;
   supportEmail?: string;
 } {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return extractWarrantyInfoFromPlateJson(parsed);
+    }
+  }
+
+  // Fall back to HTML parsing
   const result: { supportUrl?: string; supportPhone?: string; supportEmail?: string } = {};
 
   // Extract support URL
