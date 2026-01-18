@@ -11,7 +11,17 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { getSupertagTemplate } from '@/lib/tags/supertags';
+import { htmlToPlateJson, serializePlateContent } from '@/lib/plate/html-to-plate';
 import { addMenuItems } from '../types';
+
+/**
+ * Convert HTML template to Plate JSON string
+ */
+function convertTemplateToJson(htmlTemplate: string): string {
+  if (!htmlTemplate || !htmlTemplate.trim()) return '';
+  const plateContent = htmlToPlateJson(htmlTemplate);
+  return serializePlateContent(plateContent);
+}
 
 export interface AddModeState {
   isAddMode: boolean;
@@ -115,13 +125,14 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'contact':
         // Create contact card with template and open for editing
         if (workspaceId) {
-          const template = getSupertagTemplate('contact', { name: 'New Contact' }) || '';
+          const htmlTemplate = getSupertagTemplate('contact', { name: 'New Contact' }) || '';
+          const jsonContent = convertTemplateToJson(htmlTemplate);
           const card = await createCard({
             workspaceId,
             type: 'md-note',
             url: '',
             title: 'New Contact',
-            content: template,
+            content: jsonContent,
             tags: ['contact'],
             pinned: false,
             status: 'READY',
@@ -133,13 +144,14 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'todo':
         // Create todo card with template
         if (workspaceId) {
-          const template = getSupertagTemplate('todo') || '';
+          const htmlTemplate = getSupertagTemplate('todo') || '';
+          const jsonContent = convertTemplateToJson(htmlTemplate);
           const card = await createCard({
             workspaceId,
             type: 'md-note',
             url: '',
             title: 'New Todo',
-            content: template,
+            content: jsonContent,
             tags: ['todo'],
             pinned: false,
             status: 'READY',
@@ -151,13 +163,14 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'subscription':
         // Create subscription card with template
         if (workspaceId) {
-          const template = getSupertagTemplate('subscription') || '';
+          const htmlTemplate = getSupertagTemplate('subscription') || '';
+          const jsonContent = convertTemplateToJson(htmlTemplate);
           const card = await createCard({
             workspaceId,
             type: 'md-note',
             url: '',
             title: 'New Subscription',
-            content: template,
+            content: jsonContent,
             tags: ['subscription'],
             pinned: false,
             status: 'READY',
@@ -169,13 +182,14 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'recipe':
         // Create recipe card with template
         if (workspaceId) {
-          const template = getSupertagTemplate('recipe') || '';
+          const htmlTemplate = getSupertagTemplate('recipe') || '';
+          const jsonContent = convertTemplateToJson(htmlTemplate);
           const card = await createCard({
             workspaceId,
             type: 'md-note',
             url: '',
             title: 'New Recipe',
-            content: template,
+            content: jsonContent,
             tags: ['recipe'],
             pinned: false,
             status: 'READY',
@@ -187,13 +201,14 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'reading':
         // Create reading card with template
         if (workspaceId) {
-          const template = getSupertagTemplate('reading') || '';
+          const htmlTemplate = getSupertagTemplate('reading') || '';
+          const jsonContent = convertTemplateToJson(htmlTemplate);
           const card = await createCard({
             workspaceId,
             type: 'md-note',
             url: '',
             title: 'New Reading',
-            content: template,
+            content: jsonContent,
             tags: ['reading'],
             pinned: false,
             status: 'READY',
@@ -205,13 +220,14 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'project':
         // Create project card with template
         if (workspaceId) {
-          const template = getSupertagTemplate('project') || '';
+          const htmlTemplate = getSupertagTemplate('project') || '';
+          const jsonContent = convertTemplateToJson(htmlTemplate);
           const card = await createCard({
             workspaceId,
             type: 'md-note',
             url: '',
             title: 'New Project',
-            content: template,
+            content: jsonContent,
             tags: ['project'],
             pinned: false,
             status: 'READY',

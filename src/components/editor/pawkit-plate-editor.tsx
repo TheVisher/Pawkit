@@ -305,6 +305,19 @@ export function PawkitPlateEditor({
       return;
     }
 
+    // Skip if any input/textarea is focused to avoid stealing focus from title
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement?.tagName === 'TEXTAREA' ||
+                           activeElement?.tagName === 'INPUT' ||
+                           activeElement?.getAttribute('contenteditable') === 'true' ||
+                           activeElement?.closest('[data-slate-editor]');
+
+    if (isInputFocused) {
+      // Just update the ref to avoid re-triggering, but don't setValue
+      lastContentRef.current = contentString;
+      return;
+    }
+
     // Parse the new content
     let newValue: PlateContent | null = null;
 

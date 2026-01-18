@@ -5,12 +5,15 @@
  * Shell component that handles modal wrapper, backdrop, and responsive behavior
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { Drawer } from 'vaul';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useMobile } from '@/lib/hooks/use-mobile';
 import { triggerSync } from '@/lib/services/sync-queue';
+import { syncCardToCalendar } from '@/lib/utils/card-calendar-sync';
+import { getCalendarFieldsFromTags } from '@/lib/tags/supertags';
+import { db } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import { CardDetailContent } from './content';
 
@@ -20,13 +23,39 @@ export function CardDetailModal() {
   const rightSidebarOpen = useUIStore((s) => s.rightSidebarOpen);
   const isMobile = useMobile();
 
+  // Track the card ID for use in close handler
+  const lastCardIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (activeCardId) {
+      lastCardIdRef.current = activeCardId;
+    }
+  }, [activeCardId]);
+
   // Handle close with sync
-  const handleClose = useCallback(() => {
+  const handleClose = useCallback(async () => {
+    const cardIdToSync = lastCardIdRef.current;
     closeCardDetail();
-    // Trigger sync when modal closes (fire-and-forget)
+
+    // Trigger sync queue (fire-and-forget)
     triggerSync().catch(() => {
       // Ignore sync errors on close
     });
+
+    // Sync card to calendar if it has calendar fields
+    if (cardIdToSync) {
+      try {
+        const card = await db.cards.get(cardIdToSync);
+        if (card && card.tags && card.tags.length > 0) {
+          const calendarFields = getCalendarFieldsFromTags(card.tags);
+          if (calendarFields.length > 0) {
+            await syncCardToCalendar(card, card.workspaceId);
+          }
+        }
+      } catch (err) {
+        // Ignore calendar sync errors on close
+        console.warn('[CardDetailModal] Calendar sync failed:', err);
+      }
+    }
   }, [closeCardDetail]);
 
   // Close on escape
