@@ -4,7 +4,15 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -33,6 +41,20 @@ export const SUBSCRIPTION_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Renews</strong></td><td>(day of month)</td></tr>
 <tr><td><strong>Started</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Billing'),
+      fieldItem('Amount', '$/month'),
+      fieldItem('Renews', '(day of month)'),
+      fieldItem('Started'),
+    ],
+    tableJson: [
+      h2('Billing'),
+      table(
+        tableFieldRow('Amount', '$/month'),
+        tableFieldRow('Renews', '(day of month)'),
+        tableFieldRow('Started', ''),
+      ),
+    ],
   },
   'payment-method': {
     id: 'payment-method',
@@ -49,6 +71,20 @@ export const SUBSCRIPTION_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Expiry</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Billing Email</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Payment Method'),
+      fieldItem('Card', '(last 4 digits)'),
+      fieldItem('Expiry'),
+      fieldItem('Billing Email'),
+    ],
+    tableJson: [
+      h2('Payment Method'),
+      table(
+        tableFieldRow('Card', '(last 4 digits)'),
+        tableFieldRow('Expiry', ''),
+        tableFieldRow('Billing Email', ''),
+      ),
+    ],
   },
   account: {
     id: 'account',
@@ -67,6 +103,22 @@ export const SUBSCRIPTION_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Username</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Password</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Account'),
+      fieldItem('Website'),
+      fieldItem('Email'),
+      fieldItem('Username'),
+      fieldItem('Password'),
+    ],
+    tableJson: [
+      h2('Account'),
+      table(
+        tableFieldRow('Website', ''),
+        tableFieldRow('Email', ''),
+        tableFieldRow('Username', ''),
+        tableFieldRow('Password', ''),
+      ),
+    ],
   },
   cancellation: {
     id: 'cancellation',
@@ -83,6 +135,20 @@ export const SUBSCRIPTION_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Notice Period</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>How to Cancel</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Cancellation'),
+      fieldItem('Cancel URL'),
+      fieldItem('Notice Period'),
+      fieldItem('How to Cancel'),
+    ],
+    tableJson: [
+      h2('Cancellation'),
+      table(
+        tableFieldRow('Cancel URL', ''),
+        tableFieldRow('Notice Period', ''),
+        tableFieldRow('How to Cancel', ''),
+      ),
+    ],
   },
   license: {
     id: 'license',
@@ -105,6 +171,26 @@ export const SUBSCRIPTION_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Usage Limit</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Rate Limit</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('License & API'),
+      fieldItem('License Key'),
+      fieldItem('API Key'),
+      fieldItem('Tier', 'Free / Pro / Team / Enterprise'),
+      fieldItem('Seats'),
+      fieldItem('Usage Limit'),
+      fieldItem('Rate Limit'),
+    ],
+    tableJson: [
+      h2('License & API'),
+      table(
+        tableFieldRow('License Key', ''),
+        tableFieldRow('API Key', ''),
+        tableFieldRow('Tier', 'Free / Pro / Team / Enterprise'),
+        tableFieldRow('Seats', ''),
+        tableFieldRow('Usage Limit', ''),
+        tableFieldRow('Rate Limit', ''),
+      ),
+    ],
   },
   notes: {
     id: 'notes',
@@ -113,6 +199,14 @@ export const SUBSCRIPTION_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -339,6 +433,44 @@ export function extractSubscriptionInfo(content: string): {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a subscription template as Plate JSON
+ */
+export function buildSubscriptionTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = SUBSCRIPTION_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get subscription template as JSON string (serialized Plate JSON)
+ */
+export function getSubscriptionTemplateJson(type: string = 'streaming', format: TemplateFormat = 'list'): string {
+  const templateType = SUBSCRIPTION_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['billing', 'account', 'notes'];
+  const nodes = buildSubscriptionTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getSubscriptionSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = SUBSCRIPTION_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildSubscriptionTemplateJson instead - returns HTML string
+ */
 export function buildSubscriptionTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -350,12 +482,18 @@ export function buildSubscriptionTemplate(sectionIds: string[], format: Template
     .join('\n');
 }
 
+/**
+ * @deprecated Use getSubscriptionTemplateJson instead - returns HTML string
+ */
 export function getSubscriptionTemplate(type: string = 'streaming', format: TemplateFormat = 'list'): string {
   const templateType = SUBSCRIPTION_TEMPLATE_TYPES[type];
   if (!templateType) return buildSubscriptionTemplate(['billing', 'account', 'notes'], format);
   return buildSubscriptionTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getSubscriptionSectionJson instead - returns HTML string
+ */
 export function getSubscriptionSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = SUBSCRIPTION_SECTIONS[sectionId];
   if (!section) return null;
@@ -366,7 +504,8 @@ export function getSubscriptionSection(sectionId: string, format: TemplateFormat
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getSubscriptionTemplate('streaming', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getSubscriptionTemplateJson('streaming', 'list');
 
 export const subscriptionSupertag: SupertagDefinition = {
   tag: 'subscription',

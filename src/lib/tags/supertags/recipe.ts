@@ -4,7 +4,16 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  emptyItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -32,6 +41,20 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Cook Time</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Servings</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Info'),
+      fieldItem('Prep Time'),
+      fieldItem('Cook Time'),
+      fieldItem('Servings'),
+    ],
+    tableJson: [
+      h2('Info'),
+      table(
+        tableFieldRow('Prep Time', ''),
+        tableFieldRow('Cook Time', ''),
+        tableFieldRow('Servings', ''),
+      ),
+    ],
   },
   ingredients: {
     id: 'ingredients',
@@ -44,6 +67,14 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Ingredients'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Ingredients'),
+      emptyItem(),
+    ],
   },
   instructions: {
     id: 'instructions',
@@ -56,6 +87,14 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <ol>
 <li></li>
 </ol>`,
+    listJson: [
+      h2('Instructions'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Instructions'),
+      emptyItem(),
+    ],
   },
   nutrition: {
     id: 'nutrition',
@@ -74,6 +113,22 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Carbs</strong></td><td>g</td></tr>
 <tr><td><strong>Fat</strong></td><td>g</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Nutrition'),
+      fieldItem('Calories (per serving)'),
+      fieldItem('Protein (g)'),
+      fieldItem('Carbs (g)'),
+      fieldItem('Fat (g)'),
+    ],
+    tableJson: [
+      h2('Nutrition'),
+      table(
+        tableFieldRow('Calories (per serving)', ''),
+        tableFieldRow('Protein (g)', ''),
+        tableFieldRow('Carbs (g)', ''),
+        tableFieldRow('Fat (g)', ''),
+      ),
+    ],
   },
   source: {
     id: 'source',
@@ -90,6 +145,20 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>URL</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Original Author</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Source'),
+      fieldItem('Recipe From'),
+      fieldItem('URL'),
+      fieldItem('Original Author'),
+    ],
+    tableJson: [
+      h2('Source'),
+      table(
+        tableFieldRow('Recipe From', ''),
+        tableFieldRow('URL', ''),
+        tableFieldRow('Original Author', ''),
+      ),
+    ],
   },
   equipment: {
     id: 'equipment',
@@ -102,6 +171,14 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Equipment'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Equipment'),
+      emptyItem(),
+    ],
   },
   notes: {
     id: 'notes',
@@ -110,6 +187,14 @@ export const RECIPE_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -288,6 +373,44 @@ export function extractRecipeInfo(content: string): {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a recipe template as Plate JSON
+ */
+export function buildRecipeTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = RECIPE_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get recipe template as JSON string (serialized Plate JSON)
+ */
+export function getRecipeTemplateJson(type: string = 'quick', format: TemplateFormat = 'list'): string {
+  const templateType = RECIPE_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['info', 'ingredients', 'instructions', 'notes'];
+  const nodes = buildRecipeTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getRecipeSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = RECIPE_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildRecipeTemplateJson instead - returns HTML string
+ */
 export function buildRecipeTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -299,12 +422,18 @@ export function buildRecipeTemplate(sectionIds: string[], format: TemplateFormat
     .join('\n');
 }
 
+/**
+ * @deprecated Use getRecipeTemplateJson instead - returns HTML string
+ */
 export function getRecipeTemplate(type: string = 'quick', format: TemplateFormat = 'list'): string {
   const templateType = RECIPE_TEMPLATE_TYPES[type];
   if (!templateType) return buildRecipeTemplate(['info', 'ingredients', 'instructions', 'notes'], format);
   return buildRecipeTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getRecipeSectionJson instead - returns HTML string
+ */
 export function getRecipeSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = RECIPE_SECTIONS[sectionId];
   if (!section) return null;
@@ -315,7 +444,8 @@ export function getRecipeSection(sectionId: string, format: TemplateFormat = 'li
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getRecipeTemplate('quick', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getRecipeTemplateJson('quick', 'list');
 
 export const recipeSupertag: SupertagDefinition = {
   tag: 'recipe',

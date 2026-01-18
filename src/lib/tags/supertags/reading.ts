@@ -4,7 +4,16 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  p,
+  blockquote,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -34,6 +43,22 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Genre</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>ISBN</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Book Info'),
+      fieldItem('Author'),
+      fieldItem('Pages'),
+      fieldItem('Genre'),
+      fieldItem('ISBN'),
+    ],
+    tableJson: [
+      h2('Book Info'),
+      table(
+        tableFieldRow('Author', ''),
+        tableFieldRow('Pages', ''),
+        tableFieldRow('Genre', ''),
+        tableFieldRow('ISBN', ''),
+      ),
+    ],
   },
   progress: {
     id: 'progress',
@@ -52,6 +77,22 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Started</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Finished</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Progress'),
+      fieldItem('Status', 'Not Started / Reading / Finished'),
+      fieldItem('Current Page'),
+      fieldItem('Started'),
+      fieldItem('Finished'),
+    ],
+    tableJson: [
+      h2('Progress'),
+      table(
+        tableFieldRow('Status', 'Not Started / Reading / Finished'),
+        tableFieldRow('Current Page', ''),
+        tableFieldRow('Started', ''),
+        tableFieldRow('Finished', ''),
+      ),
+    ],
   },
   quotes: {
     id: 'quotes',
@@ -60,6 +101,14 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <blockquote><p></p></blockquote>`,
     tableHtml: `<h2>Quotes</h2>
 <blockquote><p></p></blockquote>`,
+    listJson: [
+      h2('Quotes'),
+      blockquote(),
+    ],
+    tableJson: [
+      h2('Quotes'),
+      blockquote(),
+    ],
   },
   review: {
     id: 'review',
@@ -76,6 +125,20 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Would Recommend</strong></td><td>Yes / No</td></tr>
 </tbody></table>
 <p></p>`,
+    listJson: [
+      h2('Review'),
+      fieldItem('Rating', '/5'),
+      fieldItem('Would Recommend', 'Yes / No'),
+      p(),
+    ],
+    tableJson: [
+      h2('Review'),
+      table(
+        tableFieldRow('Rating', '/5'),
+        tableFieldRow('Would Recommend', 'Yes / No'),
+      ),
+      p(),
+    ],
   },
   academic: {
     id: 'academic',
@@ -95,6 +158,22 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Due Date</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Chapters Assigned</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Academic'),
+      fieldItem('Course'),
+      fieldItem('Professor'),
+      fieldItem('Due Date'),
+      fieldItem('Chapters Assigned'),
+    ],
+    tableJson: [
+      h2('Academic'),
+      table(
+        tableFieldRow('Course', ''),
+        tableFieldRow('Professor', ''),
+        tableFieldRow('Due Date', ''),
+        tableFieldRow('Chapters Assigned', ''),
+      ),
+    ],
   },
   purchase: {
     id: 'purchase',
@@ -111,6 +190,20 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Price</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Format</strong></td><td>Paperback / Hardcover / eBook / Audiobook</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Purchase'),
+      fieldItem('Store URL'),
+      fieldItem('Price'),
+      fieldItem('Format', 'Paperback / Hardcover / eBook / Audiobook'),
+    ],
+    tableJson: [
+      h2('Purchase'),
+      table(
+        tableFieldRow('Store URL', ''),
+        tableFieldRow('Price', ''),
+        tableFieldRow('Format', 'Paperback / Hardcover / eBook / Audiobook'),
+      ),
+    ],
   },
   audiobook: {
     id: 'audiobook',
@@ -129,6 +222,22 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Speed</strong></td><td>1x</td></tr>
 <tr><td><strong>Current Position</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Audiobook'),
+      fieldItem('Narrator'),
+      fieldItem('Length', 'hours'),
+      fieldItem('Speed', '1x'),
+      fieldItem('Current Position'),
+    ],
+    tableJson: [
+      h2('Audiobook'),
+      table(
+        tableFieldRow('Narrator', ''),
+        tableFieldRow('Length', 'hours'),
+        tableFieldRow('Speed', '1x'),
+        tableFieldRow('Current Position', ''),
+      ),
+    ],
   },
   notes: {
     id: 'notes',
@@ -137,6 +246,14 @@ export const READING_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -310,6 +427,44 @@ export function extractReadingInfo(content: string): {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a reading template as Plate JSON
+ */
+export function buildReadingTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = READING_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get reading template as JSON string (serialized Plate JSON)
+ */
+export function getReadingTemplateJson(type: string = 'fiction', format: TemplateFormat = 'list'): string {
+  const templateType = READING_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['book-info', 'progress', 'notes'];
+  const nodes = buildReadingTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getReadingSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = READING_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildReadingTemplateJson instead - returns HTML string
+ */
 export function buildReadingTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -321,12 +476,18 @@ export function buildReadingTemplate(sectionIds: string[], format: TemplateForma
     .join('\n');
 }
 
+/**
+ * @deprecated Use getReadingTemplateJson instead - returns HTML string
+ */
 export function getReadingTemplate(type: string = 'fiction', format: TemplateFormat = 'list'): string {
   const templateType = READING_TEMPLATE_TYPES[type];
   if (!templateType) return buildReadingTemplate(['book-info', 'progress', 'notes'], format);
   return buildReadingTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getReadingSectionJson instead - returns HTML string
+ */
 export function getReadingSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = READING_SECTIONS[sectionId];
   if (!section) return null;
@@ -337,7 +498,8 @@ export function getReadingSection(sectionId: string, format: TemplateFormat = 'l
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getReadingTemplate('fiction', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getReadingTemplateJson('fiction', 'list');
 
 export const readingSupertag: SupertagDefinition = {
   tag: 'reading',

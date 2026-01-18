@@ -4,7 +4,17 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  emptyItem,
+  taskItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -37,6 +47,24 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Location</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Meeting URL</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Meeting Info'),
+      fieldItem('Date'),
+      fieldItem('Time'),
+      fieldItem('Duration'),
+      fieldItem('Location'),
+      fieldItem('Meeting URL'),
+    ],
+    tableJson: [
+      h2('Meeting Info'),
+      table(
+        tableFieldRow('Date', ''),
+        tableFieldRow('Time', ''),
+        tableFieldRow('Duration', ''),
+        tableFieldRow('Location', ''),
+        tableFieldRow('Meeting URL', ''),
+      ),
+    ],
   },
   attendees: {
     id: 'attendees',
@@ -49,6 +77,14 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Attendees'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Attendees'),
+      emptyItem(),
+    ],
   },
   agenda: {
     id: 'agenda',
@@ -61,6 +97,14 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <ol>
 <li></li>
 </ol>`,
+    listJson: [
+      h2('Agenda'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Agenda'),
+      emptyItem(),
+    ],
   },
   discussion: {
     id: 'discussion',
@@ -69,6 +113,14 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Discussion</h2>
 <p></p>`,
+    listJson: [
+      h2('Discussion'),
+      p(),
+    ],
+    tableJson: [
+      h2('Discussion'),
+      p(),
+    ],
   },
   decisions: {
     id: 'decisions',
@@ -81,6 +133,14 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Decisions'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Decisions'),
+      emptyItem(),
+    ],
   },
   'action-items': {
     id: 'action-items',
@@ -93,6 +153,14 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <ul data-type="taskList">
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p></p></div></li>
 </ul>`,
+    listJson: [
+      h2('Action Items'),
+      taskItem(false, ''),
+    ],
+    tableJson: [
+      h2('Action Items'),
+      taskItem(false, ''),
+    ],
   },
   notes: {
     id: 'notes',
@@ -101,6 +169,14 @@ export const MEETING_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -274,6 +350,44 @@ export function extractMeetingInfo(content: string): {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a meeting template as Plate JSON
+ */
+export function buildMeetingTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = MEETING_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get meeting template as JSON string (serialized Plate JSON)
+ */
+export function getMeetingTemplateJson(type: string = 'team', format: TemplateFormat = 'list'): string {
+  const templateType = MEETING_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['meeting-info', 'attendees', 'agenda', 'action-items', 'notes'];
+  const nodes = buildMeetingTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getMeetingSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = MEETING_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildMeetingTemplateJson instead - returns HTML string
+ */
 export function buildMeetingTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -285,12 +399,18 @@ export function buildMeetingTemplate(sectionIds: string[], format: TemplateForma
     .join('\n');
 }
 
+/**
+ * @deprecated Use getMeetingTemplateJson instead - returns HTML string
+ */
 export function getMeetingTemplate(type: string = 'team', format: TemplateFormat = 'list'): string {
   const templateType = MEETING_TEMPLATE_TYPES[type];
   if (!templateType) return buildMeetingTemplate(['meeting-info', 'attendees', 'agenda', 'action-items', 'notes'], format);
   return buildMeetingTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getMeetingSectionJson instead - returns HTML string
+ */
 export function getMeetingSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = MEETING_SECTIONS[sectionId];
   if (!section) return null;
@@ -301,7 +421,8 @@ export function getMeetingSection(sectionId: string, format: TemplateFormat = 'l
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getMeetingTemplate('team', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getMeetingTemplateJson('team', 'list');
 
 export const meetingSupertag: SupertagDefinition = {
   tag: 'meeting',

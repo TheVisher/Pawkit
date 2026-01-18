@@ -4,7 +4,16 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  emptyItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -34,6 +43,22 @@ export const WISHLIST_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Store URL</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Price</strong></td><td>$</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Item Info'),
+      fieldItem('Item'),
+      fieldItem('Category'),
+      fieldItem('Store URL'),
+      fieldItem('Price', '$'),
+    ],
+    tableJson: [
+      h2('Item Info'),
+      table(
+        tableFieldRow('Item', ''),
+        tableFieldRow('Category', ''),
+        tableFieldRow('Store URL', ''),
+        tableFieldRow('Price', '$'),
+      ),
+    ],
   },
   priority: {
     id: 'priority',
@@ -50,6 +75,20 @@ export const WISHLIST_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Need By</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Reason</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Priority'),
+      fieldItem('Priority', 'Low / Medium / High / Must Have'),
+      fieldItem('Need By'),
+      fieldItem('Reason'),
+    ],
+    tableJson: [
+      h2('Priority'),
+      table(
+        tableFieldRow('Priority', 'Low / Medium / High / Must Have'),
+        tableFieldRow('Need By', ''),
+        tableFieldRow('Reason', ''),
+      ),
+    ],
   },
   'price-tracking': {
     id: 'price-tracking',
@@ -68,6 +107,22 @@ export const WISHLIST_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Lowest Seen</strong></td><td>$</td></tr>
 <tr><td><strong>Last Checked</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Price Tracking'),
+      fieldItem('Current Price', '$'),
+      fieldItem('Target Price', '$'),
+      fieldItem('Lowest Seen', '$'),
+      fieldItem('Last Checked'),
+    ],
+    tableJson: [
+      h2('Price Tracking'),
+      table(
+        tableFieldRow('Current Price', '$'),
+        tableFieldRow('Target Price', '$'),
+        tableFieldRow('Lowest Seen', '$'),
+        tableFieldRow('Last Checked', ''),
+      ),
+    ],
   },
   gift: {
     id: 'gift',
@@ -84,6 +139,20 @@ export const WISHLIST_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Occasion</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Status</strong></td><td>Idea / Purchased / Wrapped / Given</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Gift Details'),
+      fieldItem('For'),
+      fieldItem('Occasion'),
+      fieldItem('Status', 'Idea / Purchased / Wrapped / Given'),
+    ],
+    tableJson: [
+      h2('Gift Details'),
+      table(
+        tableFieldRow('For', ''),
+        tableFieldRow('Occasion', ''),
+        tableFieldRow('Status', 'Idea / Purchased / Wrapped / Given'),
+      ),
+    ],
   },
   alternatives: {
     id: 'alternatives',
@@ -96,6 +165,14 @@ export const WISHLIST_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Alternatives'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Alternatives'),
+      emptyItem(),
+    ],
   },
   notes: {
     id: 'notes',
@@ -104,6 +181,14 @@ export const WISHLIST_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -272,6 +357,44 @@ export function extractWishlistInfo(content: string): {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a wishlist template as Plate JSON
+ */
+export function buildWishlistTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = WISHLIST_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get wishlist template as JSON string (serialized Plate JSON)
+ */
+export function getWishlistTemplateJson(type: string = 'simple', format: TemplateFormat = 'list'): string {
+  const templateType = WISHLIST_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['item-info', 'notes'];
+  const nodes = buildWishlistTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getWishlistSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = WISHLIST_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildWishlistTemplateJson instead - returns HTML string
+ */
 export function buildWishlistTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -283,12 +406,18 @@ export function buildWishlistTemplate(sectionIds: string[], format: TemplateForm
     .join('\n');
 }
 
+/**
+ * @deprecated Use getWishlistTemplateJson instead - returns HTML string
+ */
 export function getWishlistTemplate(type: string = 'simple', format: TemplateFormat = 'list'): string {
   const templateType = WISHLIST_TEMPLATE_TYPES[type];
   if (!templateType) return buildWishlistTemplate(['item-info', 'notes'], format);
   return buildWishlistTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getWishlistSectionJson instead - returns HTML string
+ */
 export function getWishlistSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = WISHLIST_SECTIONS[sectionId];
   if (!section) return null;
@@ -299,7 +428,8 @@ export function getWishlistSection(sectionId: string, format: TemplateFormat = '
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getWishlistTemplate('simple', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getWishlistTemplateJson('simple', 'list');
 
 export const wishlistSupertag: SupertagDefinition = {
   tag: 'wishlist',

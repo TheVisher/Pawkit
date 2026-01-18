@@ -4,6 +4,17 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
+import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  emptyItem,
+  taskItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -23,6 +34,14 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Overview</h2>
 <p></p>`,
+    listJson: [
+      h2('Overview'),
+      p(),
+    ],
+    tableJson: [
+      h2('Overview'),
+      p(),
+    ],
   },
   timeline: {
     id: 'timeline',
@@ -40,6 +59,20 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Start Date</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Deadline</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Timeline'),
+      fieldItem('Status', 'Planning / In Progress / On Hold / Completed'),
+      fieldItem('Start Date'),
+      fieldItem('Deadline'),
+    ],
+    tableJson: [
+      h2('Timeline'),
+      table(
+        tableFieldRow('Status', 'Planning / In Progress / On Hold / Completed'),
+        tableFieldRow('Start Date', ''),
+        tableFieldRow('Deadline', ''),
+      ),
+    ],
   },
   goals: {
     id: 'goals',
@@ -52,6 +85,14 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <ul data-type="taskList">
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p></p></div></li>
 </ul>`,
+    listJson: [
+      h2('Goals'),
+      taskItem(false, ''),
+    ],
+    tableJson: [
+      h2('Goals'),
+      taskItem(false, ''),
+    ],
   },
   milestones: {
     id: 'milestones',
@@ -66,6 +107,16 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p>Milestone 1</p></div></li>
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p>Milestone 2</p></div></li>
 </ul>`,
+    listJson: [
+      h2('Milestones'),
+      taskItem(false, 'Milestone 1'),
+      taskItem(false, 'Milestone 2'),
+    ],
+    tableJson: [
+      h2('Milestones'),
+      taskItem(false, 'Milestone 1'),
+      taskItem(false, 'Milestone 2'),
+    ],
   },
   team: {
     id: 'team',
@@ -80,6 +131,18 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Lead</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Members</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Team'),
+      fieldItem('Lead'),
+      fieldItem('Members'),
+    ],
+    tableJson: [
+      h2('Team'),
+      table(
+        tableFieldRow('Lead', ''),
+        tableFieldRow('Members', ''),
+      ),
+    ],
   },
   budget: {
     id: 'budget',
@@ -96,6 +159,20 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Spent</strong></td><td>$</td></tr>
 <tr><td><strong>Remaining</strong></td><td>$</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Budget'),
+      fieldItem('Total Budget', '$'),
+      fieldItem('Spent', '$'),
+      fieldItem('Remaining', '$'),
+    ],
+    tableJson: [
+      h2('Budget'),
+      table(
+        tableFieldRow('Total Budget', '$'),
+        tableFieldRow('Spent', '$'),
+        tableFieldRow('Remaining', '$'),
+      ),
+    ],
   },
   tools: {
     id: 'tools',
@@ -108,6 +185,14 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Tools'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Tools'),
+      emptyItem(),
+    ],
   },
   resources: {
     id: 'resources',
@@ -120,6 +205,14 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <ul>
 <li></li>
 </ul>`,
+    listJson: [
+      h2('Resources'),
+      emptyItem(),
+    ],
+    tableJson: [
+      h2('Resources'),
+      emptyItem(),
+    ],
   },
   notes: {
     id: 'notes',
@@ -128,6 +221,14 @@ export const PROJECT_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -162,6 +263,44 @@ export const PROJECT_TEMPLATE_TYPES: Record<string, TemplateType> = {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a project template as Plate JSON
+ */
+export function buildProjectTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = PROJECT_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get project template as JSON string (serialized Plate JSON)
+ */
+export function getProjectTemplateJson(type: string = 'personal', format: TemplateFormat = 'list'): string {
+  const templateType = PROJECT_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['overview', 'goals', 'resources', 'notes'];
+  const nodes = buildProjectTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getProjectSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = PROJECT_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildProjectTemplateJson instead - returns HTML string
+ */
 export function buildProjectTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -173,12 +312,18 @@ export function buildProjectTemplate(sectionIds: string[], format: TemplateForma
     .join('\n');
 }
 
+/**
+ * @deprecated Use getProjectTemplateJson instead - returns HTML string
+ */
 export function getProjectTemplate(type: string = 'personal', format: TemplateFormat = 'list'): string {
   const templateType = PROJECT_TEMPLATE_TYPES[type];
   if (!templateType) return buildProjectTemplate(['overview', 'goals', 'resources', 'notes'], format);
   return buildProjectTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getProjectSectionJson instead - returns HTML string
+ */
 export function getProjectSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = PROJECT_SECTIONS[sectionId];
   if (!section) return null;
@@ -189,7 +334,8 @@ export function getProjectSection(sectionId: string, format: TemplateFormat = 'l
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getProjectTemplate('personal', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getProjectTemplateJson('personal', 'list');
 
 export const projectSupertag: SupertagDefinition = {
   tag: 'project',

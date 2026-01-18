@@ -4,7 +4,15 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -34,6 +42,22 @@ export const WARRANTY_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Model</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Serial Number</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Product Info'),
+      fieldItem('Product'),
+      fieldItem('Brand'),
+      fieldItem('Model'),
+      fieldItem('Serial Number'),
+    ],
+    tableJson: [
+      h2('Product Info'),
+      table(
+        tableFieldRow('Product', ''),
+        tableFieldRow('Brand', ''),
+        tableFieldRow('Model', ''),
+        tableFieldRow('Serial Number', ''),
+      ),
+    ],
   },
   'purchase-info': {
     id: 'purchase-info',
@@ -52,6 +76,22 @@ export const WARRANTY_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Store</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Receipt URL</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Purchase Info'),
+      fieldItem('Purchase Date'),
+      fieldItem('Purchase Price', '$'),
+      fieldItem('Store'),
+      fieldItem('Receipt URL'),
+    ],
+    tableJson: [
+      h2('Purchase Info'),
+      table(
+        tableFieldRow('Purchase Date', ''),
+        tableFieldRow('Purchase Price', '$'),
+        tableFieldRow('Store', ''),
+        tableFieldRow('Receipt URL', ''),
+      ),
+    ],
   },
   'warranty-info': {
     id: 'warranty-info',
@@ -71,6 +111,23 @@ export const WARRANTY_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Warranty Type</strong></td><td>Manufacturer / Extended / Store</td></tr>
 <tr><td><strong>Coverage</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    // CRITICAL: Expiry Date field is parsed by calendar sync - do not change field name
+    listJson: [
+      h2('Warranty Info'),
+      fieldItem('Warranty Length'),
+      fieldItem('Expiry Date'),
+      fieldItem('Warranty Type', 'Manufacturer / Extended / Store'),
+      fieldItem('Coverage'),
+    ],
+    tableJson: [
+      h2('Warranty Info'),
+      table(
+        tableFieldRow('Warranty Length', ''),
+        tableFieldRow('Expiry Date', ''),
+        tableFieldRow('Warranty Type', 'Manufacturer / Extended / Store'),
+        tableFieldRow('Coverage', ''),
+      ),
+    ],
   },
   support: {
     id: 'support',
@@ -89,6 +146,22 @@ export const WARRANTY_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Support Email</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Claim Number</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Support'),
+      fieldItem('Support URL'),
+      fieldItem('Support Phone'),
+      fieldItem('Support Email'),
+      fieldItem('Claim Number'),
+    ],
+    tableJson: [
+      h2('Support'),
+      table(
+        tableFieldRow('Support URL', ''),
+        tableFieldRow('Support Phone', ''),
+        tableFieldRow('Support Email', ''),
+        tableFieldRow('Claim Number', ''),
+      ),
+    ],
   },
   notes: {
     id: 'notes',
@@ -97,6 +170,14 @@ export const WARRANTY_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -317,6 +398,44 @@ export function extractWarrantyInfo(content: string): {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a warranty template as Plate JSON
+ */
+export function buildWarrantyTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = WARRANTY_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get warranty template as JSON string (serialized Plate JSON)
+ */
+export function getWarrantyTemplateJson(type: string = 'simple', format: TemplateFormat = 'list'): string {
+  const templateType = WARRANTY_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['product-info', 'warranty-info', 'notes'];
+  const nodes = buildWarrantyTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getWarrantySectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = WARRANTY_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildWarrantyTemplateJson instead - returns HTML string
+ */
 export function buildWarrantyTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -328,12 +447,18 @@ export function buildWarrantyTemplate(sectionIds: string[], format: TemplateForm
     .join('\n');
 }
 
+/**
+ * @deprecated Use getWarrantyTemplateJson instead - returns HTML string
+ */
 export function getWarrantyTemplate(type: string = 'simple', format: TemplateFormat = 'list'): string {
   const templateType = WARRANTY_TEMPLATE_TYPES[type];
   if (!templateType) return buildWarrantyTemplate(['product-info', 'warranty-info', 'notes'], format);
   return buildWarrantyTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getWarrantySectionJson instead - returns HTML string
+ */
 export function getWarrantySection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = WARRANTY_SECTIONS[sectionId];
   if (!section) return null;
@@ -344,7 +469,8 @@ export function getWarrantySection(sectionId: string, format: TemplateFormat = '
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getWarrantyTemplate('simple', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getWarrantyTemplateJson('simple', 'list');
 
 export const warrantySupertag: SupertagDefinition = {
   tag: 'warranty',

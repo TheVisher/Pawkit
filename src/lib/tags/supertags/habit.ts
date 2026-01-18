@@ -4,6 +4,16 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
+import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  taskItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -33,6 +43,22 @@ export const HABIT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Time of Day</strong></td><td>Morning / Afternoon / Evening</td></tr>
 <tr><td><strong>Started</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Habit Info'),
+      fieldItem('Habit'),
+      fieldItem('Frequency', 'Daily / Weekly / Monthly'),
+      fieldItem('Time of Day', 'Morning / Afternoon / Evening'),
+      fieldItem('Started'),
+    ],
+    tableJson: [
+      h2('Habit Info'),
+      table(
+        tableFieldRow('Habit', ''),
+        tableFieldRow('Frequency', 'Daily / Weekly / Monthly'),
+        tableFieldRow('Time of Day', 'Morning / Afternoon / Evening'),
+        tableFieldRow('Started', ''),
+      ),
+    ],
   },
   streak: {
     id: 'streak',
@@ -49,6 +75,20 @@ export const HABIT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Best Streak</strong></td><td>0 days</td></tr>
 <tr><td><strong>Total Completions</strong></td><td>0</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Streak'),
+      fieldItem('Current Streak', '0 days'),
+      fieldItem('Best Streak', '0 days'),
+      fieldItem('Total Completions', '0'),
+    ],
+    tableJson: [
+      h2('Streak'),
+      table(
+        tableFieldRow('Current Streak', '0 days'),
+        tableFieldRow('Best Streak', '0 days'),
+        tableFieldRow('Total Completions', '0'),
+      ),
+    ],
   },
   triggers: {
     id: 'triggers',
@@ -67,6 +107,22 @@ export const HABIT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Obstacle</strong></td><td>What might stop me?</td></tr>
 <tr><td><strong>Solution</strong></td><td>How do I overcome it?</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Triggers & Cues'),
+      fieldItem('Cue', 'What triggers this habit?'),
+      fieldItem('Reward', 'What reward do I get?'),
+      fieldItem('Obstacle', 'What might stop me?'),
+      fieldItem('Solution', 'How do I overcome it?'),
+    ],
+    tableJson: [
+      h2('Triggers & Cues'),
+      table(
+        tableFieldRow('Cue', 'What triggers this habit?'),
+        tableFieldRow('Reward', 'What reward do I get?'),
+        tableFieldRow('Obstacle', 'What might stop me?'),
+        tableFieldRow('Solution', 'How do I overcome it?'),
+      ),
+    ],
   },
   progress: {
     id: 'progress',
@@ -91,6 +147,26 @@ export const HABIT_SECTIONS: Record<string, TemplateSection> = {
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p>Sat</p></div></li>
 <li data-type="taskItem" data-checked="false"><label><input type="checkbox"></label><div><p>Sun</p></div></li>
 </ul>`,
+    listJson: [
+      h2('Weekly Progress'),
+      taskItem(false, 'Mon'),
+      taskItem(false, 'Tue'),
+      taskItem(false, 'Wed'),
+      taskItem(false, 'Thu'),
+      taskItem(false, 'Fri'),
+      taskItem(false, 'Sat'),
+      taskItem(false, 'Sun'),
+    ],
+    tableJson: [
+      h2('Weekly Progress'),
+      taskItem(false, 'Mon'),
+      taskItem(false, 'Tue'),
+      taskItem(false, 'Wed'),
+      taskItem(false, 'Thu'),
+      taskItem(false, 'Fri'),
+      taskItem(false, 'Sat'),
+      taskItem(false, 'Sun'),
+    ],
   },
   notes: {
     id: 'notes',
@@ -99,6 +175,14 @@ export const HABIT_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
 };
 
@@ -120,9 +204,51 @@ export const HABIT_TEMPLATE_TYPES: Record<string, TemplateType> = {
 };
 
 // =============================================================================
-// TEMPLATE BUILDERS
+// TEMPLATE BUILDERS (JSON)
 // =============================================================================
 
+/**
+ * Build a habit template as Plate JSON
+ */
+export function buildHabitTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = HABIT_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get habit template as JSON string (serialized Plate JSON)
+ */
+export function getHabitTemplateJson(type: string = 'simple', format: TemplateFormat = 'list'): string {
+  const templateType = HABIT_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['habit-info', 'streak', 'notes'];
+  const nodes = buildHabitTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getHabitSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = HABIT_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+// =============================================================================
+// TEMPLATE BUILDERS (HTML - DEPRECATED)
+// =============================================================================
+
+/**
+ * @deprecated Use buildHabitTemplateJson instead - returns HTML string
+ */
 export function buildHabitTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -134,12 +260,18 @@ export function buildHabitTemplate(sectionIds: string[], format: TemplateFormat 
     .join('\n');
 }
 
+/**
+ * @deprecated Use getHabitTemplateJson instead - returns HTML string
+ */
 export function getHabitTemplate(type: string = 'simple', format: TemplateFormat = 'list'): string {
   const templateType = HABIT_TEMPLATE_TYPES[type];
   if (!templateType) return buildHabitTemplate(['habit-info', 'streak', 'notes'], format);
   return buildHabitTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getHabitSectionJson instead - returns HTML string
+ */
 export function getHabitSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = HABIT_SECTIONS[sectionId];
   if (!section) return null;
@@ -150,7 +282,8 @@ export function getHabitSection(sectionId: string, format: TemplateFormat = 'lis
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getHabitTemplate('simple', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getHabitTemplateJson('simple', 'list');
 
 export const habitSupertag: SupertagDefinition = {
   tag: 'habit',

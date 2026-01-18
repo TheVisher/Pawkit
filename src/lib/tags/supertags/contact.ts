@@ -4,7 +4,15 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  h2,
+  fieldItem,
+  p,
+  tableFieldRow,
+  table,
+} from './plate-builders';
+import type { Descendant, Value } from 'platejs';
 
 // =============================================================================
 // TYPES
@@ -32,6 +40,20 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Email</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Address</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Contact Info'),
+      fieldItem('Phone'),
+      fieldItem('Email'),
+      fieldItem('Address'),
+    ],
+    tableJson: [
+      h2('Contact Info'),
+      table(
+        tableFieldRow('Phone', ''),
+        tableFieldRow('Email', ''),
+        tableFieldRow('Address', ''),
+      ),
+    ],
   },
   'social-gaming': {
     id: 'social-gaming',
@@ -50,6 +72,22 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Xbox</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>PSN</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Social & Gaming'),
+      fieldItem('Discord'),
+      fieldItem('Steam'),
+      fieldItem('Xbox'),
+      fieldItem('PSN'),
+    ],
+    tableJson: [
+      h2('Social & Gaming'),
+      table(
+        tableFieldRow('Discord', ''),
+        tableFieldRow('Steam', ''),
+        tableFieldRow('Xbox', ''),
+        tableFieldRow('PSN', ''),
+      ),
+    ],
   },
   personal: {
     id: 'personal',
@@ -66,6 +104,20 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>How we met</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Interests</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Personal'),
+      fieldItem('Birthday'),
+      fieldItem('How we met'),
+      fieldItem('Interests'),
+    ],
+    tableJson: [
+      h2('Personal'),
+      table(
+        tableFieldRow('Birthday', ''),
+        tableFieldRow('How we met', ''),
+        tableFieldRow('Interests', ''),
+      ),
+    ],
   },
   work: {
     id: 'work',
@@ -82,6 +134,20 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Title</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>LinkedIn</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Work'),
+      fieldItem('Company'),
+      fieldItem('Title'),
+      fieldItem('LinkedIn'),
+    ],
+    tableJson: [
+      h2('Work'),
+      table(
+        tableFieldRow('Company', ''),
+        tableFieldRow('Title', ''),
+        tableFieldRow('LinkedIn', ''),
+      ),
+    ],
   },
   family: {
     id: 'family',
@@ -96,6 +162,18 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Relation</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Anniversary</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Family'),
+      fieldItem('Relation'),
+      fieldItem('Anniversary'),
+    ],
+    tableJson: [
+      h2('Family'),
+      table(
+        tableFieldRow('Relation', ''),
+        tableFieldRow('Anniversary', ''),
+      ),
+    ],
   },
   notes: {
     id: 'notes',
@@ -104,6 +182,14 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <p></p>`,
     tableHtml: `<h2>Notes</h2>
 <p></p>`,
+    listJson: [
+      h2('Notes'),
+      p(),
+    ],
+    tableJson: [
+      h2('Notes'),
+      p(),
+    ],
   },
   'business-info': {
     id: 'business-info',
@@ -124,6 +210,24 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Email</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Address</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Business Info'),
+      fieldItem('Business Name'),
+      fieldItem('Contact Person'),
+      fieldItem('Phone'),
+      fieldItem('Email'),
+      fieldItem('Address'),
+    ],
+    tableJson: [
+      h2('Business Info'),
+      table(
+        tableFieldRow('Business Name', ''),
+        tableFieldRow('Contact Person', ''),
+        tableFieldRow('Phone', ''),
+        tableFieldRow('Email', ''),
+        tableFieldRow('Address', ''),
+      ),
+    ],
   },
   'service-details': {
     id: 'service-details',
@@ -140,6 +244,20 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Website</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>What they do</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Service Details'),
+      fieldItem('Hours'),
+      fieldItem('Website'),
+      fieldItem('What they do'),
+    ],
+    tableJson: [
+      h2('Service Details'),
+      table(
+        tableFieldRow('Hours', ''),
+        tableFieldRow('Website', ''),
+        tableFieldRow('What they do', ''),
+      ),
+    ],
   },
   ice: {
     id: 'ice',
@@ -158,6 +276,22 @@ export const CONTACT_SECTIONS: Record<string, TemplateSection> = {
 <tr><td><strong>Medical Notes</strong></td><td>&nbsp;</td></tr>
 <tr><td><strong>Alternate Phone</strong></td><td>&nbsp;</td></tr>
 </tbody></table>`,
+    listJson: [
+      h2('Emergency Contact'),
+      fieldItem('Relation'),
+      fieldItem('ICE Priority', '(1 = primary)'),
+      fieldItem('Medical Notes'),
+      fieldItem('Alternate Phone'),
+    ],
+    tableJson: [
+      h2('Emergency Contact'),
+      table(
+        tableFieldRow('Relation', ''),
+        tableFieldRow('ICE Priority', '(1 = primary)'),
+        tableFieldRow('Medical Notes', ''),
+        tableFieldRow('Alternate Phone', ''),
+      ),
+    ],
   },
 };
 
@@ -197,6 +331,44 @@ export const CONTACT_TEMPLATE_TYPES: Record<string, TemplateType> = {
 // TEMPLATE BUILDERS
 // =============================================================================
 
+/**
+ * Build a contact template as Plate JSON
+ */
+export function buildContactTemplateJson(sectionIds: string[], format: TemplateFormat = 'list'): Value {
+  const nodes: Descendant[] = [];
+  for (const id of sectionIds) {
+    const section = CONTACT_SECTIONS[id];
+    if (!section) continue;
+    const sectionNodes = format === 'list' ? section.listJson : section.tableJson;
+    if (sectionNodes) {
+      nodes.push(...sectionNodes);
+    }
+  }
+  return nodes.length > 0 ? nodes as Value : [{ type: 'p', children: [{ text: '' }] }] as Value;
+}
+
+/**
+ * Get contact template as JSON string (serialized Plate JSON)
+ */
+export function getContactTemplateJson(type: string = 'personal', format: TemplateFormat = 'list'): string {
+  const templateType = CONTACT_TEMPLATE_TYPES[type];
+  const sectionIds = templateType?.defaultSections || ['contact-info', 'notes'];
+  const nodes = buildContactTemplateJson(sectionIds, format);
+  return serializePlateContent(nodes);
+}
+
+/**
+ * Get a single section as Plate JSON nodes
+ */
+export function getContactSectionJson(sectionId: string, format: TemplateFormat = 'list'): Descendant[] | null {
+  const section = CONTACT_SECTIONS[sectionId];
+  if (!section) return null;
+  return format === 'list' ? (section.listJson || null) : (section.tableJson || null);
+}
+
+/**
+ * @deprecated Use buildContactTemplateJson instead - returns HTML string
+ */
 export function buildContactTemplate(sectionIds: string[], format: TemplateFormat = 'list'): string {
   return sectionIds
     .map((id) => {
@@ -208,12 +380,18 @@ export function buildContactTemplate(sectionIds: string[], format: TemplateForma
     .join('\n');
 }
 
+/**
+ * @deprecated Use getContactTemplateJson instead - returns HTML string
+ */
 export function getContactTemplate(type: string = 'personal', format: TemplateFormat = 'list'): string {
   const templateType = CONTACT_TEMPLATE_TYPES[type];
   if (!templateType) return buildContactTemplate(['contact-info', 'notes'], format);
   return buildContactTemplate(templateType.defaultSections, format);
 }
 
+/**
+ * @deprecated Use getContactSectionJson instead - returns HTML string
+ */
 export function getContactSection(sectionId: string, format: TemplateFormat = 'list'): string | null {
   const section = CONTACT_SECTIONS[sectionId];
   if (!section) return null;
@@ -649,7 +827,8 @@ export function convertFormat(content: string, targetFormat: TemplateFormat, sec
 // DEFINITION
 // =============================================================================
 
-const DEFAULT_TEMPLATE = getContactTemplate('personal', 'list');
+// Use native JSON template (no HTML conversion needed)
+const DEFAULT_TEMPLATE = getContactTemplateJson('personal', 'list');
 
 export const contactSupertag: SupertagDefinition = {
   tag: 'contact',

@@ -115,6 +115,23 @@ function detectSectionsInContent(content: string, sections: Record<string, Templ
   return detectSectionsFromHtml(content, sections);
 }
 
+/**
+ * Get section content as Plate JSON nodes
+ * Prefers native JSON templates, falls back to HTML conversion
+ */
+function getSectionJson(section: TemplateSection, format: TemplateFormat): Value {
+  const jsonNodes = format === 'list' ? section.listJson : section.tableJson;
+  if (jsonNodes) {
+    return jsonNodes as Value;
+  }
+  // Fall back to HTML conversion
+  const html = format === 'list' ? section.listHtml : section.tableHtml;
+  return htmlToPlateJson(html);
+}
+
+/**
+ * @deprecated Use getSectionJson instead
+ */
 function getSectionHtml(section: TemplateSection, format: TemplateFormat): string {
   return format === 'list' ? section.listHtml : section.tableHtml;
 }
@@ -276,22 +293,27 @@ function reorderSections(
 
 /**
  * Build a template from section IDs and return as JSON string
+ * Uses native JSON templates when available, falls back to HTML conversion
  */
 function buildTemplate(
   sectionIds: string[],
   format: TemplateFormat,
   sections: Record<string, TemplateSection>
 ): string {
-  const html = sectionIds
-    .map((id) => {
-      const section = sections[id];
-      return section ? getSectionHtml(section, format) : '';
-    })
-    .filter(Boolean)
-    .join('\n');
+  const nodes: Descendant[] = [];
 
-  // Convert HTML template to JSON
-  return convertTemplateToJson(html);
+  for (const id of sectionIds) {
+    const section = sections[id];
+    if (!section) continue;
+    const sectionNodes = getSectionJson(section, format);
+    nodes.push(...sectionNodes);
+  }
+
+  if (nodes.length === 0) {
+    return serializePlateContent([{ type: 'p', children: [{ text: '' }] }] as Value);
+  }
+
+  return serializePlateContent(nodes as Value);
 }
 
 // =============================================================================
@@ -364,8 +386,8 @@ export function SupertagPanel({ supertag, content, onContentChange }: SupertagPa
       const section = sections[sectionId];
       if (!section) return;
 
-      const sectionHtml = getSectionHtml(section, format);
-      const sectionJson = htmlToPlateJson(sectionHtml);
+      // Get section as native JSON (preferred) or convert from HTML
+      const sectionJson = getSectionJson(section, format);
 
       // Try to parse existing content as JSON
       if (isPlateJson(content)) {
@@ -397,6 +419,7 @@ export function SupertagPanel({ supertag, content, onContentChange }: SupertagPa
       }
 
       // Fall back to HTML handling (convert result to JSON)
+      const sectionHtml = getSectionHtml(section, format);
       let newHtml = content;
       const notesIndex = content.toLowerCase().lastIndexOf('<h2>notes</h2>');
 
