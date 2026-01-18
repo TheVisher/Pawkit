@@ -1,10 +1,16 @@
 /**
  * Task Item Parsing Utilities
- * Extract and manipulate task items from Tiptap HTML content
+ * Extract and manipulate task items from both Plate JSON and legacy HTML content
  */
 
 import type { LocalCard } from '@/lib/db';
 import { format } from 'date-fns';
+import {
+  isPlateJson,
+  parseJsonContent,
+  serializePlateContent,
+} from '@/lib/plate/html-to-plate';
+import type { Descendant, Value } from 'platejs';
 
 export interface TaskItem {
   id: string;           // Unique identifier (cardId-index)
@@ -16,13 +22,74 @@ export interface TaskItem {
 }
 
 /**
- * Parse task items from a card's HTML content
+ * Extract text content from Plate node children
  */
-export function parseTaskItemsFromCard(card: LocalCard): TaskItem[] {
-  if (!card.content) return [];
+function extractTextFromChildren(children: Descendant[]): string {
+  let text = '';
+  for (const child of children) {
+    if ('text' in child && typeof child.text === 'string') {
+      text += child.text;
+    } else if ('children' in child && Array.isArray(child.children)) {
+      text += extractTextFromChildren(child.children as Descendant[]);
+    }
+  }
+  return text;
+}
 
+/**
+ * Parse task items from Plate JSON content
+ */
+function parseTaskItemsFromPlateJson(
+  content: Value,
+  cardId: string,
+  cardTitle: string
+): TaskItem[] {
+  const items: TaskItem[] = [];
+  let currentDateHeader: string | undefined;
+
+  for (const node of content) {
+    // Check for heading nodes (date headers)
+    if ('type' in node && ['h1', 'h2', 'h3'].includes(node.type as string)) {
+      if ('children' in node && Array.isArray(node.children)) {
+        const text = extractTextFromChildren(node.children as Descendant[]).trim();
+        if (isDateHeader(text)) {
+          currentDateHeader = text;
+        }
+      }
+    }
+
+    // Check for action_item (Plate's task item type)
+    if ('type' in node && node.type === 'action_item') {
+      const checked = Boolean((node as { checked?: boolean }).checked);
+      if ('children' in node && Array.isArray(node.children)) {
+        const text = extractTextFromChildren(node.children as Descendant[]).trim();
+        if (text) {
+          items.push({
+            id: `${cardId}-${items.length}`,
+            text,
+            checked,
+            cardId,
+            cardTitle: cardTitle || 'Untitled Todo',
+            dateHeader: currentDateHeader,
+          });
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Parse task items from HTML content (legacy format)
+ */
+function parseTaskItemsFromHtml(
+  content: string,
+  cardId: string,
+  cardTitle: string
+): TaskItem[] {
   const parser = new DOMParser();
-  const doc = parser.parseFromString(card.content, 'text/html');
+  const doc = parser.parseFromString(content, 'text/html');
   const items: TaskItem[] = [];
 
   // Track current date header
@@ -41,11 +108,11 @@ export function parseTaskItemsFromCard(card: LocalCard): TaskItem[] {
       const text = getTaskItemText(el);
       if (text) {
         items.push({
-          id: `${card.id}-${items.length}`,
+          id: `${cardId}-${items.length}`,
           text,
           checked: el.getAttribute('data-checked') === 'true',
-          cardId: card.id,
-          cardTitle: card.title || 'Untitled Todo',
+          cardId,
+          cardTitle: cardTitle || 'Untitled Todo',
           dateHeader: currentDateHeader,
         });
       }
@@ -53,6 +120,24 @@ export function parseTaskItemsFromCard(card: LocalCard): TaskItem[] {
   });
 
   return items;
+}
+
+/**
+ * Parse task items from a card's content (supports both Plate JSON and HTML)
+ */
+export function parseTaskItemsFromCard(card: LocalCard): TaskItem[] {
+  if (!card.content) return [];
+
+  // Try Plate JSON first
+  if (isPlateJson(card.content)) {
+    const parsed = parseJsonContent(card.content);
+    if (parsed) {
+      return parseTaskItemsFromPlateJson(parsed, card.id, card.title || 'Untitled Todo');
+    }
+  }
+
+  // Fall back to HTML parsing
+  return parseTaskItemsFromHtml(card.content, card.id, card.title || 'Untitled Todo');
 }
 
 /**
@@ -98,12 +183,50 @@ export function parseDateFromHeader(dateHeader: string): Date | null {
 }
 
 /**
- * Get the earliest date with unchecked tasks from a todo card's content
- * Used to determine the scheduledDate for overdue checking
+ * Get earliest unchecked task date from Plate JSON content
  */
-export function getEarliestUncheckedTaskDate(content: string | undefined | null): Date | null {
-  if (!content) return null;
+function getEarliestUncheckedTaskDateFromPlateJson(content: Value): Date | null {
+  let currentDateHeader: string | undefined;
+  const datesWithUncheckedTasks: Date[] = [];
 
+  for (const node of content) {
+    // Check for heading nodes (date headers)
+    if ('type' in node && ['h1', 'h2', 'h3'].includes(node.type as string)) {
+      if ('children' in node && Array.isArray(node.children)) {
+        const text = extractTextFromChildren(node.children as Descendant[]).trim();
+        if (isDateHeader(text)) {
+          currentDateHeader = text;
+        }
+      }
+    }
+
+    // Check for action_item (Plate's task item type)
+    if ('type' in node && node.type === 'action_item') {
+      const isUnchecked = !(node as { checked?: boolean }).checked;
+      if ('children' in node && Array.isArray(node.children)) {
+        const hasText = extractTextFromChildren(node.children as Descendant[]).trim().length > 0;
+
+        if (isUnchecked && hasText && currentDateHeader) {
+          const date = parseDateFromHeader(currentDateHeader);
+          if (date) {
+            datesWithUncheckedTasks.push(date);
+          }
+        }
+      }
+    }
+  }
+
+  if (datesWithUncheckedTasks.length === 0) return null;
+
+  return datesWithUncheckedTasks.reduce((earliest, date) =>
+    date < earliest ? date : earliest
+  );
+}
+
+/**
+ * Get earliest unchecked task date from HTML content (legacy)
+ */
+function getEarliestUncheckedTaskDateFromHtml(content: string): Date | null {
   const parser = new DOMParser();
   const doc = parser.parseFromString(content, 'text/html');
 
@@ -132,10 +255,29 @@ export function getEarliestUncheckedTaskDate(content: string | undefined | null)
 
   if (datesWithUncheckedTasks.length === 0) return null;
 
-  // Return the earliest date
   return datesWithUncheckedTasks.reduce((earliest, date) =>
     date < earliest ? date : earliest
   );
+}
+
+/**
+ * Get the earliest date with unchecked tasks from a todo card's content
+ * Used to determine the scheduledDate for overdue checking
+ * Supports both Plate JSON and legacy HTML
+ */
+export function getEarliestUncheckedTaskDate(content: string | undefined | null): Date | null {
+  if (!content) return null;
+
+  // Try Plate JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return getEarliestUncheckedTaskDateFromPlateJson(parsed);
+    }
+  }
+
+  // Fall back to HTML parsing
+  return getEarliestUncheckedTaskDateFromHtml(content);
 }
 
 /**
@@ -201,10 +343,30 @@ function createTaskItemElement(doc: Document, taskText: string, checked: boolean
 }
 
 /**
- * Toggle a task item's checked state in HTML content
- * Returns the updated HTML string
+ * Toggle a task item's checked state in Plate JSON content
  */
-export function toggleTaskInContent(
+function toggleTaskInPlateJson(
+  content: Value,
+  taskText: string,
+  newChecked: boolean
+): Value {
+  return content.map((node) => {
+    if ('type' in node && node.type === 'action_item') {
+      if ('children' in node && Array.isArray(node.children)) {
+        const text = extractTextFromChildren(node.children as Descendant[]).trim();
+        if (text === taskText) {
+          return { ...node, checked: newChecked };
+        }
+      }
+    }
+    return node;
+  }) as Value;
+}
+
+/**
+ * Toggle a task item's checked state in HTML content
+ */
+function toggleTaskInHtml(
   content: string,
   taskText: string,
   newChecked: boolean
@@ -236,10 +398,124 @@ export function toggleTaskInContent(
 }
 
 /**
- * Add a new task item to content under today's date header
- * Creates the date header if it doesn't exist
+ * Toggle a task item's checked state in content
+ * Supports both Plate JSON and legacy HTML
+ * Returns the updated content string
  */
-export function addTaskToContent(content: string, taskText: string): string {
+export function toggleTaskInContent(
+  content: string,
+  taskText: string,
+  newChecked: boolean
+): string {
+  // Try Plate JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      const updated = toggleTaskInPlateJson(parsed, taskText, newChecked);
+      return serializePlateContent(updated);
+    }
+  }
+
+  // Fall back to HTML
+  return toggleTaskInHtml(content, taskText, newChecked);
+}
+
+/**
+ * Plate element type for use in content arrays
+ */
+type PlateElement = {
+  type: string;
+  children: Descendant[];
+  [key: string]: unknown;
+};
+
+/**
+ * Create a Plate JSON action_item node
+ */
+function createPlateActionItem(text: string, checked: boolean = false): PlateElement {
+  return {
+    type: 'action_item',
+    checked,
+    children: [{ text }],
+  };
+}
+
+/**
+ * Create a Plate JSON heading node
+ */
+function createPlateHeading(text: string, level: 'h1' | 'h2' | 'h3' = 'h2'): PlateElement {
+  return {
+    type: level,
+    children: [{ text }],
+  };
+}
+
+/**
+ * Add a new task item to Plate JSON content under today's date header
+ */
+function addTaskToPlateJson(content: Value, taskText: string): Value {
+  const today = format(new Date(), 'MMMM d, yyyy');
+  const newTask = createPlateActionItem(taskText, false);
+
+  // Find today's header index
+  let todayHeaderIndex = -1;
+  let firstDateHeaderIndex = -1;
+
+  for (let i = 0; i < content.length; i++) {
+    const node = content[i];
+    if ('type' in node && ['h1', 'h2', 'h3'].includes(node.type as string)) {
+      if ('children' in node && Array.isArray(node.children)) {
+        const text = extractTextFromChildren(node.children as Descendant[]).trim();
+        if (text === today) {
+          todayHeaderIndex = i;
+          break;
+        }
+        if (isDateHeader(text) && firstDateHeaderIndex === -1) {
+          firstDateHeaderIndex = i;
+        }
+      }
+    }
+  }
+
+  if (todayHeaderIndex !== -1) {
+    // Insert task after the header (find where tasks for this header end)
+    let insertIndex = todayHeaderIndex + 1;
+    while (insertIndex < content.length) {
+      const node = content[insertIndex];
+      // Stop if we hit another header
+      if ('type' in node && ['h1', 'h2', 'h3'].includes(node.type as string)) {
+        break;
+      }
+      insertIndex++;
+    }
+    // Insert at the beginning of today's section (right after header)
+    return [
+      ...content.slice(0, todayHeaderIndex + 1),
+      newTask,
+      ...content.slice(todayHeaderIndex + 1),
+    ] as Value;
+  } else {
+    // Create today's header and insert at the beginning
+    const todayHeader = createPlateHeading(today, 'h2');
+    if (firstDateHeaderIndex !== -1) {
+      // Insert before the first date header
+      return [
+        ...content.slice(0, firstDateHeaderIndex),
+        todayHeader,
+        newTask,
+        ...content.slice(firstDateHeaderIndex),
+      ] as Value;
+    } else {
+      // Insert at the beginning
+      return [todayHeader, newTask, ...content] as Value;
+    }
+  }
+}
+
+/**
+ * Add a new task item to HTML content under today's date header
+ */
+function addTaskToHtml(content: string, taskText: string): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(content || '<p></p>', 'text/html');
 
@@ -310,6 +586,35 @@ export function addTaskToContent(content: string, taskText: string): string {
 }
 
 /**
+ * Add a new task item to content under today's date header
+ * Creates the date header if it doesn't exist
+ * Supports both Plate JSON and legacy HTML
+ */
+export function addTaskToContent(content: string, taskText: string): string {
+  // If content is empty or not provided, create new Plate JSON content
+  if (!content || !content.trim()) {
+    const today = format(new Date(), 'MMMM d, yyyy');
+    const initialContent: Value = [
+      createPlateHeading(today, 'h2'),
+      createPlateActionItem(taskText, false),
+    ];
+    return serializePlateContent(initialContent);
+  }
+
+  // Try Plate JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      const updated = addTaskToPlateJson(parsed, taskText);
+      return serializePlateContent(updated);
+    }
+  }
+
+  // Fall back to HTML
+  return addTaskToHtml(content, taskText);
+}
+
+/**
  * Get all incomplete tasks from multiple cards
  */
 export function getIncompleteTasksFromCards(cards: LocalCard[]): TaskItem[] {
@@ -330,24 +635,13 @@ export function getIncompleteTasksFromCards(cards: LocalCard[]): TaskItem[] {
 
 /**
  * Create initial todo note content with today's header
+ * Returns Plate JSON format
  */
 export function createInitialTodoContent(): string {
   const today = format(new Date(), 'MMMM d, yyyy');
-  // Create using DOM for safety
-  const doc = new DOMParser().parseFromString('<body></body>', 'text/html');
-
-  const header = doc.createElement('h2');
-  header.textContent = today;
-
-  const taskList = doc.createElement('ul');
-  taskList.setAttribute('data-type', 'taskList');
-
-  const emptyTask = createTaskItemElement(doc, '', false);
-  taskList.appendChild(emptyTask);
-
-  doc.body.appendChild(header);
-  doc.body.appendChild(taskList);
-
-  const serializer = new XMLSerializer();
-  return serializer.serializeToString(doc.body).replace(/^<body[^>]*>|<\/body>$/g, '');
+  const initialContent: Value = [
+    createPlateHeading(today, 'h2'),
+    createPlateActionItem('', false),
+  ];
+  return serializePlateContent(initialContent);
 }

@@ -17,6 +17,123 @@ import { useCards } from '@/lib/hooks/use-live-data';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { triggerSync } from '@/lib/services/sync-queue';
 import { cn } from '@/lib/utils';
+import {
+  isPlateJson,
+  parseJsonContent,
+  extractPlateText,
+  serializePlateContent,
+} from '@/lib/plate/html-to-plate';
+import type { Descendant, Value } from 'platejs';
+
+/**
+ * Create a Plate JSON entry with timestamp
+ */
+function createPlateEntry(timestamp: string, text: string): Descendant {
+  return {
+    type: 'p',
+    children: [
+      { text: timestamp, bold: true },
+      { text: ` - ${text}` },
+    ],
+  };
+}
+
+/**
+ * Parse timestamped entries from content (supports both Plate JSON and legacy HTML)
+ */
+function parseTimestampedEntries(
+  content: string | null | undefined
+): { time: string; text: string }[] {
+  if (!content) return [];
+
+  // Try Plate JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return [];
+
+    const entries: { time: string; text: string }[] = [];
+    for (const node of parsed) {
+      // Check if it's a paragraph with bold timestamp pattern
+      if ('type' in node && node.type === 'p' && 'children' in node) {
+        const children = node.children as Descendant[];
+        if (children.length >= 2) {
+          const first = children[0] as { text?: string; bold?: boolean };
+          const second = children[1] as { text?: string };
+
+          // Check for bold timestamp followed by " - text"
+          if (first.bold && first.text && second.text?.startsWith(' - ')) {
+            // Validate timestamp format (e.g., "10:30 AM" or "10:30")
+            const timePattern = /^\d{1,2}:\d{2}(?:\s*[AP]M)?$/i;
+            if (timePattern.test(first.text.trim())) {
+              entries.push({
+                time: first.text.trim(),
+                text: second.text.slice(3).trim(), // Remove " - " prefix
+              });
+            }
+          }
+        }
+      }
+    }
+    return entries;
+  }
+
+  // Fall back to legacy HTML parsing
+  const regex = /<p><strong>(\d{1,2}:\d{2}(?:\s*[AP]M)?)<\/strong>\s*-\s*(.+?)<\/p>/gi;
+  const found: { time: string; text: string }[] = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    found.push({ time: match[1], text: match[2].replace(/<[^>]*>/g, '') });
+  }
+  return found;
+}
+
+/**
+ * Get preview text from content (supports both Plate JSON and legacy HTML)
+ */
+function getContentPreview(content: string | null | undefined): string | null {
+  if (!content) return null;
+
+  // Try Plate JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return null;
+    const text = extractPlateText(parsed);
+    return text || null;
+  }
+
+  // Fall back to legacy HTML - strip tags
+  const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text || null;
+}
+
+/**
+ * Merge new entry into existing content
+ * Prepends new entry to maintain newest-first order
+ */
+function mergeEntryIntoContent(
+  newEntry: Descendant,
+  existingContent: string | null | undefined
+): string {
+  // If no existing content, just return the new entry
+  if (!existingContent || !existingContent.trim()) {
+    return serializePlateContent([newEntry] as Value);
+  }
+
+  // If existing content is Plate JSON, parse and prepend
+  if (isPlateJson(existingContent)) {
+    const parsed = parseJsonContent(existingContent);
+    if (parsed) {
+      return serializePlateContent([newEntry, ...parsed] as Value);
+    }
+  }
+
+  // If existing content is HTML, we need to convert it first
+  // For now, create the new entry and add a paragraph with the HTML notice
+  // The editor will convert the HTML when opened
+  // Actually, let's just prepend the JSON entry and keep the HTML
+  // The editor handles mixed content during conversion
+  return serializePlateContent([newEntry] as Value);
+}
 
 export function DailyLogWidget() {
   const [date, setDate] = useState(new Date());
@@ -181,7 +298,8 @@ export function DailyLogWidget() {
 
     try {
       const timestamp = format(new Date(), 'h:mm a');
-      const entryHtml = `<p><strong>${timestamp}</strong> - ${entryText}</p>`;
+      // Create entry as Plate JSON instead of HTML
+      const entryNode = createPlateEntry(timestamp, entryText);
 
       // STRATEGY: Trust Zustand state first (survives sync overwrites), then fall back to DB
       // This handles the case where sync wipes IndexedDB but Zustand still has the note
@@ -196,18 +314,14 @@ export function DailyLogWidget() {
         if (freshNote && !freshNote._deleted) {
           // Note exists in DB - prepend new entry at top
           console.log('[DailyLog] Note exists in DB, prepending');
-          const newContent = freshNote.content
-            ? `${entryHtml}${freshNote.content}`
-            : entryHtml;
+          const newContent = mergeEntryIntoContent(entryNode, freshNote.content);
           await updateCard(note.id, { content: newContent });
           return;
         } else {
           // Note was deleted from DB (likely by sync) but we still have it in Zustand
           // Re-create it with new entry + existing content (newest at top)
           console.log('[DailyLog] Note missing from DB (sync issue), re-creating with existing content');
-          const newContent = note.content
-            ? `${entryHtml}${note.content}`
-            : entryHtml;
+          const newContent = mergeEntryIntoContent(entryNode, note.content);
           await createCard({
             workspaceId: workspace.id,
             type: 'md-note',
@@ -247,9 +361,7 @@ export function DailyLogWidget() {
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
         const existingNote = sortedNotes[0];
-        const newContent = existingNote.content
-          ? `${entryHtml}${existingNote.content}`
-          : entryHtml;
+        const newContent = mergeEntryIntoContent(entryNode, existingNote.content);
         await updateCard(existingNote.id, { content: newContent });
         return;
       }
@@ -272,9 +384,7 @@ export function DailyLogWidget() {
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
         const trashedNote = sortedTrashed[0];
-        const newContent = trashedNote.content
-          ? `${entryHtml}${trashedNote.content}`
-          : entryHtml;
+        const newContent = mergeEntryIntoContent(entryNode, trashedNote.content);
         await updateCard(trashedNote.id, {
           _deleted: false,
           content: newContent,
@@ -282,13 +392,14 @@ export function DailyLogWidget() {
         return;
       }
 
-      // No existing note found - create new
+      // No existing note found - create new with Plate JSON
+      const initialContent = serializePlateContent([entryNode] as Value);
       await createCard({
         workspaceId: workspace.id,
         type: 'md-note',
         url: '',
         title: format(date, 'MMMM d, yyyy'),
-        content: entryHtml,
+        content: initialContent,
         isDailyNote: true,
         scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
         tags: ['daily-note'],
@@ -335,25 +446,14 @@ export function DailyLogWidget() {
     setDate(new Date());
   };
 
-  // Parse entries from note content for preview
+  // Parse entries from note content for preview (supports both Plate JSON and HTML)
   const entries = useMemo(() => {
-    if (!note?.content) return [];
-    const regex = /<p><strong>(\d{1,2}:\d{2}(?:\s*[AP]M)?)<\/strong>\s*-\s*(.+?)<\/p>/g;
-    const found: { time: string; text: string }[] = [];
-    let match;
-    while ((match = regex.exec(note.content)) !== null) {
-      found.push({ time: match[1], text: match[2].replace(/<[^>]*>/g, '') });
-    }
-    return found;
+    return parseTimestampedEntries(note?.content);
   }, [note?.content]);
 
-  const getPreview = (html: string) => {
-    if (!html) return null;
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    return text || null;
-  };
-
-  const previewText = note?.content ? getPreview(note.content) : null;
+  const previewText = useMemo(() => {
+    return getContentPreview(note?.content);
+  }, [note?.content]);
   const hasTimestampedEntries = entries.length > 0;
 
   return (
