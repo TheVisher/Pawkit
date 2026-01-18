@@ -21,7 +21,16 @@ import { SupertagSelector } from './SupertagSelector';
 import { ReferencesSection } from './sections/ReferencesSection';
 import { BacklinksSection } from './sections/BacklinksSection';
 import { findSupertagsInTags, getSupertagDefinition, getAllSupertags, getSupertagTemplate } from '@/lib/tags/supertags';
-import { NotesEditor } from '@/components/editor';
+import { PawkitPlateEditor } from '@/components/editor';
+// Simple type for Plate content - avoid complex generics
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlateContent = any[];
+import {
+  serializePlateContent,
+  isPlateJson,
+  parseJsonContent,
+  createEmptyPlateContent,
+} from '@/lib/plate/html-to-plate';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useCard } from '@/lib/hooks/use-live-data';
@@ -615,10 +624,29 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     }
   }, [pendingNoteText, card.id, card.notes, updateCard, clearPendingNoteText]);
 
-  const handleNotesChange = useCallback((html: string) => {
-    // Don't save empty paragraph as notes
-    const isEmpty = html === '<p></p>' || html === '';
-    updateCard(card.id, { notes: isEmpty ? undefined : html });
+  // Parse notes content - could be HTML (legacy) or JSON string (new format)
+  const parsedNotesContent = useMemo(() => {
+    const raw = card.notes || '';
+    if (isPlateJson(raw)) {
+      return parseJsonContent(raw) || raw;
+    }
+    return raw;
+  }, [card.notes]);
+
+  const handleNotesChange = useCallback((value: PlateContent) => {
+    // Don't save empty content as notes
+    const firstNode = value[0];
+    const isEmpty = value.length === 0 ||
+      (value.length === 1 &&
+       firstNode &&
+       'children' in firstNode &&
+       Array.isArray(firstNode.children) &&
+       firstNode.children.length === 1 &&
+       'text' in firstNode.children[0] &&
+       (firstNode.children[0] as { text: string }).text === '');
+
+    const jsonString = isEmpty ? undefined : serializePlateContent(value);
+    updateCard(card.id, { notes: jsonString });
   }, [card.id, updateCard]);
 
   // Helper: Parse notes HTML into individual content blocks
@@ -812,13 +840,13 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
       {/* Notes Editor - fills available space */}
       <div className="flex-1 rounded-lg bg-bg-surface-1/50 border border-border-subtle p-3">
-        <NotesEditor
-          content={card.notes || ''}
+        <PawkitPlateEditor
+          content={parsedNotesContent}
           onChange={handleNotesChange}
           placeholder="Jot down your thoughts, key takeaways, or to-dos..."
-          className="h-full"
           workspaceId={card.workspaceId}
           cardId={card.id}
+          variant="notes"
         />
       </div>
 

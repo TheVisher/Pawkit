@@ -4,17 +4,28 @@
  * Note Content Component
  * Editor-focused layout for note cards (md-note, text-note)
  * The note content IS the primary content - editor takes center stage
+ *
+ * Updated to use Plate editor with JSON content storage.
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCardCalendarSync } from '@/lib/hooks/use-card-calendar-sync';
-import { Editor } from '@/components/editor';
-import { getContentStats } from '../types';
+import { PawkitPlateEditor } from '@/components/editor';
 import { ContactPhotoHeader } from '../contact-photo-header';
 import { isSupertag } from '@/lib/tags/supertags';
+import {
+  serializePlateContent,
+  getPlateContentStats,
+  isPlateJson,
+  parseJsonContent,
+} from '@/lib/plate/html-to-plate';
 import type { LocalCard } from '@/lib/db';
+
+// Simple type for Plate content
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlateContent = any[];
 
 interface NoteContentProps {
   card: LocalCard;
@@ -27,25 +38,49 @@ interface NoteContentProps {
 export function NoteContent({ card, title, setTitle, onTitleBlur, className }: NoteContentProps) {
   const updateCard = useDataStore((s) => s.updateCard);
 
-  // Local state for content
-  const [content, setContent] = useState(card.content || '');
+  // Parse content - could be HTML (legacy) or JSON string (new format)
+  const initialContent = useMemo(() => {
+    const raw = card.content || '';
+    // Try to parse as JSON first
+    if (isPlateJson(raw)) {
+      return parseJsonContent(raw) || raw;
+    }
+    // Return raw for HTML conversion by editor
+    return raw;
+  }, [card.content]);
+
+  // Local state for Plate content
+  const [plateContent, setPlateContent] = useState<PlateContent | string>(initialContent);
 
   // Sync dates to calendar when card content changes
   useCardCalendarSync(card);
 
   // Sync local state when card changes (including external updates like Quick Convert)
   useEffect(() => {
-    setContent(card.content || '');
+    const raw = card.content || '';
+    if (isPlateJson(raw)) {
+      const parsed = parseJsonContent(raw);
+      if (parsed) setPlateContent(parsed);
+    } else {
+      setPlateContent(raw);
+    }
   }, [card.id, card.content]);
 
-  // Save content when editor changes
-  const handleContentChange = useCallback((html: string) => {
-    setContent(html);
-    updateCard(card.id, { content: html });
+  // Save content when editor changes - serialize to JSON string
+  const handleContentChange = useCallback((value: PlateContent) => {
+    setPlateContent(value);
+    const jsonString = serializePlateContent(value);
+    updateCard(card.id, { content: jsonString });
   }, [card.id, updateCard]);
 
-  // Calculate stats
-  const stats = getContentStats(content);
+  // Calculate stats from Plate content
+  const stats = useMemo(() => {
+    if (Array.isArray(plateContent)) {
+      return getPlateContentStats(plateContent);
+    }
+    // Fallback for HTML content
+    return { words: 0, chars: 0, links: 0 };
+  }, [plateContent]);
 
   // Check if this is a contact card (has #contact supertag)
   const isContactCard = useMemo(() => {
@@ -70,28 +105,17 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
         {stats.links > 0 && ` · ${stats.links} links`}
       </div>
 
-      {/* Editor - takes remaining space */}
-      <div className="flex-1 overflow-y-auto px-6 pb-8">
-        <Editor
-          content={content}
+      {/* Plate Editor - takes remaining space */}
+      <div className="flex-1 overflow-y-auto pb-8">
+        <PawkitPlateEditor
+          content={plateContent}
           onChange={handleContentChange}
           placeholder="Type '/' for commands or just start writing..."
-          className="note-editor-large"
           workspaceId={card.workspaceId}
           cardId={card.id}
+          variant="default"
         />
       </div>
-
-      <style jsx global>{`
-        .note-editor-large .tiptap {
-          font-size: 1.125rem;
-          line-height: 1.7;
-          min-height: 300px;
-        }
-        .note-editor-large .tiptap:focus {
-          outline: none;
-        }
-      `}</style>
     </div>
   );
 }

@@ -47,6 +47,7 @@ import {
   getLuminance,
   isNoteCard,
 } from './types';
+import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
 
 // Icon mapping for action icons
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -63,6 +64,12 @@ const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; sty
 // Extract all info from content based on tags
 function extractAllInfo(content: string, tags: string[]): Record<string, string | undefined> {
   const info: Record<string, string | undefined> = {};
+
+  // Skip extraction for Plate JSON content (extract functions expect HTML)
+  if (isPlateJson(content)) {
+    return info;
+  }
+
   const tagSet = new Set(tags.map((t) => t.toLowerCase()));
 
   if (tagSet.has('contact')) {
@@ -275,11 +282,25 @@ export function GridCard({
   // Footer horizontal inset - provides breathing room from thumbnail edge
   const FOOTER_INSET = 4;
 
-  // Sanitize note content for safe rendering (memoized to avoid parsing on every render)
-  const sanitizedContent = useMemo(
-    () => isNoteCard(card.type) ? DOMPurify.sanitize(card.content || '<p>Empty note</p>') : '',
-    [card.content, card.type]
-  );
+  // Extract note content for preview - handles both Plate JSON and legacy HTML
+  const sanitizedContent = useMemo(() => {
+    if (!isNoteCard(card.type)) return '';
+    const content = card.content || '';
+    if (!content) return '<p>Empty note</p>';
+
+    // Check if content is Plate JSON
+    if (isPlateJson(content)) {
+      const parsed = parseJsonContent(content);
+      if (parsed) {
+        // Convert Plate JSON to HTML for formatted preview
+        const html = plateToHtml(parsed);
+        return html ? DOMPurify.sanitize(html) : '<p>Empty note</p>';
+      }
+    }
+
+    // Fallback to HTML sanitization for legacy content
+    return DOMPurify.sanitize(content);
+  }, [card.content, card.type]);
 
   // Get actions for this card based on its tags
   const actions = useMemo(

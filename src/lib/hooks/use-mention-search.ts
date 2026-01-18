@@ -29,7 +29,7 @@ async function loadChrono(): Promise<typeof import('chrono-node')> {
 
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import type { LocalCard, LocalCollection } from '@/lib/db';
-import type { MentionType } from '@/lib/tiptap/extensions/mention';
+import type { MentionType } from '@/lib/plate/mention-parser';
 
 export interface MentionItem {
   id: string;

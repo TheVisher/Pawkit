@@ -21,6 +21,32 @@
 
 ---
 
+## Implementation Status Summary
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 0.1 | Photo Picker Storage | ✅ Complete |
+| 1.1 | Image Support in Editor | ✅ Complete |
+| 1.2 | Callout/Admonition Blocks | ✅ Complete |
+| 1.3 | Code Syntax Highlighting | ✅ Complete |
+| 2.1 | Enhanced Table Controls | ✅ Complete |
+| 2.2 | Multiple Highlight Colors | ✅ Complete |
+| 2.3 | Better Link Editing | ✅ Complete |
+| 2.4 | Toggle/Collapsible Sections | ✅ Complete |
+| 2.5 | Block Drag Handle + Menu | ✅ Complete |
+| 2.6 | Contextual Image Toolbar | ⏳ Not Started |
+| 2.7 | Improved Slash Menu | ✅ Complete |
+| 2.8 | Enhanced Text Selection Toolbar | ✅ Complete |
+| 2.9 | Table of Contents Widget | ⏳ Not Started |
+| 2.10 | Advanced Table Controls | ⏳ Not Started |
+| 2.11 | Text Colors | ✅ Complete |
+| 3.1 | Markdown Export | ✅ Complete |
+
+**Completed:** 13/16 features (81%)
+**Remaining:** Image toolbar, TOC widget, advanced table controls
+
+---
+
 ## Phase 0: Quick Win - Fix Photo Picker Storage
 
 ### 0.1 Use Supabase Storage for Manual Photo Uploads
@@ -855,7 +881,285 @@ export function ToggleNodeView({ node, updateAttributes }) {
 
 ---
 
-### 2.5 Text Colors
+### 2.5 Block Drag Handle + Add Button
+
+**Priority:** 🟡 Medium
+**Effort:** Medium
+**Status:** ✅ Implemented
+**Files modified:**
+- `src/components/editor/editor.tsx`
+- `src/components/editor/block-handle.tsx`
+
+#### Problem
+No visual way to drag blocks to reorder them. Users need a handle that follows the cursor between blocks, with a "+" button to quickly insert new blocks.
+
+#### Solution (Implemented)
+
+**A. Custom Block Handle Component**
+Created `block-handle.tsx` with:
+- Single grip icon (⋮⋮) that appears on block hover
+- Click opens contextual menu styled to match slash command menu
+- Drag to reorder blocks with custom drop handler
+
+**B. Block Options Menu**
+Menu includes (styled with glass panel to match slash menu):
+- Block type header showing current block type
+- **Add block below** - inserts paragraph and opens slash menu
+- **Color** submenu - 7 text colors + 5 background colors
+- **Turn Into** submenu - convert to heading, paragraph, lists, code, quote
+- **Duplicate** - copies block below
+- **Copy** - copies block as HTML to clipboard
+- **Delete** - removes the block
+
+**C. Position Behavior**
+- Handle constrained within modal padding (doesn't fall off edge)
+- Finds scrollable parent container for bounds calculation
+- Positioned 36px left of block content
+
+**D. Custom Drag & Drop**
+- Custom data type `application/x-pawkit-block` for drag operations
+- Drop handler in editor.tsx that deletes from source and inserts at target
+- NodeSelection applied during drag for visual feedback
+
+#### Acceptance Criteria
+- [x] Drag handle appears on block hover
+- [x] Can drag blocks to reorder (custom drop handler implementation)
+- [x] Menu includes "Add block below" (replaces separate + button)
+- [x] Handle follows cursor between blocks
+- [x] Handle stays within modal bounds
+- [x] Block options menu (Color, Turn Into, Duplicate, Copy, Delete)
+- [x] Menu styled to match slash command menu (glass panel, icon boxes)
+- [x] Clicking handle selects/highlights the block
+
+---
+
+### 2.6 Contextual Image Toolbar
+
+**Priority:** 🟡 Medium
+**Effort:** Medium
+**Files to modify:**
+- `src/components/editor/editor.tsx`
+- New: `src/components/editor/image-toolbar.tsx`
+
+#### Problem
+When clicking on images, there's no contextual menu for common actions like alignment, captions, download, replace, or delete.
+
+#### Solution
+
+**A. Create Image Toolbar Component**
+```typescript
+// Toolbar appears above selected image with:
+// - Alignment buttons (left, center, right)
+// - Add caption toggle
+// - Download original
+// - Replace image
+// - Delete image
+```
+
+**B. Purple Resize Handles**
+- Subtle purple corner handles on image hover
+- More visually appealing than default handles
+
+#### Acceptance Criteria
+- [ ] Toolbar appears when image is selected
+- [ ] Can align image left/center/right
+- [ ] Can add/edit caption below image
+- [ ] Can download original image
+- [ ] Can replace image (opens picker)
+- [ ] Can delete image
+- [ ] Purple resize handles on hover
+
+---
+
+### 2.7 Improved Slash Menu with Categories
+
+**Priority:** 🟡 Medium
+**Effort:** Medium
+**Files to modify:**
+- `src/components/editor/slash-command-menu.tsx`
+
+#### Problem
+Current slash menu is a flat list. TipTap Notion template has categorized sections (AI, Style, Insert, Upload) with better visual organization.
+
+#### Solution
+
+**A. Categorize Commands**
+```typescript
+const commandGroups = [
+  {
+    title: 'AI',
+    commands: ['aiComplete', 'aiSummarize', 'aiSimplify', 'aiExtend'],
+  },
+  {
+    title: 'Format',
+    commands: ['text', 'heading1', 'heading2', 'heading3'],
+  },
+  {
+    title: 'Insert',
+    commands: ['table', 'image', 'codeBlock', 'quote', 'divider'],
+  },
+  {
+    title: 'Lists',
+    commands: ['bulletList', 'numberedList', 'todoList', 'toggle'],
+  },
+]
+```
+
+**B. Visual Improvements**
+- Section headers with subtle styling
+- Icons for each command
+- Keyboard shortcut hints on right side
+- Better hover states
+
+#### Acceptance Criteria
+- [x] Commands grouped by category (Format, Lists, Insert, Callouts)
+- [x] Section headers visible
+- [x] Icons for all commands (in styled boxes)
+- [x] Keyboard shortcuts shown
+- [x] Search filters across all categories
+- [x] Command descriptions added
+
+---
+
+### 2.8 Enhanced Text Selection Toolbar
+
+**Priority:** 🟡 Medium
+**Effort:** Medium
+**Files to modify:**
+- `src/components/editor/editor.tsx`
+- `src/components/editor/bubble-menu.tsx` (existing)
+
+#### Problem
+Current bubble menu is basic. TipTap Notion template has additional features like "Turn Into" dropdown and text alignment options.
+
+#### Solution
+
+**A. Add "Turn Into" Dropdown**
+```typescript
+// Dropdown to convert selected block to:
+// - Text (paragraph)
+// - Heading 1/2/3
+// - Bullet list
+// - Numbered list
+// - Todo list
+// - Quote
+// - Code block
+```
+
+**B. Add Alignment Options**
+- Left, center, right alignment buttons
+- Works for paragraphs and headings
+
+**C. More Formatting Options**
+- Strikethrough
+- Subscript/superscript (if needed)
+- Clear formatting button
+
+#### Acceptance Criteria
+- [x] "Turn Into" dropdown to convert block types
+- [x] Alignment buttons (left/center/right)
+- [x] Strikethrough option
+- [x] Clear formatting button
+
+---
+
+### 2.9 Table of Contents Widget
+
+**Priority:** 🟢 Nice to Have
+**Effort:** Medium
+**Files to modify:**
+- New: `src/components/editor/table-of-contents.tsx`
+- `src/components/editor/editor.tsx`
+
+#### Problem
+Long documents need a way to navigate between sections. TipTap Notion template has a floating TOC widget.
+
+#### Solution
+
+**A. Create TOC Component**
+```typescript
+// Floating widget (upper right) showing:
+// - All headings in document
+// - Click to scroll to heading
+// - Highlight current section
+// - Collapsible for space
+```
+
+**B. Auto-generate from Headings**
+- Extract all H1/H2/H3 from document
+- Update on content change
+- Smooth scroll on click
+
+#### Acceptance Criteria
+- [ ] TOC widget visible for documents with headings
+- [ ] Shows H1/H2/H3 hierarchy
+- [ ] Click scrolls to heading
+- [ ] Highlights current section
+- [ ] Can collapse/hide widget
+
+---
+
+### 2.10 Advanced Table Controls
+
+**Priority:** 🟡 Medium
+**Effort:** High
+**Files to modify:**
+- `src/components/editor/editor.tsx`
+- New: `src/components/editor/table-row-menu.tsx`
+- New: `src/components/editor/table-column-menu.tsx`
+
+#### Problem
+Current table controls are in a floating toolbar. TipTap Notion template has more intuitive inline controls:
+- Plus buttons on row/column edges for quick add
+- Drag handles on rows for reordering
+- Background color options for cells
+- Column options dropdown (sort, hide, delete)
+
+#### Solution
+
+**A. Edge Add Buttons**
+```typescript
+// Show "+" button on:
+// - Right edge of last column (add column)
+// - Bottom edge of last row (add row)
+// - Between rows/columns on hover
+```
+
+**B. Row Drag Handles**
+```typescript
+// Handle on left of each row to:
+// - Drag to reorder
+// - Right-click for row menu
+```
+
+**C. Cell Background Colors**
+```typescript
+// Context menu or toolbar option to set:
+// - Cell background color
+// - Row background color
+// - Column background color
+```
+
+**D. Column Options Menu**
+```typescript
+// Dropdown on column header with:
+// - Sort ascending/descending
+// - Insert column left/right
+// - Delete column
+// - Resize column
+```
+
+#### Acceptance Criteria
+- [ ] "+" buttons on table edges for quick add
+- [ ] "+" buttons between rows/columns on hover
+- [ ] Row drag handles for reordering
+- [ ] Cell/row/column background colors
+- [ ] Column header dropdown menu
+- [ ] Sort by column
+
+---
+
+### 2.11 Text Colors
 
 **Priority:** 🟢 Nice to Have
 **Effort:** Low

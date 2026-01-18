@@ -3,15 +3,27 @@
 /**
  * Article Content Component
  * Clean reader-focused layout for URL/article cards
- * Shows either "Extract Article" button or editable article text via Tiptap
+ * Shows either "Extract Article" button or editable article text via Plate
+ *
+ * Updated to use Plate editor with JSON content storage.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
+// Simple type for Plate content - avoid complex generics
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlateContent = any[];
 import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
 import { Reader } from '@/components/reader';
-import { ArticleEditor } from '@/components/editor';
+import { PawkitPlateEditor } from '@/components/editor';
+import {
+  serializePlateContent,
+  isPlateJson,
+  parseJsonContent,
+  extractPlateText,
+} from '@/lib/plate/html-to-plate';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -135,13 +147,26 @@ export function ArticleContent({
     }
   }, [hasArticleContent, mightBeExtracting, isExtractingArticle, hasImage, onRequestExpandImage]);
 
+  // Parse article content - could be HTML (legacy) or JSON string (new format)
+  const parsedArticleContent = useMemo(() => {
+    const raw = articleContent;
+    if (isPlateJson(raw)) {
+      return parseJsonContent(raw) || raw;
+    }
+    return raw;
+  }, [articleContent]);
+
   // Handle article content changes from the editor
-  const handleArticleContentChange = useCallback((html: string) => {
+  const handleArticleContentChange = useCallback((value: PlateContent) => {
+    const jsonString = serializePlateContent(value);
+    const text = extractPlateText(value);
+    const wordCount = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
+
     updateCard(card.id, {
-      articleContent: html,
+      articleContent: jsonString,
       // Recalculate word count and reading time when content changes
-      wordCount: getContentStats(html).words,
-      readingTime: calculateReadingTime(getContentStats(html).words),
+      wordCount,
+      readingTime: calculateReadingTime(wordCount),
     });
   }, [card.id, updateCard]);
 
@@ -360,13 +385,14 @@ export function ArticleContent({
           )}
 
           <article className="article-reader-content max-w-none">
-            <ArticleEditor
-              content={articleContent}
+            <PawkitPlateEditor
+              content={parsedArticleContent}
               onChange={handleArticleContentChange}
               onEdit={handleArticleEdit}
               placeholder="No content extracted. You can add your own notes here..."
               workspaceId={card.workspaceId}
               cardId={card.id}
+              variant="minimal"
             />
           </article>
 

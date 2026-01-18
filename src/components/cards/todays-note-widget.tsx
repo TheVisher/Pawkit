@@ -16,6 +16,7 @@ import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useCards } from '@/lib/hooks/use-live-data';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
+import { isPlateJson, extractPlateText, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
 
 export function TodaysNoteWidget() {
   const [date, setDate] = useState(new Date());
@@ -116,10 +117,21 @@ export function TodaysNoteWidget() {
     setDate(new Date());
   };
 
-  // Get preview text from note content
-  const getPreview = (html: string) => {
-    if (!html) return 'Empty note';
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  // Get preview text from note content (handles both Plate JSON and HTML)
+  const getPreview = (content: string) => {
+    if (!content) return 'Empty note';
+
+    let text: string;
+
+    // Check if content is Plate JSON
+    if (isPlateJson(content)) {
+      const parsed = parseJsonContent(content);
+      text = parsed ? extractPlateText(parsed) : '';
+    } else {
+      // Legacy HTML content - strip tags
+      text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
     return text.length > 120 ? text.slice(0, 120) + '...' : text || 'Empty note';
   };
 

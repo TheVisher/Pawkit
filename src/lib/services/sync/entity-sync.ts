@@ -276,14 +276,31 @@ export async function upsertItems(
           .map((c) => [c.id, c])
       );
 
-      // Filter out cards that are local-only - don't overwrite them with server data
-      // A card is local-only if it has the #local-only tag
+      // Filter out cards that shouldn't be overwritten with server data:
+      // 1. Cards with #local-only tag (never sync these)
+      // 2. Cards with pending local changes (_synced === false) - don't overwrite unsynced edits
+      // 3. Cards where local data is newer than server data (prevents race condition where stale poll overwrites recent push)
       const SYSTEM_LOCAL_ONLY_TAG = '#local-only';
       const cardsToUpsert = localItems.filter((serverCard) => {
         const existingCard = existingMap.get(serverCard.id);
         if (existingCard?.tags?.includes(SYSTEM_LOCAL_ONLY_TAG)) {
           log.debug(`Skipping card/${serverCard.id} (local-only card - preserving local data)`);
           return false;
+        }
+        // Don't overwrite local cards that have pending changes (notes, content, etc.)
+        if (existingCard && existingCard._synced === false) {
+          log.debug(`Skipping card/${serverCard.id} (has pending local changes - will sync later)`);
+          return false;
+        }
+        // Don't overwrite if local data is newer than server data
+        // This prevents race condition: poll fetches stale data before push completes
+        if (existingCard?._lastModified && serverCard._lastModified) {
+          const localTime = existingCard._lastModified.getTime();
+          const serverTime = serverCard._lastModified.getTime();
+          if (localTime > serverTime) {
+            log.debug(`Skipping card/${serverCard.id} (local data is newer: ${new Date(localTime).toISOString()} > ${new Date(serverTime).toISOString()})`);
+            return false;
+          }
         }
         return true;
       });

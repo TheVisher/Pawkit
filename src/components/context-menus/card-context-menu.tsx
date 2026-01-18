@@ -43,7 +43,7 @@ import type { LocalCard } from '@/lib/db';
 import { AddToPawkitSubmenu } from './add-to-pawkit-submenu';
 import { ScheduleSubmenu } from './schedule-submenu';
 import { queueMetadataFetch, clearMetadataCache } from '@/lib/services/metadata-service';
-import { copyHtmlAsMarkdown, downloadHtmlAsMarkdown } from '@/lib/tiptap/markdown';
+import { copyHtmlAsMarkdown, downloadHtmlAsMarkdown } from '@/lib/utils/markdown-export';
 
 interface CardContextMenuProps {
   card: LocalCard;
