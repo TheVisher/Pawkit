@@ -114,6 +114,28 @@ const editorVariants = cva(
 );
 
 /**
+ * Extract body content from full HTML document
+ * Readability returns full documents with <html><head><body> tags
+ */
+function extractBodyContent(html: string): string {
+  // Check if it's a full HTML document
+  if (html.trim().toLowerCase().startsWith('<html') || html.trim().toLowerCase().startsWith('<!doctype')) {
+    // Extract content from body tag
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if (bodyMatch) {
+      return bodyMatch[1].trim();
+    }
+    // Fallback: remove html/head/body wrapper tags
+    return html
+      .replace(/<\/?html[^>]*>/gi, '')
+      .replace(/<head[^>]*>[\s\S]*<\/head>/gi, '')
+      .replace(/<\/?body[^>]*>/gi, '')
+      .trim();
+  }
+  return html;
+}
+
+/**
  * Deserialize HTML content to Plate JSON
  */
 function deserializeHtmlToPlate(
@@ -127,11 +149,14 @@ function deserializeHtmlToPlate(
       return createEmptyPlateContent();
     }
 
-    const editorNode = getEditorDOMFromHtmlString(html);
+    // Extract body content if this is a full HTML document (from Readability)
+    const contentHtml = extractBodyContent(html);
+
+    const editorNode = getEditorDOMFromHtmlString(contentHtml);
 
     // Handle case where getEditorDOMFromHtmlString returns null
     if (!editorNode) {
-      console.warn('[PawkitPlateEditor] getEditorDOMFromHtmlString returned null for:', html.substring(0, 100));
+      console.warn('[PawkitPlateEditor] getEditorDOMFromHtmlString returned null for:', contentHtml.substring(0, 100));
       return createEmptyPlateContent();
     }
 
