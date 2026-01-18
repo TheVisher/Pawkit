@@ -1,7 +1,7 @@
 /**
  * Markdown Export Utilities
  *
- * Converts HTML content to Markdown format.
+ * Converts content (HTML or Plate JSON) to Markdown format.
  * Supports Pawkit-specific nodes like callouts, mentions, and toggle blocks.
  *
  * Uses Turndown for HTML to Markdown conversion with custom rules for:
@@ -12,6 +12,7 @@
  */
 
 import TurndownService from 'turndown';
+import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
 
 // Create a configured Turndown instance
 function createTurndownService(): TurndownService {
@@ -212,32 +213,43 @@ function getTurndownService(): TurndownService {
 }
 
 /**
- * Convert HTML content to Markdown
- * @param html - HTML string
+ * Convert content (HTML or Plate JSON) to Markdown
+ * @param content - HTML string or Plate JSON string
  * @returns Markdown formatted string
  */
-export function htmlToMarkdown(html: string): string {
+export function htmlToMarkdown(content: string): string {
   const turndown = getTurndownService();
-  return turndown.turndown(html);
+
+  // Check if content is Plate JSON and convert to HTML first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      const html = plateToHtml(parsed);
+      return turndown.turndown(html);
+    }
+  }
+
+  // Content is HTML, convert directly
+  return turndown.turndown(content);
 }
 
 /**
- * Copy HTML content as Markdown to clipboard
- * @param html - HTML string
+ * Copy content (HTML or Plate JSON) as Markdown to clipboard
+ * @param content - HTML string or Plate JSON string
  * @returns Promise that resolves when copy is complete
  */
-export async function copyHtmlAsMarkdown(html: string): Promise<void> {
-  const markdown = htmlToMarkdown(html);
+export async function copyHtmlAsMarkdown(content: string): Promise<void> {
+  const markdown = htmlToMarkdown(content);
   await navigator.clipboard.writeText(markdown);
 }
 
 /**
- * Download HTML content as a Markdown file
- * @param html - HTML string
+ * Download content (HTML or Plate JSON) as a Markdown file
+ * @param content - HTML string or Plate JSON string
  * @param filename - Filename without extension
  */
-export function downloadHtmlAsMarkdown(html: string, filename: string): void {
-  const markdown = htmlToMarkdown(html);
+export function downloadHtmlAsMarkdown(content: string, filename: string): void {
+  const markdown = htmlToMarkdown(content);
   const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);
 

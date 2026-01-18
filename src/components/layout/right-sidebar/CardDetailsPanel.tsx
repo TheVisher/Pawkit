@@ -608,15 +608,48 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       // Append the pending note text to existing notes
       const currentNotes = card.notes || '';
 
-      // If there's existing content, add the new content after it
-      // Otherwise just use the new content
-      let newNotes: string;
-      if (currentNotes && currentNotes !== '<p></p>') {
-        // Remove trailing empty paragraph if present, then add the new content
-        const trimmedNotes = currentNotes.replace(/<p><\/p>$/, '');
-        newNotes = `${trimmedNotes}${pendingNoteText}`;
+      // Parse the pending note text (could be HTML from article selection)
+      // Convert it to Plate JSON if needed
+      let pendingNodes: PlateContent;
+      if (isPlateJson(pendingNoteText)) {
+        pendingNodes = parseJsonContent(pendingNoteText) || createEmptyPlateContent();
       } else {
-        newNotes = pendingNoteText;
+        // HTML from article selection - extract text using regex (safe, no DOM manipulation)
+        const textContent = pendingNoteText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        pendingNodes = [
+          {
+            type: 'blockquote',
+            children: [{ type: 'p', children: [{ text: textContent }] }],
+          },
+        ];
+      }
+
+      let newNotes: string;
+      if (currentNotes && isPlateJson(currentNotes)) {
+        // Existing content is Plate JSON - append new nodes
+        const existingContent = parseJsonContent(currentNotes);
+        if (existingContent) {
+          // Filter out empty paragraphs at the end
+          const filtered = existingContent.filter((node, idx) => {
+            if (idx === existingContent.length - 1 &&
+                'type' in node && node.type === 'p' &&
+                'children' in node && Array.isArray(node.children) &&
+                node.children.length === 1 &&
+                'text' in node.children[0] && node.children[0].text === '') {
+              return false;
+            }
+            return true;
+          });
+          newNotes = serializePlateContent([...filtered, ...pendingNodes] as PlateContent);
+        } else {
+          newNotes = serializePlateContent(pendingNodes);
+        }
+      } else if (currentNotes && currentNotes !== '<p></p>') {
+        // Existing content is HTML - just use the new Plate JSON content
+        // The old content will be migrated when the user opens the notes tab
+        newNotes = serializePlateContent(pendingNodes);
+      } else {
+        newNotes = serializePlateContent(pendingNodes);
       }
 
       updateCard(card.id, { notes: newNotes });

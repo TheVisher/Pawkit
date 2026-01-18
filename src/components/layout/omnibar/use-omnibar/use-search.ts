@@ -22,6 +22,12 @@ import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { detectTodo } from '@/lib/utils/todo-detection';
 import { addTaskToContent } from '@/lib/utils/parse-task-items';
 import { suggestSimilarTags, validateTag, cleanTagInput, findExistingTag } from '@/lib/utils/tag-normalizer';
+import {
+  isPlateJson,
+  parseJsonContent,
+  serializePlateContent,
+} from '@/lib/plate/html-to-plate';
+import type { Value, Descendant } from 'platejs';
 
 export interface SearchState {
   quickNoteText: string;
@@ -463,7 +469,16 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       // Add text to daily log instead of creating quick note
       const today = new Date();
       const timestamp = format(today, 'h:mm a');
-      const entryHtml = `<p><strong>${timestamp}</strong> - ${trimmedText.replace(/\n/g, '</p><p><strong>' + timestamp + '</strong> - ')}</p>`;
+
+      // Create Plate JSON entry - handle multi-line text
+      const lines = trimmedText.split('\n').filter(line => line.trim());
+      const entryNodes: Descendant[] = lines.map((line, idx) => ({
+        type: 'p',
+        children: [
+          { text: timestamp, bold: true },
+          { text: ` - ${line}` },
+        ],
+      }));
 
       // Find today's daily note
       const existingNotes = await db.cards
@@ -484,18 +499,32 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
 
       if (dailyNote) {
         // Prepend entry (newest at top)
-        const newContent = dailyNote.content
-          ? `${entryHtml}${dailyNote.content}`
-          : entryHtml;
+        let newContent: string;
+        if (dailyNote.content && isPlateJson(dailyNote.content)) {
+          // Existing content is Plate JSON - prepend new nodes
+          const existingContent = parseJsonContent(dailyNote.content);
+          if (existingContent) {
+            newContent = serializePlateContent([...entryNodes, ...existingContent] as Value);
+          } else {
+            newContent = serializePlateContent(entryNodes as Value);
+          }
+        } else if (dailyNote.content) {
+          // Existing content is HTML - prepend Plate JSON entry
+          // Note: This creates mixed content, but the editor handles both
+          const entryJson = serializePlateContent(entryNodes as Value);
+          newContent = entryJson; // Replace with JSON, old HTML content will be migrated on next edit
+        } else {
+          newContent = serializePlateContent(entryNodes as Value);
+        }
         await updateCard(dailyNote.id, { content: newContent });
       } else {
-        // Create new daily note
+        // Create new daily note with Plate JSON content
         await createCard({
           workspaceId: currentWorkspace.id,
           type: 'md-note',
           url: '',
           title: format(today, 'MMMM d, yyyy'),
-          content: entryHtml,
+          content: serializePlateContent(entryNodes as Value),
           isDailyNote: true,
           scheduledDate: startOfDay(today),
           tags: ['daily-note'],

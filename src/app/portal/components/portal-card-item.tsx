@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Pin, Globe, FileText, ExternalLink, GripVertical } from 'lucide-react';
 import type { LocalCard } from '@/lib/db/types';
 import { setInternalDragActive } from '../utils/drag-state';
+import { isPlateJson, parseJsonContent, extractPlateText } from '@/lib/plate/html-to-plate';
 
 interface PortalCardItemProps {
   card: LocalCard;
@@ -31,6 +32,22 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
   } catch {
     domain = card.domain || '';
   }
+
+  // Extract preview text from content (supports both Plate JSON and HTML)
+  const previewText = useMemo(() => {
+    const content = card.content;
+    if (!content) return '';
+
+    if (isPlateJson(content)) {
+      const parsed = parseJsonContent(content);
+      if (parsed) {
+        return extractPlateText(parsed).slice(0, 200);
+      }
+    }
+
+    // HTML content - strip tags
+    return content.replace(/<[^>]*>/g, '').slice(0, 200);
+  }, [card.content]);
 
   // Drag-out handlers for native file drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -162,7 +179,7 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
                 {card.title || 'Untitled'}
               </h3>
               <p className="text-xs text-text-muted line-clamp-4 flex-1">
-                {card.content?.replace(/<[^>]*>/g, '').slice(0, 200) || 'Empty note'}
+                {previewText || 'Empty note'}
               </p>
               <div className="absolute bottom-2 right-2">
                 <FileText className="w-4 h-4 text-text-muted opacity-50" />

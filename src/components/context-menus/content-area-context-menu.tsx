@@ -17,6 +17,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { serializePlateContent } from '@/lib/plate/html-to-plate';
 
 interface ContentAreaContextMenuProps {
   children: ReactNode;
@@ -58,13 +59,16 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
         });
         toast({ type: 'success', message: 'Bookmark created from clipboard' });
       } else if (trimmed) {
-        // Create a note from clipboard text
+        // Create a note from clipboard text using Plate JSON format
+        const plateContent = serializePlateContent([
+          { type: 'p', children: [{ text: trimmed }] },
+        ]);
         await createCard({
           workspaceId: currentWorkspace.id,
           type: 'md-note',
           title: '',
           url: '',
-          content: `<p>${trimmed}</p>`,
+          content: plateContent,
           status: 'READY',
           pinned: false,
           isFileCard: false,
