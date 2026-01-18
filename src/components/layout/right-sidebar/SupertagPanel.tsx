@@ -18,6 +18,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SupertagDefinition, TemplateSection, TemplateFormat } from '@/lib/tags/supertags';
+import { convertTemplateToJson } from '@/lib/utils/template-applicator';
+import {
+  isPlateJson,
+  parseJsonContent,
+  serializePlateContent,
+  htmlToPlateJson,
+} from '@/lib/plate/html-to-plate';
+import type { Descendant, Value } from 'platejs';
 
 interface SupertagPanelProps {
   supertag: SupertagDefinition;
@@ -26,21 +34,59 @@ interface SupertagPanelProps {
 }
 
 // =============================================================================
-// SECTION DETECTION & MANIPULATION (generic versions)
+// SECTION DETECTION & MANIPULATION (supports both HTML and JSON)
 // =============================================================================
 
-function detectSectionsInContent(content: string, sections: Record<string, TemplateSection>): string[] {
+/**
+ * Extract text from a Plate node's children
+ */
+function extractTextFromPlateNode(node: Descendant): string {
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map((child: Descendant) => extractTextFromPlateNode(child)).join('');
+  }
+  return '';
+}
+
+/**
+ * Detect sections from Plate JSON content
+ */
+function detectSectionsFromJson(content: Value, sections: Record<string, TemplateSection>): string[] {
+  const detected: { id: string; index: number }[] = [];
+
+  for (let i = 0; i < content.length; i++) {
+    const node = content[i];
+    // Look for h2 nodes
+    if ('type' in node && node.type === 'h2') {
+      const text = extractTextFromPlateNode(node).trim().toLowerCase();
+      // Find matching section
+      for (const [id, section] of Object.entries(sections)) {
+        if (section.name.toLowerCase() === text) {
+          detected.push({ id, index: i });
+          break;
+        }
+      }
+    }
+  }
+
+  return detected.sort((a, b) => a.index - b.index).map((d) => d.id);
+}
+
+/**
+ * Detect sections from HTML content (legacy support)
+ */
+function detectSectionsFromHtml(content: string, sections: Record<string, TemplateSection>): string[] {
   const detected: { id: string; index: number }[] = [];
   const lower = content.toLowerCase();
 
   for (const [id, section] of Object.entries(sections)) {
-    // Look for the section header in content
     const sectionNameLower = section.name.toLowerCase();
     const idx = lower.indexOf(`>${sectionNameLower}<`);
     if (idx > -1) {
       detected.push({ id, index: idx });
     } else {
-      // Also try without the angle brackets (for h2 text content)
       const h2Idx = lower.indexOf(`<h2>${sectionNameLower}</h2>`);
       if (h2Idx > -1) {
         detected.push({ id, index: h2Idx });
@@ -51,10 +97,74 @@ function detectSectionsInContent(content: string, sections: Record<string, Templ
   return detected.sort((a, b) => a.index - b.index).map((d) => d.id);
 }
 
+/**
+ * Detect sections in content (handles both JSON and HTML)
+ */
+function detectSectionsInContent(content: string, sections: Record<string, TemplateSection>): string[] {
+  if (!content || !content.trim()) return [];
+
+  // Try JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return detectSectionsFromJson(parsed, sections);
+    }
+  }
+
+  // Fall back to HTML parsing
+  return detectSectionsFromHtml(content, sections);
+}
+
 function getSectionHtml(section: TemplateSection, format: TemplateFormat): string {
   return format === 'list' ? section.listHtml : section.tableHtml;
 }
 
+/**
+ * Find the index range of a section in Plate JSON content
+ * Returns [startIndex, endIndex] where endIndex is exclusive
+ */
+function findSectionRangeInJson(
+  content: Value,
+  sectionName: string
+): [number, number] | null {
+  const sectionNameLower = sectionName.toLowerCase();
+  let startIndex = -1;
+
+  for (let i = 0; i < content.length; i++) {
+    const node = content[i];
+    if ('type' in node && node.type === 'h2') {
+      const text = extractTextFromPlateNode(node).trim().toLowerCase();
+      if (text === sectionNameLower) {
+        startIndex = i;
+      } else if (startIndex !== -1) {
+        // Found the next h2 header, end the section
+        return [startIndex, i];
+      }
+    }
+  }
+
+  // Section continues to end of content
+  if (startIndex !== -1) {
+    return [startIndex, content.length];
+  }
+
+  return null;
+}
+
+/**
+ * Remove a section from Plate JSON content
+ */
+function removeSectionFromJson(content: Value, sectionName: string): Value {
+  const range = findSectionRangeInJson(content, sectionName);
+  if (!range) return content;
+
+  const [startIndex, endIndex] = range;
+  return [...content.slice(0, startIndex), ...content.slice(endIndex)] as Value;
+}
+
+/**
+ * Remove a section from content (handles both JSON and HTML)
+ */
 function removeSectionFromContent(
   content: string,
   sectionId: string,
@@ -63,6 +173,16 @@ function removeSectionFromContent(
   const section = sections[sectionId];
   if (!section) return content;
 
+  // Try JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      const updated = removeSectionFromJson(parsed, section.name);
+      return serializePlateContent(updated);
+    }
+  }
+
+  // Fall back to HTML
   const headerRegex = new RegExp(`<h2>${section.name}</h2>`, 'i');
   const match = content.match(headerRegex);
 
@@ -79,59 +199,99 @@ function removeSectionFromContent(
   return (content.slice(0, startIndex) + content.slice(endIndex)).trim();
 }
 
-function extractSectionFromContent(
-  content: string,
-  sectionId: string,
-  sections: Record<string, TemplateSection>
-): string | null {
-  const section = sections[sectionId];
-  if (!section) return null;
+/**
+ * Extract a section from Plate JSON content
+ */
+function extractSectionFromJson(content: Value, sectionName: string): Value | null {
+  const range = findSectionRangeInJson(content, sectionName);
+  if (!range) return null;
 
-  const headerRegex = new RegExp(`<h2>${section.name}</h2>`, 'i');
-  const match = content.match(headerRegex);
-
-  if (!match || match.index === undefined) return null;
-
-  const startIndex = match.index;
-  const afterHeader = content.slice(startIndex + match[0].length);
-  const nextH2Match = afterHeader.match(/<h2>/i);
-
-  const endIndex = nextH2Match?.index !== undefined
-    ? startIndex + match[0].length + nextH2Match.index
-    : content.length;
-
-  return content.slice(startIndex, endIndex).trim();
+  const [startIndex, endIndex] = range;
+  return content.slice(startIndex, endIndex) as Value;
 }
 
+/**
+ * Reorder sections in Plate JSON content
+ */
+function reorderSectionsInJson(
+  content: Value,
+  newOrder: string[],
+  sections: Record<string, TemplateSection>
+): Value {
+  const extracted: Descendant[] = [];
+
+  for (const sectionId of newOrder) {
+    const section = sections[sectionId];
+    if (!section) continue;
+
+    const sectionContent = extractSectionFromJson(content, section.name);
+    if (sectionContent) {
+      extracted.push(...sectionContent);
+    }
+  }
+
+  return extracted as Value;
+}
+
+/**
+ * Reorder sections in content (handles both JSON and HTML)
+ */
 function reorderSections(
   content: string,
   newOrder: string[],
   sections: Record<string, TemplateSection>
 ): string {
-  const extracted: string[] = [];
-
-  for (const sectionId of newOrder) {
-    const html = extractSectionFromContent(content, sectionId, sections);
-    if (html) {
-      extracted.push(html);
+  // Try JSON first
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      const reordered = reorderSectionsInJson(parsed, newOrder, sections);
+      return serializePlateContent(reordered);
     }
   }
 
-  return extracted.join('\n');
+  // Fall back to HTML (convert result to JSON)
+  const extracted: string[] = [];
+  for (const sectionId of newOrder) {
+    const section = sections[sectionId];
+    if (!section) continue;
+
+    const headerRegex = new RegExp(`<h2>${section.name}</h2>`, 'i');
+    const match = content.match(headerRegex);
+    if (!match || match.index === undefined) continue;
+
+    const startIndex = match.index;
+    const afterHeader = content.slice(startIndex + match[0].length);
+    const nextH2Match = afterHeader.match(/<h2>/i);
+    const endIndex = nextH2Match?.index !== undefined
+      ? startIndex + match[0].length + nextH2Match.index
+      : content.length;
+
+    extracted.push(content.slice(startIndex, endIndex).trim());
+  }
+
+  const html = extracted.join('\n');
+  return convertTemplateToJson(html);
 }
 
+/**
+ * Build a template from section IDs and return as JSON string
+ */
 function buildTemplate(
   sectionIds: string[],
   format: TemplateFormat,
   sections: Record<string, TemplateSection>
 ): string {
-  return sectionIds
+  const html = sectionIds
     .map((id) => {
       const section = sections[id];
       return section ? getSectionHtml(section, format) : '';
     })
     .filter(Boolean)
     .join('\n');
+
+  // Convert HTML template to JSON
+  return convertTemplateToJson(html);
 }
 
 // =============================================================================
@@ -205,18 +365,48 @@ export function SupertagPanel({ supertag, content, onContentChange }: SupertagPa
       if (!section) return;
 
       const sectionHtml = getSectionHtml(section, format);
+      const sectionJson = htmlToPlateJson(sectionHtml);
 
-      // Append before Notes if exists, otherwise at end
-      let newContent = content;
+      // Try to parse existing content as JSON
+      if (isPlateJson(content)) {
+        const parsed = parseJsonContent(content);
+        if (parsed) {
+          // Find "Notes" section to insert before it
+          let insertIndex = parsed.length;
+          for (let i = 0; i < parsed.length; i++) {
+            const node = parsed[i];
+            if ('type' in node && node.type === 'h2') {
+              const text = extractTextFromPlateNode(node).trim().toLowerCase();
+              if (text === 'notes') {
+                insertIndex = i;
+                break;
+              }
+            }
+          }
+
+          // Insert section at the found position
+          const newParsed = [
+            ...parsed.slice(0, insertIndex),
+            ...sectionJson,
+            ...parsed.slice(insertIndex),
+          ] as Value;
+
+          onContentChange(serializePlateContent(newParsed));
+          return;
+        }
+      }
+
+      // Fall back to HTML handling (convert result to JSON)
+      let newHtml = content;
       const notesIndex = content.toLowerCase().lastIndexOf('<h2>notes</h2>');
 
       if (notesIndex > -1) {
-        newContent = content.slice(0, notesIndex) + sectionHtml + '\n' + content.slice(notesIndex);
+        newHtml = content.slice(0, notesIndex) + sectionHtml + '\n' + content.slice(notesIndex);
       } else {
-        newContent = content + '\n' + sectionHtml;
+        newHtml = content + '\n' + sectionHtml;
       }
 
-      onContentChange(newContent);
+      onContentChange(convertTemplateToJson(newHtml));
     },
     [content, format, sections, onContentChange]
   );

@@ -8,6 +8,24 @@
 import type { Descendant, Value } from 'platejs';
 
 /**
+ * Plate element type for building content
+ */
+type PlateElement = {
+  type: string;
+  children: Descendant[];
+  [key: string]: unknown;
+};
+
+type PlateText = {
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  code?: boolean;
+};
+
+/**
  * Check if content is already Plate JSON format
  */
 export function isPlateJson(content: unknown): content is Descendant[] {
@@ -301,4 +319,428 @@ export function plateToHtml(content: Value): string {
   }
 
   return content.map(node => renderNode(node)).join('');
+}
+
+/**
+ * Convert HTML string to Plate JSON format
+ * Standalone function that doesn't require editor instance
+ * Used for converting templates before they're stored
+ */
+export function htmlToPlateJson(html: string): Value {
+  if (!html || !html.trim()) {
+    return createEmptyPlateContent();
+  }
+
+  // If already JSON, return as-is
+  if (isPlateJson(html)) {
+    return parseJsonContent(html) || createEmptyPlateContent();
+  }
+
+  // Parse HTML using DOMParser
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+
+  const result: Descendant[] = [];
+
+  // Process body children
+  const children = doc.body.childNodes;
+  for (let i = 0; i < children.length; i++) {
+    const node = children[i];
+    const converted = convertNode(node);
+    if (converted) {
+      if (Array.isArray(converted)) {
+        result.push(...converted);
+      } else {
+        result.push(converted);
+      }
+    }
+  }
+
+  // Ensure we have at least one element
+  if (result.length === 0) {
+    return createEmptyPlateContent();
+  }
+
+  return result as Value;
+}
+
+/**
+ * Convert a DOM node to Plate node(s)
+ */
+function convertNode(node: Node): Descendant | Descendant[] | null {
+  // Text node
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = node.textContent || '';
+    // Skip whitespace-only text nodes between elements
+    if (!text.trim()) return null;
+    return { text };
+  }
+
+  // Element node
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return null;
+  }
+
+  const element = node as Element;
+  const tagName = element.tagName.toLowerCase();
+
+  switch (tagName) {
+    // Headings
+    case 'h1':
+    case 'h2':
+    case 'h3':
+    case 'h4':
+    case 'h5':
+    case 'h6':
+      return {
+        type: tagName,
+        children: convertChildren(element),
+      };
+
+    // Paragraph
+    case 'p':
+      return {
+        type: 'p',
+        children: convertChildren(element),
+      };
+
+    // Lists
+    case 'ul':
+      return convertList(element, 'ul');
+    case 'ol':
+      return convertList(element, 'ol');
+    case 'li':
+      return convertListItem(element);
+
+    // Table elements
+    case 'table':
+      return convertTable(element);
+
+    // Inline elements - return children with marks
+    case 'strong':
+    case 'b':
+      return convertInlineWithMark(element, 'bold');
+    case 'em':
+    case 'i':
+      return convertInlineWithMark(element, 'italic');
+    case 'u':
+      return convertInlineWithMark(element, 'underline');
+    case 's':
+    case 'strike':
+    case 'del':
+      return convertInlineWithMark(element, 'strikethrough');
+    case 'code':
+      return convertInlineWithMark(element, 'code');
+
+    // Links
+    case 'a':
+      return {
+        type: 'a',
+        url: element.getAttribute('href') || '',
+        children: convertChildren(element),
+      };
+
+    // Blockquote
+    case 'blockquote':
+      return {
+        type: 'blockquote',
+        children: convertChildren(element),
+      };
+
+    // Pre/code blocks
+    case 'pre':
+      return convertCodeBlock(element);
+
+    // HR
+    case 'hr':
+      return {
+        type: 'hr',
+        children: [{ text: '' }],
+      };
+
+    // Div, span, tbody, thead - just process children
+    case 'div':
+    case 'span':
+    case 'tbody':
+    case 'thead':
+    case 'tfoot':
+      return convertChildrenAsNodes(element);
+
+    // BR - return empty text with newline effect
+    case 'br':
+      return { text: '\n' };
+
+    // Skip these wrapper elements but process children
+    default:
+      // Try to process children for unknown elements
+      const childNodes = convertChildrenAsNodes(element);
+      return childNodes.length > 0 ? childNodes : null;
+  }
+}
+
+/**
+ * Convert element children to Plate children array
+ */
+function convertChildren(element: Element): Descendant[] {
+  const children: Descendant[] = [];
+
+  for (let i = 0; i < element.childNodes.length; i++) {
+    const child = element.childNodes[i];
+
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent || '';
+      // Normalize whitespace but preserve some structure
+      const normalized = text.replace(/\s+/g, ' ');
+      if (normalized) {
+        children.push({ text: normalized });
+      }
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      const childElement = child as Element;
+      const converted = convertInlineElement(childElement);
+      if (converted) {
+        if (Array.isArray(converted)) {
+          children.push(...converted);
+        } else {
+          children.push(converted);
+        }
+      }
+    }
+  }
+
+  // Ensure at least one child
+  if (children.length === 0) {
+    children.push({ text: '' });
+  }
+
+  return children;
+}
+
+/**
+ * Convert inline elements (strong, em, a, etc.)
+ */
+function convertInlineElement(element: Element): Descendant | Descendant[] | null {
+  const tagName = element.tagName.toLowerCase();
+
+  switch (tagName) {
+    case 'strong':
+    case 'b':
+      return applyMarkToChildren(element, 'bold');
+    case 'em':
+    case 'i':
+      return applyMarkToChildren(element, 'italic');
+    case 'u':
+      return applyMarkToChildren(element, 'underline');
+    case 's':
+    case 'strike':
+    case 'del':
+      return applyMarkToChildren(element, 'strikethrough');
+    case 'code':
+      return applyMarkToChildren(element, 'code');
+    case 'a':
+      return {
+        type: 'a',
+        url: element.getAttribute('href') || '',
+        children: convertChildren(element),
+      };
+    case 'br':
+      return { text: '\n' };
+    case 'span':
+      // Just pass through children
+      return convertChildrenFlat(element);
+    default:
+      // Unknown inline element, try to get text content
+      const text = element.textContent || '';
+      return text ? { text } : null;
+  }
+}
+
+/**
+ * Apply a mark to all text children of an element
+ */
+function applyMarkToChildren(element: Element, mark: string): Descendant[] {
+  const result: Descendant[] = [];
+
+  for (let i = 0; i < element.childNodes.length; i++) {
+    const child = element.childNodes[i];
+
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent || '';
+      if (text) {
+        result.push({ text, [mark]: true } as PlateText);
+      }
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      const converted = convertInlineElement(child as Element);
+      if (converted) {
+        // Apply mark to nested text nodes
+        const nodes = Array.isArray(converted) ? converted : [converted];
+        for (const node of nodes) {
+          if ('text' in node) {
+            result.push({ ...node, [mark]: true } as PlateText);
+          } else {
+            result.push(node);
+          }
+        }
+      }
+    }
+  }
+
+  return result.length > 0 ? result : [{ text: '', [mark]: true } as PlateText];
+}
+
+/**
+ * Convert children to flat array of Descendant
+ */
+function convertChildrenFlat(element: Element): Descendant[] {
+  const result: Descendant[] = [];
+
+  for (let i = 0; i < element.childNodes.length; i++) {
+    const child = element.childNodes[i];
+
+    if (child.nodeType === Node.TEXT_NODE) {
+      const text = child.textContent || '';
+      if (text) {
+        result.push({ text });
+      }
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      const converted = convertInlineElement(child as Element);
+      if (converted) {
+        if (Array.isArray(converted)) {
+          result.push(...converted);
+        } else {
+          result.push(converted);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Convert children to block-level nodes
+ */
+function convertChildrenAsNodes(element: Element): Descendant[] {
+  const result: Descendant[] = [];
+
+  for (let i = 0; i < element.childNodes.length; i++) {
+    const converted = convertNode(element.childNodes[i]);
+    if (converted) {
+      if (Array.isArray(converted)) {
+        result.push(...converted);
+      } else {
+        result.push(converted);
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Convert inline element with a specific mark
+ */
+function convertInlineWithMark(element: Element, mark: string): Descendant[] {
+  return applyMarkToChildren(element, mark);
+}
+
+/**
+ * Convert UL/OL list
+ */
+function convertList(element: Element, listType: 'ul' | 'ol'): Descendant[] {
+  const items: Descendant[] = [];
+
+  for (let i = 0; i < element.children.length; i++) {
+    const child = element.children[i];
+    if (child.tagName.toLowerCase() === 'li') {
+      const converted = convertListItem(child);
+      if (converted) {
+        if (Array.isArray(converted)) {
+          items.push(...converted);
+        } else {
+          items.push(converted);
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Convert LI element
+ */
+function convertListItem(element: Element): PlateElement | null {
+  // Check if this is a task item
+  const dataType = element.getAttribute('data-type');
+  if (dataType === 'taskItem') {
+    const checked = element.getAttribute('data-checked') === 'true';
+    return {
+      type: 'action_item',
+      checked,
+      children: convertChildren(element),
+    };
+  }
+
+  // Regular list item
+  return {
+    type: 'li',
+    children: [
+      {
+        type: 'lic',
+        children: convertChildren(element),
+      },
+    ],
+  };
+}
+
+/**
+ * Convert table element
+ */
+function convertTable(element: Element): PlateElement {
+  const rows: Descendant[] = [];
+
+  // Find tbody or direct tr children
+  const tbody = element.querySelector('tbody') || element;
+  const trElements = tbody.querySelectorAll('tr');
+
+  trElements.forEach((tr) => {
+    const cells: Descendant[] = [];
+
+    tr.querySelectorAll('td, th').forEach((cell) => {
+      cells.push({
+        type: cell.tagName.toLowerCase() === 'th' ? 'th' : 'td',
+        children: convertChildren(cell),
+      });
+    });
+
+    if (cells.length > 0) {
+      rows.push({
+        type: 'tr',
+        children: cells,
+      });
+    }
+  });
+
+  return {
+    type: 'table',
+    children: rows.length > 0 ? rows : [{ type: 'tr', children: [{ type: 'td', children: [{ text: '' }] }] }],
+  };
+}
+
+/**
+ * Convert pre/code block
+ */
+function convertCodeBlock(element: Element): PlateElement {
+  const code = element.querySelector('code');
+  const text = code ? code.textContent || '' : element.textContent || '';
+
+  const lines = text.split('\n').map((line) => ({
+    type: 'code_line',
+    children: [{ text: line }],
+  }));
+
+  return {
+    type: 'code_block',
+    children: lines.length > 0 ? lines : [{ type: 'code_line', children: [{ text: '' }] }],
+  };
 }
