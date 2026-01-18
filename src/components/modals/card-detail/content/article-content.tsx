@@ -401,14 +401,37 @@ export function ArticleContent({
             <div className="mt-12 pt-6 border-t border-[var(--border-subtle)] text-center">
               <p className="text-sm text-text-muted">End of article</p>
               {card.url && (
-                <a
-                  href={card.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block mt-2 text-sm text-[var(--color-accent)] hover:underline"
-                >
-                  View original →
-                </a>
+                <div className="flex items-center justify-center gap-4 mt-2">
+                  <a
+                    href={card.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-[var(--color-accent)] hover:underline"
+                  >
+                    View original →
+                  </a>
+                  <span className="text-text-muted">·</span>
+                  <button
+                    onClick={handleExtractClick}
+                    disabled={isExtractingArticle}
+                    className={cn(
+                      'inline-flex items-center gap-1 text-sm text-text-muted hover:text-[var(--color-accent)]',
+                      'disabled:opacity-50 disabled:cursor-not-allowed'
+                    )}
+                  >
+                    {isExtractingArticle ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Re-extracting...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-3 w-3" />
+                        Re-fetch article
+                      </>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
           )}

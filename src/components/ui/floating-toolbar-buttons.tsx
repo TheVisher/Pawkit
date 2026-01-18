@@ -5,6 +5,7 @@ import * as React from 'react';
 import {
   BoldIcon,
   Code2Icon,
+  HighlighterIcon,
   ItalicIcon,
   StrikethroughIcon,
   UnderlineIcon,
@@ -13,6 +14,7 @@ import {
 import { KEYS } from 'platejs';
 import { useEditorReadOnly } from 'platejs/react';
 
+import { AddToNotesToolbarButton } from './add-to-notes-toolbar-button';
 import { AIToolbarButton } from './ai-toolbar-button';
 import { CommentToolbarButton } from './comment-toolbar-button';
 import { InlineEquationToolbarButton } from './equation-toolbar-button';
@@ -66,6 +68,10 @@ export function FloatingToolbarButtons() {
               <Code2Icon />
             </MarkToolbarButton>
 
+            <MarkToolbarButton nodeType={KEYS.highlight} tooltip="Highlight (⌘+⇧+H)">
+              <HighlighterIcon />
+            </MarkToolbarButton>
+
             <InlineEquationToolbarButton />
 
             <LinkToolbarButton />
@@ -74,6 +80,7 @@ export function FloatingToolbarButtons() {
       )}
 
       <ToolbarGroup>
+        <AddToNotesToolbarButton />
         <CommentToolbarButton />
         <SuggestionToolbarButton />
 
