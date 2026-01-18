@@ -404,45 +404,59 @@ function extractTextFromPlateNode(node: any): string {
 }
 
 /**
+ * Extract field values from a single list item (li)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractFieldFromListItem(li: any, values: Record<string, string>): void {
+  // Check for lic (list item content) children
+  const licChildren = li.children || [];
+  for (const lic of licChildren) {
+    if ('type' in lic && lic.type === 'lic') {
+      const licText = extractTextFromPlateNode(lic);
+      const colonMatch = licText.match(/^([^:]+):\s*(.*)$/);
+      if (colonMatch) {
+        const label = colonMatch[1].trim();
+        const value = colonMatch[2].trim();
+        // Skip placeholder values
+        if (value && value !== '(day of month)' && value !== '$/month' && value !== '&nbsp;') {
+          values[label] = value;
+        }
+      }
+    }
+  }
+  // Also try direct text extraction from li
+  const liText = extractTextFromPlateNode(li);
+  const colonMatch = liText.match(/^([^:]+):\s*(.*)$/);
+  if (colonMatch) {
+    const label = colonMatch[1].trim();
+    const value = colonMatch[2].trim();
+    if (value && value !== '(day of month)' && value !== '$/month' && value !== '&nbsp;' && !values[label]) {
+      values[label] = value;
+    }
+  }
+}
+
+/**
  * Extract field values from Plate JSON content
  * Handles list items with "Label: value" format
+ * Note: HTML-to-Plate conversion may produce naked li elements without ul/ol wrappers
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractFieldValuesFromPlateJson(content: any[]): Record<string, string> {
   const values: Record<string, string> = {};
 
   for (const node of content) {
+    // Handle naked li elements (from HTML-to-Plate conversion)
+    if ('type' in node && node.type === 'li') {
+      extractFieldFromListItem(node, values);
+    }
+
     // Handle list items (ul/ol with li children)
     if ('type' in node && (node.type === 'ul' || node.type === 'ol')) {
       const listChildren = node.children || [];
       for (const li of listChildren) {
         if ('type' in li && li.type === 'li') {
-          // Check for lic (list item content) children
-          const licChildren = li.children || [];
-          for (const lic of licChildren) {
-            if ('type' in lic && lic.type === 'lic') {
-              const licText = extractTextFromPlateNode(lic);
-              const colonMatch = licText.match(/^([^:]+):\s*(.*)$/);
-              if (colonMatch) {
-                const label = colonMatch[1].trim();
-                const value = colonMatch[2].trim();
-                // Skip placeholder values
-                if (value && value !== '(day of month)' && value !== '$/month' && value !== '&nbsp;') {
-                  values[label] = value;
-                }
-              }
-            }
-          }
-          // Also try direct text extraction from li
-          const liText = extractTextFromPlateNode(li);
-          const colonMatch = liText.match(/^([^:]+):\s*(.*)$/);
-          if (colonMatch) {
-            const label = colonMatch[1].trim();
-            const value = colonMatch[2].trim();
-            if (value && value !== '(day of month)' && value !== '$/month' && value !== '&nbsp;' && !values[label]) {
-              values[label] = value;
-            }
-          }
+          extractFieldFromListItem(li, values);
         }
       }
     }

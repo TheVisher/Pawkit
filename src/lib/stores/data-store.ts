@@ -17,6 +17,7 @@ import {
 import { slugify } from '@/lib/utils';
 import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
 import { ensureSystemPrivatePawkit, getEffectivePawkitPrivacy } from '@/lib/services/privacy';
+import { removeCardFromCalendar } from '@/lib/utils/card-calendar-sync';
 
 // Type declaration for debug helpers exposed on window
 declare global {
@@ -195,6 +196,13 @@ export const useDataStore = create<DataState>((set, get) => ({
   deleteCard: async (id) => {
     const existing = await db.cards.get(id);
     if (!existing) return;
+
+    // Remove associated calendar events before deleting
+    try {
+      await removeCardFromCalendar(id);
+    } catch (err) {
+      console.warn('[DataStore] Failed to remove calendar events for card:', id, err);
+    }
 
     // If this card has a conflict partner, resolve the conflict first
     if (existing.conflictWithId) {

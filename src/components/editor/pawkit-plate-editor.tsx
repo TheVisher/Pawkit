@@ -275,6 +275,9 @@ export function PawkitPlateEditor({
   // Track the last content we set to detect external changes
   const lastContentRef = useRef<string | null>(null);
 
+  // Track if we've mounted - skip external content changes on first render
+  const hasMountedRef = useRef(false);
+
   // Handle HTML conversion after editor is created
   useEffect(() => {
     if (
@@ -294,6 +297,15 @@ export function PawkitPlateEditor({
 
   // Handle external content changes (e.g., template selection from sidebar)
   useEffect(() => {
+    // Skip on first mount - initial content is already set via initialValue
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      // Set the initial ref to track future changes
+      const contentString = typeof content === 'string' ? content : JSON.stringify(content);
+      lastContentRef.current = contentString;
+      return;
+    }
+
     // Skip if content is the same as what we last set
     const contentString = typeof content === 'string' ? content : JSON.stringify(content);
     if (lastContentRef.current === contentString) {
