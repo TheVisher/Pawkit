@@ -352,7 +352,19 @@ function DetailsTabContent({
                 // Get the supertag definition and template
                 const supertagDef = getSupertagDefinition(newSupertagTag);
                 const newTitle = supertagDef ? `New ${supertagDef.displayName}` : card.title;
-                const newContent = getSupertagTemplate(newSupertagTag) || '';
+                const templateHtml = getSupertagTemplate(newSupertagTag) || '';
+
+                // Convert template HTML to Plate JSON for consistent storage
+                let newContent = '';
+                if (templateHtml) {
+                  try {
+                    const plateNodes = htmlToPlateJson(templateHtml);
+                    newContent = serializePlateContent(plateNodes);
+                  } catch (err) {
+                    console.warn('[CardDetailsPanel] Failed to convert template to JSON:', err);
+                    newContent = templateHtml; // Fallback to HTML
+                  }
+                }
 
                 // Update everything in one call - this is an explicit conversion action
                 await updateCard(card.id, {
