@@ -1,10 +1,12 @@
 /**
  * Subscription Info Parsing Utilities
  * Extract billing information from subscription supertag cards
+ * Supports both HTML (legacy) and Plate JSON content formats
  */
 
 import type { LocalCard } from '@/lib/db';
-import { format, isSameDay, addDays, setDate, isBefore, isAfter } from 'date-fns';
+import { isSameDay, addDays, setDate, isBefore, isAfter } from 'date-fns';
+import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
 
 export interface SubscriptionInfo {
   cardId: string;
@@ -17,21 +19,54 @@ export interface SubscriptionInfo {
 }
 
 /**
- * Parse subscription info from a card's HTML content
+ * Extract all text content from a Plate JSON node recursively
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromPlateNode(node: any): string {
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map(extractTextFromPlateNode).join('');
+  }
+  return '';
+}
+
+/**
+ * Extract all text from Plate JSON content
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromPlateContent(content: any[]): string {
+  return content.map(extractTextFromPlateNode).join('\n');
+}
+
+/**
+ * Parse subscription info from a card's content (HTML or JSON)
  */
 export function parseSubscriptionInfo(card: LocalCard): SubscriptionInfo | null {
   if (!card.content) return null;
   if (!card.tags?.includes('subscription')) return null;
 
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(card.content, 'text/html');
+  let textContent: string;
+
+  // Check if content is Plate JSON
+  if (isPlateJson(card.content)) {
+    const parsed = parseJsonContent(card.content);
+    if (!parsed) return null;
+    textContent = extractTextFromPlateContent(parsed);
+  } else {
+    // Fall back to HTML parsing
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(card.content, 'text/html');
+    textContent = doc.body.textContent || '';
+  }
 
   // Extract amount: look for "Amount: $X/month" or "$X/month"
-  const amount = extractAmount(doc);
+  const amount = extractAmountFromText(textContent);
   if (amount === null) return null;
 
   // Extract renewal day: look for "Renews: X" or "(day of month)"
-  const renewalDay = extractRenewalDay(doc);
+  const renewalDay = extractRenewalDayFromText(textContent);
   if (renewalDay === null) return null;
 
   // Calculate due date for current month
@@ -51,16 +86,16 @@ export function parseSubscriptionInfo(card: LocalCard): SubscriptionInfo | null 
 }
 
 /**
- * Extract dollar amount from HTML content
+ * Extract dollar amount from text content
  */
-function extractAmount(doc: Document): number | null {
-  const text = doc.body.textContent || '';
-
+function extractAmountFromText(text: string): number | null {
   // Match patterns like "$16/month", "$16.99/month", "Amount: $16"
   const patterns = [
     /\$(\d+(?:\.\d{2})?)\s*\/\s*month/i,
     /Amount:?\s*\$(\d+(?:\.\d{2})?)/i,
     /\$(\d+(?:\.\d{2})?)\s*(?:per|\/)\s*mo/i,
+    // Also match "$ 15" pattern (with space after dollar sign)
+    /Amount:?\s*\$\s*(\d+(?:\.\d{2})?)/i,
   ];
 
   for (const pattern of patterns) {
@@ -74,11 +109,9 @@ function extractAmount(doc: Document): number | null {
 }
 
 /**
- * Extract renewal day from HTML content
+ * Extract renewal day from text content
  */
-function extractRenewalDay(doc: Document): number | null {
-  const text = doc.body.textContent || '';
-
+function extractRenewalDayFromText(text: string): number | null {
   // Match patterns like "Renews: 15", "Renews: 15th", "(day of month) 15"
   const patterns = [
     /Renews:?\s*(\d{1,2})(?:st|nd|rd|th)?/i,

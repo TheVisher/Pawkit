@@ -4,6 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
+import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
 
 // =============================================================================
 // TYPES
@@ -388,7 +389,110 @@ export function extractContactInfo(content: string): { phone?: string; email?: s
 // FORMAT CONVERSION
 // =============================================================================
 
+/**
+ * Extract all text content from a Plate JSON node recursively
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTextFromPlateNode(node: any): string {
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map(extractTextFromPlateNode).join('');
+  }
+  return '';
+}
+
+/**
+ * Extract field values from Plate JSON content
+ * Handles list items with "Label: value" format
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractFieldValuesFromPlateJson(content: any[]): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const node of content) {
+    // Handle list items (ul/ol with li children)
+    if ('type' in node && (node.type === 'ul' || node.type === 'ol')) {
+      const listChildren = node.children || [];
+      for (const li of listChildren) {
+        if ('type' in li && li.type === 'li') {
+          // Check for lic (list item content) children
+          const licChildren = li.children || [];
+          for (const lic of licChildren) {
+            if ('type' in lic && lic.type === 'lic') {
+              const licText = extractTextFromPlateNode(lic);
+              const colonMatch = licText.match(/^([^:]+):\s*(.*)$/);
+              if (colonMatch) {
+                const label = colonMatch[1].trim();
+                const value = colonMatch[2].trim();
+                // Skip placeholder values
+                if (value && value !== '(day of month)' && value !== '$/month' && value !== '&nbsp;') {
+                  values[label] = value;
+                }
+              }
+            }
+          }
+          // Also try direct text extraction from li
+          const liText = extractTextFromPlateNode(li);
+          const colonMatch = liText.match(/^([^:]+):\s*(.*)$/);
+          if (colonMatch) {
+            const label = colonMatch[1].trim();
+            const value = colonMatch[2].trim();
+            if (value && value !== '(day of month)' && value !== '$/month' && value !== '&nbsp;' && !values[label]) {
+              values[label] = value;
+            }
+          }
+        }
+      }
+    }
+
+    // Handle table rows
+    if ('type' in node && node.type === 'table') {
+      const tableChildren = node.children || [];
+      for (const tr of tableChildren) {
+        if ('type' in tr && tr.type === 'tr') {
+          const cells = tr.children || [];
+          if (cells.length >= 2) {
+            const labelCell = cells[0];
+            const valueCell = cells[1];
+            const label = extractTextFromPlateNode(labelCell).trim();
+            const value = extractTextFromPlateNode(valueCell).trim();
+            if (label && value && value !== '&nbsp;') {
+              values[label] = value;
+            }
+          }
+        }
+      }
+    }
+
+    // Handle paragraphs with "Label: value" format
+    if ('type' in node && node.type === 'p') {
+      const pText = extractTextFromPlateNode(node);
+      const colonMatch = pText.match(/^([^:]+):\s*(.+)$/);
+      if (colonMatch) {
+        const label = colonMatch[1].trim();
+        const value = colonMatch[2].trim();
+        if (value && !values[label]) {
+          values[label] = value;
+        }
+      }
+    }
+  }
+
+  return values;
+}
+
 export function extractFieldValues(content: string): Record<string, string> {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return extractFieldValuesFromPlateJson(parsed);
+    }
+  }
+
+  // Fall back to HTML parsing
   const values: Record<string, string> = {};
 
   // List format
