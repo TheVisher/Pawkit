@@ -18,6 +18,7 @@ import { isYouTubeUrl } from '@/lib/utils/url-detection';
 import { validateUrl, type MetadataResult } from '@/lib/metadata';
 import { queueImagePersistence, needsPersistence } from '@/lib/metadata/image-persistence';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { htmlToPlateJson, serializePlateContent } from '@/lib/plate/html-to-plate';
 
 /**
  * Notify the portal that data has changed (for real-time updates)
@@ -503,9 +504,23 @@ async function extractArticleForCard(cardId: string): Promise<void> {
 
     const { article } = data;
 
+    // Convert HTML content to Plate JSON for consistent storage
+    // The editor now uses Plate JSON format, so we convert at extraction time
+    let articleContentJson: string | undefined;
+    if (article.content) {
+      try {
+        const plateNodes = htmlToPlateJson(article.content);
+        articleContentJson = serializePlateContent(plateNodes);
+      } catch (err) {
+        console.warn('[MetadataService] Failed to convert article to JSON, storing as HTML:', err);
+        // Fallback to raw HTML if conversion fails - editor can handle both
+        articleContentJson = article.content;
+      }
+    }
+
     // Update card with article content directly in Dexie
     await db.cards.update(cardId, {
-      articleContent: article.content || undefined,
+      articleContent: articleContentJson,
       wordCount: article.wordCount,
       readingTime: article.readingTime,
       // Set initial reading status
@@ -517,6 +532,7 @@ async function extractArticleForCard(cardId: string): Promise<void> {
     console.log('[MetadataService] Article extracted:', cardId, {
       wordCount: article.wordCount,
       readingTime: article.readingTime,
+      format: articleContentJson?.startsWith('[') ? 'json' : 'html',
     });
   } catch (error) {
     console.error('[MetadataService] Error extracting article:', error);

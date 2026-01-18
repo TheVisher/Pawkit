@@ -21,6 +21,7 @@ import {
   isHtmlContent,
   parseJsonContent,
   createEmptyPlateContent,
+  htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useReferences } from '@/lib/hooks/use-live-data';
@@ -118,17 +119,33 @@ const editorVariants = cva(
  * Readability returns full documents with <html><head><body> tags
  */
 function extractBodyContent(html: string): string {
-  // Check if it's a full HTML document
-  if (html.trim().toLowerCase().startsWith('<html') || html.trim().toLowerCase().startsWith('<!doctype')) {
-    // Extract content from body tag
-    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  // Strip any BOM or leading whitespace/invisible characters
+  const cleaned = html.replace(/^\uFEFF/, '').trim();
+  const lower = cleaned.toLowerCase();
+
+  // Check if it's a full HTML document (use includes as fallback for edge cases)
+  const isFullDocument = lower.startsWith('<html') ||
+                         lower.startsWith('<!doctype') ||
+                         lower.includes('<html') && lower.includes('<body');
+
+  if (isFullDocument) {
+    // Try to extract content from body tag (with closing tag)
+    const bodyMatch = cleaned.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     if (bodyMatch) {
       return bodyMatch[1].trim();
     }
-    // Fallback: remove html/head/body wrapper tags
-    return html
+
+    // Fallback: extract everything after <body> tag (no closing tag needed)
+    const bodyOpenMatch = cleaned.match(/<body[^>]*>([\s\S]*)/i);
+    if (bodyOpenMatch) {
+      // Remove any trailing </html> if present
+      return bodyOpenMatch[1].replace(/<\/html>\s*$/i, '').trim();
+    }
+
+    // Last resort: strip tags individually
+    return cleaned
       .replace(/<\/?html[^>]*>/gi, '')
-      .replace(/<head[^>]*>[\s\S]*<\/head>/gi, '')
+      .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
       .replace(/<\/?body[^>]*>/gi, '')
       .trim();
   }
@@ -137,6 +154,8 @@ function extractBodyContent(html: string): string {
 
 /**
  * Deserialize HTML content to Plate JSON
+ * Uses DOMParser-based htmlToPlateJson as the primary method since
+ * Plate's getEditorDOMFromHtmlString has issues with full HTML documents
  */
 function deserializeHtmlToPlate(
   html: string,
@@ -152,18 +171,25 @@ function deserializeHtmlToPlate(
     // Extract body content if this is a full HTML document (from Readability)
     const contentHtml = extractBodyContent(html);
 
-    const editorNode = getEditorDOMFromHtmlString(contentHtml);
+    // Use our own htmlToPlateJson which handles full documents better
+    // It uses DOMParser which properly extracts body content from <body>
+    const nodes = htmlToPlateJson(contentHtml);
 
-    // Handle case where getEditorDOMFromHtmlString returns null
+    if (nodes && nodes.length > 0) {
+      return nodes as PlateContent;
+    }
+
+    // Fallback to Plate's method if our conversion returned empty
+    const editorNode = getEditorDOMFromHtmlString(contentHtml);
     if (!editorNode) {
-      console.warn('[PawkitPlateEditor] getEditorDOMFromHtmlString returned null for:', contentHtml.substring(0, 100));
+      console.warn('[PawkitPlateEditor] Both conversion methods failed for:', contentHtml.substring(0, 100));
       return createEmptyPlateContent();
     }
 
-    const nodes = editor.api.html.deserialize({
+    const plateNodes = editor.api.html.deserialize({
       element: editorNode,
     });
-    return nodes as PlateContent;
+    return plateNodes as PlateContent;
   } catch (error) {
     console.error('[PawkitPlateEditor] HTML deserialization failed:', error);
     return createEmptyPlateContent();
