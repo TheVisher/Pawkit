@@ -62,13 +62,9 @@ const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; sty
 };
 
 // Extract all info from content based on tags
+// Note: All extract functions now support both Plate JSON and HTML formats
 function extractAllInfo(content: string, tags: string[]): Record<string, string | undefined> {
   const info: Record<string, string | undefined> = {};
-
-  // Skip extraction for Plate JSON content (extract functions expect HTML)
-  if (isPlateJson(content)) {
-    return info;
-  }
 
   const tagSet = new Set(tags.map((t) => t.toLowerCase()));
 
