@@ -12,6 +12,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
 import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
+import { isPlateJson, parseJsonContent, extractPlateText } from '@/lib/plate/html-to-plate';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -118,9 +119,19 @@ export function DayView() {
     }
   };
 
-  const getNotePreview = (html: string) => {
-    if (!html) return 'Empty note';
-    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const getNotePreview = (content: string) => {
+    if (!content) return 'Empty note';
+
+    let text: string;
+    if (isPlateJson(content)) {
+      // Handle Plate JSON content
+      const parsed = parseJsonContent(content);
+      text = parsed ? extractPlateText(parsed) : '';
+    } else {
+      // Handle legacy HTML content
+      text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
     return text.length > 80 ? text.slice(0, 80) + '...' : text || 'Empty note';
   };
 

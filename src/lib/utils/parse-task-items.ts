@@ -9,6 +9,7 @@ import {
   isPlateJson,
   parseJsonContent,
   serializePlateContent,
+  htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
 import type { Descendant, Value } from 'platejs';
 
@@ -610,7 +611,19 @@ export function addTaskToContent(content: string, taskText: string): string {
     }
   }
 
-  // Fall back to HTML
+  // Convert HTML to Plate JSON, then add task
+  // This ensures all saves are JSON format going forward
+  try {
+    const converted = htmlToPlateJson(content);
+    if (converted && converted.length > 0) {
+      const updated = addTaskToPlateJson(converted, taskText);
+      return serializePlateContent(updated);
+    }
+  } catch (err) {
+    console.warn('[parseTaskItems] Failed to convert HTML to JSON:', err);
+  }
+
+  // Last resort: use HTML fallback (should rarely happen)
   return addTaskToHtml(content, taskText);
 }
 

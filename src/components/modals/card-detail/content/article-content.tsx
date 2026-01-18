@@ -23,6 +23,7 @@ import {
   isPlateJson,
   parseJsonContent,
   extractPlateText,
+  htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
 import {
   AlertDialog,
@@ -232,8 +233,20 @@ export function ArticleContent({
         ? updateReadingTimeTag(currentTags, data.article.readingTime)
         : currentTags;
 
+      // Convert HTML content to Plate JSON for consistent storage
+      let articleContentJson: string | undefined;
+      if (data.article.content) {
+        try {
+          const plateNodes = htmlToPlateJson(data.article.content);
+          articleContentJson = serializePlateContent(plateNodes);
+        } catch (err) {
+          console.warn('[ArticleContent] Failed to convert to JSON, storing as HTML:', err);
+          articleContentJson = data.article.content;
+        }
+      }
+
       await updateCard(card.id, {
-        articleContent: data.article.content || undefined,
+        articleContent: articleContentJson,
         wordCount: data.article.wordCount,
         readingTime: data.article.readingTime,
         isRead: false,
