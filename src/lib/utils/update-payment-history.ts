@@ -2,14 +2,19 @@
  * Payment History Utilities
  * Manages the visual payment history table at the bottom of subscription cards
  *
+ * Supports both HTML (legacy) and Plate JSON formats.
+ *
  * Table structure:
  * - 2 rows × 6 columns per half-year
  * - Green cell = paid, Red cell = missed, Empty = future/current
  * - Year label above each year's tables
  * - Oldest years at bottom, newest at top
- *
- * Note: Tiptap strips data-* attributes, so we use position-based detection
  */
+
+import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PlateNode = any;
 
 const MONTHS_FIRST_HALF = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
 const MONTHS_SECOND_HALF = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -89,10 +94,20 @@ function yearTableExists(content: string, year: number): boolean {
 /**
  * Ensure the Payment History section exists at the bottom of the content
  * Creates it if missing, returns updated content
+ * Supports both HTML and Plate JSON content
  */
 export function ensurePaymentHistorySection(content: string, year?: number): string {
   const currentYear = year || new Date().getFullYear();
 
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return content;
+    const updated = ensurePaymentHistorySectionJson(parsed, currentYear);
+    return serializePlateContent(updated);
+  }
+
+  // HTML fallback
   const existing = findPaymentHistorySection(content);
   if (existing) {
     // Check if current year table exists using text detection
@@ -204,17 +219,39 @@ function updateMonthCell(
 
 /**
  * Mark a month as paid (green with checkmark)
+ * Supports both HTML and Plate JSON content
  */
 export function markMonthPaid(content: string, year: number, month: number): string {
-  // First ensure the section and year table exist
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return content;
+    const withSection = ensurePaymentHistorySectionJson(parsed, year);
+    const updated = updateMonthCellJson(withSection, year, month, COLOR_PAID, '✓');
+    return serializePlateContent(updated);
+  }
+
+  // HTML fallback
   const withSection = ensurePaymentHistorySection(content, year);
   return updateMonthCell(withSection, year, month, COLOR_PAID, '✓');
 }
 
 /**
  * Mark a month as unpaid (clear the cell)
+ * Supports both HTML and Plate JSON content
  */
 export function markMonthUnpaid(content: string, year: number, month: number): string {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return content;
+    const sectionIndex = findPaymentHistorySectionJson(parsed);
+    if (sectionIndex === -1) return content; // No section, nothing to clear
+    const updated = updateMonthCellJson(parsed, year, month, null, '');
+    return serializePlateContent(updated);
+  }
+
+  // HTML fallback
   const existing = findPaymentHistorySection(content);
   if (!existing) {
     return content; // No section, nothing to clear
@@ -224,9 +261,19 @@ export function markMonthUnpaid(content: string, year: number, month: number): s
 
 /**
  * Mark a month as missed (red with X)
+ * Supports both HTML and Plate JSON content
  */
 export function markMonthMissed(content: string, year: number, month: number): string {
-  // First ensure the section and year table exist
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return content;
+    const withSection = ensurePaymentHistorySectionJson(parsed, year);
+    const updated = updateMonthCellJson(withSection, year, month, COLOR_MISSED, '✗');
+    return serializePlateContent(updated);
+  }
+
+  // HTML fallback
   const withSection = ensurePaymentHistorySection(content, year);
   return updateMonthCell(withSection, year, month, COLOR_MISSED, '✗');
 }
@@ -234,8 +281,17 @@ export function markMonthMissed(content: string, year: number, month: number): s
 /**
  * Get the payment status of a specific month
  * Returns 'paid', 'missed', or 'empty'
+ * Supports both HTML and Plate JSON content
  */
 export function getMonthStatus(content: string, year: number, month: number): 'paid' | 'missed' | 'empty' {
+  // Check if content is Plate JSON
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (!parsed) return 'empty';
+    return getMonthStatusJson(parsed, year, month);
+  }
+
+  // HTML fallback
   const parser = new DOMParser();
   const doc = parser.parseFromString(content, 'text/html');
 
@@ -334,4 +390,216 @@ export function parseMonthKey(key: string): { year: number; month: number } {
     year: parseInt(yearStr, 10),
     month: parseInt(monthStr, 10) - 1, // Convert back to 0-indexed
   };
+}
+
+// =============================================================================
+// PLATE JSON SUPPORT
+// =============================================================================
+
+/**
+ * Extract text from a Plate node recursively
+ */
+function extractTextFromNode(node: PlateNode): string {
+  if (!node) return '';
+  if ('text' in node && typeof node.text === 'string') {
+    return node.text;
+  }
+  if ('children' in node && Array.isArray(node.children)) {
+    return node.children.map(extractTextFromNode).join('');
+  }
+  return '';
+}
+
+/**
+ * Create a table cell for Plate JSON
+ */
+function createPlateCell(text: string, isHeader: boolean, bgColor?: string): PlateNode {
+  const cell: PlateNode = {
+    type: isHeader ? 'th' : 'td',
+    children: [{ text }],
+  };
+  if (bgColor) {
+    cell.backgroundColor = bgColor;
+  }
+  return cell;
+}
+
+/**
+ * Create a table row for Plate JSON
+ */
+function createPlateRow(cells: PlateNode[]): PlateNode {
+  return {
+    type: 'tr',
+    children: cells,
+  };
+}
+
+/**
+ * Generate a year table in Plate JSON format
+ */
+function generateYearTableJson(year: number): PlateNode[] {
+  // Year label
+  const yearLabel: PlateNode = {
+    type: 'p',
+    children: [{ text: String(year), bold: true }],
+  };
+
+  // Table with 4 rows: header-Jan-Jun, data-Jan-Jun, header-Jul-Dec, data-Jul-Dec
+  const table: PlateNode = {
+    type: 'table',
+    children: [
+      createPlateRow(MONTHS_FIRST_HALF.map(m => createPlateCell(m, true))),
+      createPlateRow(MONTHS_FIRST_HALF.map(() => createPlateCell('', false))),
+      createPlateRow(MONTHS_SECOND_HALF.map(m => createPlateCell(m, true))),
+      createPlateRow(MONTHS_SECOND_HALF.map(() => createPlateCell('', false))),
+    ],
+  };
+
+  return [yearLabel, table];
+}
+
+/**
+ * Find the Payment History section index in Plate JSON content
+ */
+function findPaymentHistorySectionJson(content: PlateNode[]): number {
+  for (let i = 0; i < content.length; i++) {
+    const node = content[i];
+    if (node.type === 'h2') {
+      const text = extractTextFromNode(node).toLowerCase();
+      if (text.includes('payment history')) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Find a year table in the Payment History section
+ * Returns the index of the year label paragraph
+ */
+function findYearTableJson(content: PlateNode[], sectionStart: number, year: number): number {
+  for (let i = sectionStart + 1; i < content.length; i++) {
+    const node = content[i];
+    // Stop if we hit another h2 (different section)
+    if (node.type === 'h2') break;
+    // Look for year label
+    if (node.type === 'p') {
+      const text = extractTextFromNode(node).trim();
+      if (text === String(year)) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+/**
+ * Ensure Payment History section exists in Plate JSON content
+ */
+function ensurePaymentHistorySectionJson(content: PlateNode[], year: number): PlateNode[] {
+  const result = [...content];
+  const sectionIndex = findPaymentHistorySectionJson(result);
+
+  if (sectionIndex === -1) {
+    // Add new section at the end
+    const sectionHeader: PlateNode = {
+      type: 'h2',
+      children: [{ text: 'Payment History' }],
+    };
+    const yearNodes = generateYearTableJson(year);
+    result.push(sectionHeader, ...yearNodes);
+  } else {
+    // Section exists, check if year table exists
+    const yearIndex = findYearTableJson(result, sectionIndex, year);
+    if (yearIndex === -1) {
+      // Add year table right after the h2
+      const yearNodes = generateYearTableJson(year);
+      result.splice(sectionIndex + 1, 0, ...yearNodes);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Update a month cell in Plate JSON
+ */
+function updateMonthCellJson(
+  content: PlateNode[],
+  year: number,
+  month: number,
+  bgColor: string | null,
+  symbol: string
+): PlateNode[] {
+  const result = JSON.parse(JSON.stringify(content)); // Deep clone
+  const sectionIndex = findPaymentHistorySectionJson(result);
+  if (sectionIndex === -1) return result;
+
+  const yearIndex = findYearTableJson(result, sectionIndex, year);
+  if (yearIndex === -1) return result;
+
+  // The table should be right after the year label
+  const tableIndex = yearIndex + 1;
+  const table = result[tableIndex];
+  if (!table || table.type !== 'table') return result;
+
+  const { half, index } = getMonthInfo(month);
+  // Row indices: 0=header-first, 1=data-first, 2=header-second, 3=data-second
+  const dataRowIndex = half === 'first' ? 1 : 3;
+
+  const rows = table.children;
+  if (!rows || !rows[dataRowIndex]) return result;
+
+  const cells = rows[dataRowIndex].children;
+  if (!cells || !cells[index]) return result;
+
+  // Update the cell
+  cells[index].children = [{ text: symbol }];
+  if (bgColor) {
+    cells[index].backgroundColor = bgColor;
+  } else {
+    delete cells[index].backgroundColor;
+  }
+
+  return result;
+}
+
+/**
+ * Get month status from Plate JSON
+ */
+function getMonthStatusJson(
+  content: PlateNode[],
+  year: number,
+  month: number
+): 'paid' | 'missed' | 'empty' {
+  const sectionIndex = findPaymentHistorySectionJson(content);
+  if (sectionIndex === -1) return 'empty';
+
+  const yearIndex = findYearTableJson(content, sectionIndex, year);
+  if (yearIndex === -1) return 'empty';
+
+  const tableIndex = yearIndex + 1;
+  const table = content[tableIndex];
+  if (!table || table.type !== 'table') return 'empty';
+
+  const { half, index } = getMonthInfo(month);
+  const dataRowIndex = half === 'first' ? 1 : 3;
+
+  const rows = table.children;
+  if (!rows || !rows[dataRowIndex]) return 'empty';
+
+  const cells = rows[dataRowIndex].children;
+  if (!cells || !cells[index]) return 'empty';
+
+  const text = extractTextFromNode(cells[index]).trim();
+  if (text === '✓') return 'paid';
+  if (text === '✗') return 'missed';
+
+  // Also check background color
+  const bgColor = cells[index].backgroundColor;
+  if (bgColor === COLOR_PAID) return 'paid';
+  if (bgColor === COLOR_MISSED) return 'missed';
+
+  return 'empty';
 }
