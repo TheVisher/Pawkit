@@ -505,19 +505,23 @@ fn plate_node_to_markdown(node: &serde_json::Value, depth: usize) -> String {
         }
         "ul" | "ol" => children_md,
         "li" | "lic" => {
-            let prefix = "- ";
-            format!("{}{}\n", prefix, children_md.trim())
+            // Use depth for indentation (depth 1 = top-level list item, depth 2+ = nested)
+            let indent = "  ".repeat(depth.saturating_sub(1));
+            format!("{}- {}\n", indent, children_md.trim())
         }
         "action_item" => {
+            let indent = "  ".repeat(depth.saturating_sub(1));
             let checked = node.get("checked").and_then(|v| v.as_bool()).unwrap_or(false);
             let checkbox = if checked { "[x]" } else { "[ ]" };
-            format!("- {} {}\n", checkbox, children_md.trim())
+            format!("{}- {} {}\n", indent, checkbox, children_md.trim())
         }
         "code_block" => {
             let lang = node.get("lang").and_then(|v| v.as_str()).unwrap_or("");
-            format!("```{}\n{}\n```\n", lang, children_md.trim())
+            // Don't trim - preserve the newlines from code_line
+            let code_content = children_md.trim_end();
+            format!("```{}\n{}\n```\n", lang, code_content)
         }
-        "code_line" => children_md,
+        "code_line" => format!("{}\n", children_md),
         "link" | "a" => {
             let url = node.get("url").and_then(|v| v.as_str()).unwrap_or("");
             format!("[{}]({})", children_md, url)

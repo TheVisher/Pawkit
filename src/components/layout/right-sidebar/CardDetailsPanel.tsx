@@ -620,13 +620,25 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
         // HTML from article selection - convert to Plate JSON to preserve formatting
         // This keeps <mark>, <strong>, <em> and other formatting as Plate marks
         const htmlAsJson = htmlToPlateJson(pendingNoteText);
-        // Wrap the converted content in a blockquote for visual distinction
-        pendingNodes = [
-          {
-            type: 'blockquote',
-            children: htmlAsJson.length > 0 ? htmlAsJson : [{ type: 'p', children: [{ text: '' }] }],
-          },
-        ];
+
+        // Check if content is already wrapped in blockquote(s) - don't double-wrap
+        const isAlreadyBlockquote = htmlAsJson.length > 0 &&
+          htmlAsJson.every((node: Record<string, unknown>) => 'type' in node && node.type === 'blockquote');
+
+        if (isAlreadyBlockquote) {
+          // Use the blockquotes directly without re-wrapping
+          pendingNodes = htmlAsJson;
+        } else if (htmlAsJson.length > 0) {
+          // Wrap non-blockquote content in a blockquote for visual distinction
+          pendingNodes = [
+            {
+              type: 'blockquote',
+              children: htmlAsJson,
+            },
+          ];
+        } else {
+          pendingNodes = createEmptyPlateContent();
+        }
       }
 
       let newNotes: string;
@@ -734,6 +746,16 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
   // If exportedCount exceeds current blocks, treat all blocks as already exported
   const adjustedExportedCount = Math.min(exportedCount, totalBlockCount);
   const newBlockCount = totalBlockCount - adjustedExportedCount;
+
+  // Auto-correct drifted exportedHighlightCount when format changes cause counting mismatches
+  // This runs when the stored count exceeds actual blocks (indicates legacy HTML counting)
+  useEffect(() => {
+    if (card.exportedNoteId && exportedCount > 0 && exportedCount > totalBlockCount) {
+      // The stored count is higher than actual blocks - this indicates format drift
+      // Reset to current total to prevent re-exporting already-exported content
+      updateCard(card.id, { exportedHighlightCount: totalBlockCount });
+    }
+  }, [card.id, card.exportedNoteId, exportedCount, totalBlockCount, updateCard]);
 
   // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
