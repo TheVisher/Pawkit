@@ -272,6 +272,9 @@ export function PawkitPlateEditor({
   // Track if we've already converted HTML
   const hasConvertedHtml = useRef(false);
 
+  // Track the last content we set to detect external changes
+  const lastContentRef = useRef<string | null>(null);
+
   // Handle HTML conversion after editor is created
   useEffect(() => {
     if (
@@ -283,10 +286,46 @@ export function PawkitPlateEditor({
       hasConvertedHtml.current = true;
       const nodes = deserializeHtmlToPlate(content, editor);
       editor.tf.setValue(nodes);
+      lastContentRef.current = JSON.stringify(nodes);
       // Trigger onChange to save the converted content
       onChange(nodes);
     }
   }, [content, initialValue, editor, onChange]);
+
+  // Handle external content changes (e.g., template selection from sidebar)
+  useEffect(() => {
+    // Skip if content is the same as what we last set
+    const contentString = typeof content === 'string' ? content : JSON.stringify(content);
+    if (lastContentRef.current === contentString) {
+      return;
+    }
+
+    // Skip empty content
+    if (!content || (typeof content === 'string' && !content.trim())) {
+      return;
+    }
+
+    // Parse the new content
+    let newValue: PlateContent | null = null;
+
+    if (Array.isArray(content)) {
+      newValue = content;
+    } else if (typeof content === 'string') {
+      if (isPlateJson(content)) {
+        newValue = parseJsonContent(content);
+      } else if (isHtmlContent(content)) {
+        // Convert HTML to Plate JSON
+        hasConvertedHtml.current = true;
+        newValue = deserializeHtmlToPlate(content, editor);
+      }
+    }
+
+    if (newValue && newValue.length > 0) {
+      // Update the editor's content
+      editor.tf.setValue(newValue);
+      lastContentRef.current = JSON.stringify(newValue);
+    }
+  }, [content, editor]);
 
   // Track edits
   const hasEditedRef = useRef(false);
@@ -297,6 +336,8 @@ export function PawkitPlateEditor({
         hasEditedRef.current = true;
         onEdit();
       }
+      // Track what we're setting to avoid re-triggering external change effect
+      lastContentRef.current = JSON.stringify(value);
       onChange(value);
     },
     [onChange, onEdit]
