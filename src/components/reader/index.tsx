@@ -10,6 +10,7 @@ import DOMPurify from 'dompurify';
 import { X, Minus, Plus, Type, Minimize2, Sun, Moon, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
 
 interface ReaderProps {
   title: string;
@@ -106,11 +107,21 @@ export function Reader({
   }, []);
 
   // Sanitize HTML content and handle images
+  // Supports both HTML and Plate JSON formats
   const sanitizedContent = useMemo(() => {
     if (typeof window === 'undefined') return '';
 
-    // Sanitize first
-    let cleaned = DOMPurify.sanitize(content, {
+    // Convert Plate JSON to HTML if needed
+    let htmlContent = content;
+    if (isPlateJson(content)) {
+      const parsed = parseJsonContent(content);
+      if (parsed) {
+        htmlContent = plateToHtml(parsed);
+      }
+    }
+
+    // Sanitize
+    let cleaned = DOMPurify.sanitize(htmlContent, {
       ADD_TAGS: ['iframe'],
       ADD_ATTR: ['allowfullscreen', 'frameborder', 'src', 'loading'],
     });

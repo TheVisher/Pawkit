@@ -11,6 +11,7 @@ import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useToast } from '@/lib/stores/toast-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
+import { serializePlateContent } from '@/lib/plate/html-to-plate';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -179,12 +180,25 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
       if (isLocalOnly) {
         tags.push(SYSTEM_TAGS.LOCAL_ONLY);
       }
+
+      // Convert plain text to Plate JSON format
+      let contentToSave: string | undefined;
+      if (noteContent) {
+        // Split by newlines and create a paragraph for each line
+        const lines = noteContent.split('\n');
+        const plateNodes = lines.map((line) => ({
+          type: 'p' as const,
+          children: [{ text: line }],
+        }));
+        contentToSave = serializePlateContent(plateNodes);
+      }
+
       await createCard({
         workspaceId,
         type: 'md-note',
         url: '',
         title: noteTitle,
-        content: noteContent || undefined,
+        content: contentToSave,
         status: 'READY',
         tags,
         pinned: false,

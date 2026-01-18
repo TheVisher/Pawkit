@@ -26,6 +26,7 @@ import {
   isPlateJson,
   parseJsonContent,
   serializePlateContent,
+  htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
 import type { Value, Descendant } from 'platejs';
 
@@ -509,10 +510,9 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
             newContent = serializePlateContent(entryNodes as Value);
           }
         } else if (dailyNote.content) {
-          // Existing content is HTML - prepend Plate JSON entry
-          // Note: This creates mixed content, but the editor handles both
-          const entryJson = serializePlateContent(entryNodes as Value);
-          newContent = entryJson; // Replace with JSON, old HTML content will be migrated on next edit
+          // Existing content is HTML - convert to Plate JSON first, then prepend new entry
+          const existingAsJson = htmlToPlateJson(dailyNote.content);
+          newContent = serializePlateContent([...entryNodes, ...existingAsJson] as Value);
         } else {
           newContent = serializePlateContent(entryNodes as Value);
         }

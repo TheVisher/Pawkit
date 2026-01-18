@@ -273,21 +273,25 @@ export function plateToHtml(content: Value): string {
       case 'a':
         return `<a href="${escapeHtml(element.url || '')}">${children}</a>`;
 
-      // Mentions
+      // Mentions - include data attributes for Turndown rules
       case 'mention':
-        return `<span class="mention">@${escapeHtml(element.value || '')}</span>`;
+        const mentionType = element.mentionType || 'card';
+        const mentionLabel = escapeHtml(element.value || '');
+        return `<span data-pawkit-mention data-type="${mentionType}" data-label="${mentionLabel}">@${mentionLabel}</span>`;
 
-      // Date
+      // Date - include data attribute for Turndown rules
       case 'date':
-        return `<span class="date">${escapeHtml(element.date || '')}</span>`;
+        const dateValue = escapeHtml(element.date || '');
+        return `<span data-pawkit-mention data-type="date" data-label="${dateValue}">${dateValue}</span>`;
 
       // Horizontal rule
       case 'hr':
         return '<hr />';
 
-      // Callout
+      // Callout - include data attributes for Turndown rules
       case 'callout':
-        return `<div class="callout callout-${element.variant || 'info'}">${children}</div>`;
+        const calloutType = element.variant || 'info';
+        return `<div data-callout data-type="${calloutType}" class="callout callout-${calloutType}">${children}</div>`;
 
       // Toggle/collapsible
       case 'toggle':
@@ -307,10 +311,11 @@ export function plateToHtml(content: Value): string {
       case 'img':
         return `<img src="${escapeHtml(element.url || '')}" alt="${escapeHtml(element.alt || '')}" />`;
 
-      // Task list
+      // Task list - include data attributes for Turndown rules
       case 'action_item':
-        const checked = element.checked ? 'checked' : '';
-        return `<li class="task-item"><input type="checkbox" ${checked} disabled />${children}</li>`;
+        const isChecked = !!element.checked;
+        const checkedAttr = isChecked ? 'checked' : '';
+        return `<li data-type="taskItem" data-checked="${isChecked}"><input type="checkbox" ${checkedAttr} disabled />${children}</li>`;
 
       // Default: just render children
       default:

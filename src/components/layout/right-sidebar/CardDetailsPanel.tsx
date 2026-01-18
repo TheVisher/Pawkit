@@ -30,6 +30,7 @@ import {
   isPlateJson,
   parseJsonContent,
   createEmptyPlateContent,
+  htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 import { useToastStore } from '@/lib/stores/toast-store';
@@ -115,7 +116,9 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
         `Apply ${result.supertagName} template? This will replace your existing content.`
       );
       if (confirmed) {
-        updateCard(card.id, { content: result.template });
+        // Use applyTemplate to convert HTML template to JSON format
+        const newContent = applyTemplate('', result.template);
+        updateCard(card.id, { content: newContent });
       }
     }
   }, [card.id, card.tags, card.content, updateCard, triggerMuuriLayout]);
@@ -645,9 +648,9 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
           newNotes = serializePlateContent(pendingNodes);
         }
       } else if (currentNotes && currentNotes !== '<p></p>') {
-        // Existing content is HTML - just use the new Plate JSON content
-        // The old content will be migrated when the user opens the notes tab
-        newNotes = serializePlateContent(pendingNodes);
+        // Existing content is HTML - convert to Plate JSON first, then append new content
+        const existingAsJson = htmlToPlateJson(currentNotes);
+        newNotes = serializePlateContent([...existingAsJson, ...pendingNodes] as PlateContent);
       } else {
         newNotes = serializePlateContent(pendingNodes);
       }
@@ -682,55 +685,43 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     updateCard(card.id, { notes: jsonString });
   }, [card.id, updateCard]);
 
-  // Helper: Parse notes HTML into individual content blocks
-  // Handles both:
-  // - Highlights: <blockquote>...</blockquote><p><em>Highlighted on...</em></p>
-  // - Regular notes: <p>...</p> (non-empty paragraphs not part of a highlight)
-  const parseContentBlocks = useCallback((html: string): string[] => {
-    if (!html) return [];
-    const blocks: string[] = [];
+  // Helper: Parse notes content into individual content blocks
+  // Handles both JSON (Plate) and HTML formats
+  // For JSON: each top-level non-empty node is a block
+  // For HTML: extracts highlights and paragraphs
+  const parseContentBlocks = useCallback((content: string): PlateContent => {
+    if (!content) return [];
 
-    // First, extract all blockquote-based highlights (blockquote + following metadata)
-    // These get priority since they're distinct units
-    const highlightPattern = /<blockquote>[\s\S]*?<\/blockquote>(?:<p><em>Highlighted on[\s\S]*?<\/em><\/p>)?(?:<p><\/p>)?/g;
-    let lastIndex = 0;
-    let match;
-
-    while ((match = highlightPattern.exec(html)) !== null) {
-      // Check for any regular content BEFORE this highlight
-      const beforeContent = html.slice(lastIndex, match.index).trim();
-      if (beforeContent && beforeContent !== '<p></p>') {
-        // Parse any paragraphs in this section
-        const paragraphs = beforeContent.match(/<p>(?!<\/p>)[\s\S]*?<\/p>/g);
-        if (paragraphs) {
-          paragraphs.forEach(p => {
-            // Skip empty paragraphs and highlight metadata that might have been orphaned
-            if (p !== '<p></p>' && !p.includes('<em>Highlighted on')) {
-              blocks.push(p);
-            }
-          });
-        }
-      }
-
-      // Add the highlight block
-      blocks.push(match[0].trim());
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Check for any remaining content after the last highlight
-    const afterContent = html.slice(lastIndex).trim();
-    if (afterContent && afterContent !== '<p></p>') {
-      const paragraphs = afterContent.match(/<p>(?!<\/p>)[\s\S]*?<\/p>/g);
-      if (paragraphs) {
-        paragraphs.forEach(p => {
-          if (p !== '<p></p>' && !p.includes('<em>Highlighted on')) {
-            blocks.push(p);
+    // Handle Plate JSON format
+    if (isPlateJson(content)) {
+      const parsed = parseJsonContent(content);
+      if (parsed) {
+        // Filter out empty paragraphs
+        return parsed.filter(node => {
+          if ('type' in node && node.type === 'p' &&
+              'children' in node && Array.isArray(node.children) &&
+              node.children.length === 1 &&
+              'text' in node.children[0] && node.children[0].text === '') {
+            return false;
           }
+          return true;
         });
       }
+      return [];
     }
 
-    return blocks;
+    // Handle HTML format - convert to JSON first for consistent handling
+    const asJson = htmlToPlateJson(content);
+    // Filter out empty paragraphs
+    return asJson.filter(node => {
+      if ('type' in node && node.type === 'p' &&
+          'children' in node && Array.isArray(node.children) &&
+          node.children.length === 1 &&
+          'text' in node.children[0] && node.children[0].text === '') {
+        return false;
+      }
+      return true;
+    });
   }, []);
 
   // Count current content blocks (both highlights and regular notes)
@@ -742,7 +733,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
   // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
     const notesContent = card.notes;
-    if (!notesContent || notesContent === '<p></p>') {
+    if (!notesContent || notesContent === '<p></p>' || currentContentBlocks.length === 0) {
       toast({
         type: 'warning',
         message: 'No notes to export',
@@ -754,8 +745,13 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     try {
       // Add a source line at the top linking back to the original card
       const sourceTitle = card.title || 'Untitled';
-      const sourceHeader = `<p><em>Source: ${sourceTitle}</em></p><hr/>`;
-      const contentWithSource = `${sourceHeader}${notesContent}`;
+
+      // Build content with source header in Plate JSON format
+      const sourceNodes: PlateContent = [
+        { type: 'p', children: [{ text: 'Source: ', italic: true }, { text: sourceTitle, italic: true }] },
+        { type: 'hr', children: [{ text: '' }] },
+      ];
+      const contentWithSource = serializePlateContent([...sourceNodes, ...currentContentBlocks] as PlateContent);
 
       const newNote = await createCard({
         type: 'md-note',
@@ -797,7 +793,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [card.notes, card.title, card.workspaceId, card.id, totalBlockCount, createCard, createReference, updateCard, toast]);
+  }, [card.notes, card.title, card.workspaceId, card.id, totalBlockCount, currentContentBlocks, createCard, createReference, updateCard, toast]);
 
   // Update existing exported note by appending only NEW content blocks
   const handleUpdateNote = useCallback(async () => {
@@ -831,13 +827,22 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
 
     setIsUpdating(true);
     try {
-      // Join new blocks into content
-      const deltaContent = newBlocks.join('');
-
-      // Append to the exported note
+      // Append new blocks to existing content
       const existingContent = exportedNote.content || '';
-      const separator = existingContent && existingContent !== '<p></p>' ? '<p></p>' : '';
-      const newContent = existingContent ? `${existingContent}${separator}${deltaContent}` : deltaContent;
+      let newContent: string;
+
+      if (isPlateJson(existingContent)) {
+        // Existing is Plate JSON - append new blocks
+        const existingNodes = parseJsonContent(existingContent) || [];
+        newContent = serializePlateContent([...existingNodes, ...newBlocks] as PlateContent);
+      } else if (existingContent && existingContent !== '<p></p>') {
+        // Existing is HTML - convert to JSON, then append
+        const existingNodes = htmlToPlateJson(existingContent);
+        newContent = serializePlateContent([...existingNodes, ...newBlocks] as PlateContent);
+      } else {
+        // No existing content
+        newContent = serializePlateContent(newBlocks as PlateContent);
+      }
 
       await updateCard(card.exportedNoteId, { content: newContent });
 
@@ -859,7 +864,8 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     }
   }, [card.exportedNoteId, card.id, noteExists, currentContentBlocks, exportedCount, totalBlockCount, exportedNote, updateCard, toast]);
 
-  const hasNotes = card.notes && card.notes !== '<p></p>';
+  // Check if there are any notes (works for both JSON and HTML)
+  const hasNotes = currentContentBlocks.length > 0;
   // Can update if: has notes, has exported note, note exists, AND there are new content blocks
   const canUpdate = hasNotes && card.exportedNoteId && noteExists && newBlockCount > 0;
 
