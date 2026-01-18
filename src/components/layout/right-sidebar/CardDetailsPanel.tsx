@@ -612,17 +612,19 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       const currentNotes = card.notes || '';
 
       // Parse the pending note text (could be HTML from article selection)
-      // Convert it to Plate JSON if needed
+      // Convert it to Plate JSON to preserve formatting (highlights, bold, etc.)
       let pendingNodes: PlateContent;
       if (isPlateJson(pendingNoteText)) {
         pendingNodes = parseJsonContent(pendingNoteText) || createEmptyPlateContent();
       } else {
-        // HTML from article selection - extract text using regex (safe, no DOM manipulation)
-        const textContent = pendingNoteText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        // HTML from article selection - convert to Plate JSON to preserve formatting
+        // This keeps <mark>, <strong>, <em> and other formatting as Plate marks
+        const htmlAsJson = htmlToPlateJson(pendingNoteText);
+        // Wrap the converted content in a blockquote for visual distinction
         pendingNodes = [
           {
             type: 'blockquote',
-            children: [{ type: 'p', children: [{ text: textContent }] }],
+            children: htmlAsJson.length > 0 ? htmlAsJson : [{ type: 'p', children: [{ text: '' }] }],
           },
         ];
       }
@@ -728,7 +730,10 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
   const currentContentBlocks = useMemo(() => parseContentBlocks(card.notes || ''), [card.notes, parseContentBlocks]);
   const totalBlockCount = currentContentBlocks.length;
   const exportedCount = card.exportedHighlightCount || 0;
-  const newBlockCount = totalBlockCount - exportedCount;
+  // Ensure newBlockCount is never negative (can happen if old HTML counting differed from new JSON counting)
+  // If exportedCount exceeds current blocks, treat all blocks as already exported
+  const adjustedExportedCount = Math.min(exportedCount, totalBlockCount);
+  const newBlockCount = totalBlockCount - adjustedExportedCount;
 
   // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
@@ -816,7 +821,8 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     }
 
     // Get only the new content blocks (after the previously exported count)
-    const newBlocks = currentContentBlocks.slice(exportedCount);
+    // Use adjustedExportedCount to handle cases where old HTML counting differed
+    const newBlocks = currentContentBlocks.slice(adjustedExportedCount);
     if (newBlocks.length === 0) {
       toast({
         type: 'info',
@@ -862,7 +868,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsUpdating(false);
     }
-  }, [card.exportedNoteId, card.id, noteExists, currentContentBlocks, exportedCount, totalBlockCount, exportedNote, updateCard, toast]);
+  }, [card.exportedNoteId, card.id, noteExists, currentContentBlocks, adjustedExportedCount, totalBlockCount, exportedNote, updateCard, toast]);
 
   // Check if there are any notes (works for both JSON and HTML)
   const hasNotes = currentContentBlocks.length > 0;

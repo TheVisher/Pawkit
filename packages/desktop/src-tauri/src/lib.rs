@@ -416,14 +416,129 @@ async fn create_note_file(title: String, content: String) -> Result<String, Stri
     let filename = format!("{}.md", sanitize_filename(&title));
     let filepath = temp_dir.join(&filename);
 
-    // Strip HTML tags and convert to plain text/markdown
-    let clean_content = strip_html_to_markdown(&content);
+    // Detect if content is Plate JSON or HTML and convert appropriately
+    let clean_content = if is_plate_json(&content) {
+        plate_json_to_markdown(&content)
+    } else {
+        strip_html_to_markdown(&content)
+    };
     let md_content = format!("# {}\n\n{}", title, clean_content);
 
     std::fs::write(&filepath, md_content).map_err(|e| e.to_string())?;
     log::info!("Created note file: {:?}", filepath);
 
     Ok(filepath.to_string_lossy().to_string())
+}
+
+/// Check if content is Plate JSON format (starts with '[')
+fn is_plate_json(content: &str) -> bool {
+    let trimmed = content.trim();
+    trimmed.starts_with('[') && trimmed.ends_with(']')
+}
+
+/// Convert Plate JSON to markdown
+fn plate_json_to_markdown(content: &str) -> String {
+    let parsed: Result<Vec<serde_json::Value>, _> = serde_json::from_str(content);
+    match parsed {
+        Ok(nodes) => {
+            let mut result = String::new();
+            for node in nodes {
+                let md = plate_node_to_markdown(&node, 0);
+                if !md.is_empty() {
+                    result.push_str(&md);
+                    result.push('\n');
+                }
+            }
+            result.trim().to_string()
+        }
+        Err(_) => {
+            // Fallback to HTML stripping if JSON parse fails
+            strip_html_to_markdown(content)
+        }
+    }
+}
+
+/// Convert a single Plate node to markdown
+fn plate_node_to_markdown(node: &serde_json::Value, depth: usize) -> String {
+    // Handle text nodes (leaf nodes with "text" property)
+    if let Some(text) = node.get("text").and_then(|v| v.as_str()) {
+        let mut result = text.to_string();
+        // Apply formatting marks
+        if node.get("bold").and_then(|v| v.as_bool()).unwrap_or(false) {
+            result = format!("**{}**", result);
+        }
+        if node.get("italic").and_then(|v| v.as_bool()).unwrap_or(false) {
+            result = format!("*{}*", result);
+        }
+        if node.get("code").and_then(|v| v.as_bool()).unwrap_or(false) {
+            result = format!("`{}`", result);
+        }
+        if node.get("strikethrough").and_then(|v| v.as_bool()).unwrap_or(false) {
+            result = format!("~~{}~~", result);
+        }
+        if node.get("highlight").and_then(|v| v.as_bool()).unwrap_or(false) {
+            result = format!("=={result}==");
+        }
+        return result;
+    }
+
+    // Handle element nodes with "type" property
+    let node_type = node.get("type").and_then(|v| v.as_str()).unwrap_or("");
+    let children = node.get("children").and_then(|v| v.as_array());
+
+    // Recursively process children
+    let children_md: String = children
+        .map(|arr| arr.iter().map(|c| plate_node_to_markdown(c, depth + 1)).collect::<Vec<_>>().join(""))
+        .unwrap_or_default();
+
+    match node_type {
+        "p" => format!("{}\n", children_md),
+        "h1" => format!("# {}\n", children_md),
+        "h2" => format!("## {}\n", children_md),
+        "h3" => format!("### {}\n", children_md),
+        "h4" => format!("#### {}\n", children_md),
+        "h5" => format!("##### {}\n", children_md),
+        "h6" => format!("###### {}\n", children_md),
+        "blockquote" => {
+            // Prefix each line with >
+            children_md.lines().map(|line| format!("> {}", line)).collect::<Vec<_>>().join("\n") + "\n"
+        }
+        "ul" | "ol" => children_md,
+        "li" | "lic" => {
+            let prefix = "- ";
+            format!("{}{}\n", prefix, children_md.trim())
+        }
+        "action_item" => {
+            let checked = node.get("checked").and_then(|v| v.as_bool()).unwrap_or(false);
+            let checkbox = if checked { "[x]" } else { "[ ]" };
+            format!("- {} {}\n", checkbox, children_md.trim())
+        }
+        "code_block" => {
+            let lang = node.get("lang").and_then(|v| v.as_str()).unwrap_or("");
+            format!("```{}\n{}\n```\n", lang, children_md.trim())
+        }
+        "code_line" => children_md,
+        "link" | "a" => {
+            let url = node.get("url").and_then(|v| v.as_str()).unwrap_or("");
+            format!("[{}]({})", children_md, url)
+        }
+        "hr" => "---\n".to_string(),
+        "img" | "image" => {
+            let url = node.get("url").and_then(|v| v.as_str()).unwrap_or("");
+            let alt = node.get("alt").and_then(|v| v.as_str()).unwrap_or("");
+            format!("![{}]({})\n", alt, url)
+        }
+        "mention" => {
+            let value = node.get("value").and_then(|v| v.as_str()).unwrap_or("");
+            format!("[[{}]]", value)
+        }
+        "callout" => {
+            let variant = node.get("variant").and_then(|v| v.as_str()).unwrap_or("note");
+            let callout_content = children_md.lines().map(|line| format!("> {}", line)).collect::<Vec<_>>().join("\n");
+            format!("> [!{}]\n{}\n", variant, callout_content)
+        }
+        _ => children_md,
+    }
 }
 
 /// Strip HTML tags and convert to basic markdown
