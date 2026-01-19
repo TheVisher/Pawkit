@@ -59,7 +59,7 @@
     "jsdom": "^27.0.0",
     "lucide-react": "^0.544.0",
     "muuri": "^0.9.5",
-    "next": "^15.5.7",
+    "next": "^15.5.9",
     "next-themes": "^0.3.0",
     "node-html-parser": "^7.0.1",
     "pdfjs-dist": "^5.4.394",
