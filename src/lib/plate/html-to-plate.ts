@@ -249,6 +249,13 @@ export function plateToHtml(content: Value): string {
 
       // Paragraphs and basic blocks
       case 'p':
+        // Check if this is a todo item (has listStyleType: 'todo')
+        if (element.listStyleType === 'todo') {
+          const isChecked = !!element.checked;
+          const checkedAttr = isChecked ? 'checked' : '';
+          const strikeStyle = isChecked ? ' style="text-decoration: line-through; opacity: 0.6;"' : '';
+          return `<div data-type="taskItem" data-checked="${isChecked}"><input type="checkbox" ${checkedAttr} disabled /><span${strikeStyle}>${children}</span></div>`;
+        }
         return `<p>${children}</p>`;
       case 'blockquote':
         return `<blockquote>${children}</blockquote>`;
