@@ -132,13 +132,15 @@ export function emptyItem(): PlateElement {
 }
 
 /**
- * Create a task/action item (checkbox)
+ * Create a task/todo item with checkbox
+ * Uses Plate's listStyleType: 'todo' pattern for proper checkbox rendering
  * @param checked - Whether the task is checked
  * @param content - Optional text content
  */
 export function taskItem(checked: boolean = false, content: string = ''): PlateElement {
   return {
-    type: 'action_item',
+    type: 'p',
+    listStyleType: 'todo',
     checked,
     children: [text(content)],
   };
