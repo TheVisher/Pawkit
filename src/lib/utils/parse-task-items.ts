@@ -446,10 +446,12 @@ type PlateElement = {
 /**
  * Create a Plate JSON todo item node
  * Uses the listStyleType: 'todo' format that Plate's list plugin renders
+ * Includes indent: 1 which is required for the list plugin to render
  */
 function createPlateTodoItem(text: string, checked: boolean = false): PlateElement {
   return {
     type: 'p',
+    indent: 1,
     listStyleType: 'todo',
     checked,
     children: [{ text }],

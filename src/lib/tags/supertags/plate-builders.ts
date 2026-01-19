@@ -134,12 +134,14 @@ export function emptyItem(): PlateElement {
 /**
  * Create a task/todo item with checkbox
  * Uses Plate's listStyleType: 'todo' pattern for proper checkbox rendering
+ * Includes indent: 1 which is required for the list plugin to render
  * @param checked - Whether the task is checked
  * @param content - Optional text content
  */
 export function taskItem(checked: boolean = false, content: string = ''): PlateElement {
   return {
     type: 'p',
+    indent: 1,
     listStyleType: 'todo',
     checked,
     children: [text(content)],
