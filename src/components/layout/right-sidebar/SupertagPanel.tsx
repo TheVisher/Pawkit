@@ -51,6 +51,126 @@ function extractTextFromPlateNode(node: Descendant): string {
 }
 
 /**
+ * Extract field values from Plate JSON content
+ * Handles both list format (li > lic with "Label: value" pattern)
+ * and table format (tr > td[label] + td[value])
+ */
+function extractFieldValues(content: Value): Record<string, string> {
+  const values: Record<string, string> = {};
+
+  for (const node of content) {
+    // Handle list items (li > lic with "Label: value" pattern)
+    if ('type' in node && node.type === 'li' && 'children' in node) {
+      const lic = (node.children as Descendant[]).find(
+        (child: Descendant) => 'type' in child && child.type === 'lic'
+      );
+      if (lic && 'children' in lic) {
+        const text = extractTextFromPlateNode(lic);
+        const colonIndex = text.indexOf(':');
+        if (colonIndex > 0) {
+          const label = text.slice(0, colonIndex).trim();
+          const value = text.slice(colonIndex + 1).trim();
+          if (label && value) {
+            values[label.toLowerCase()] = value;
+          }
+        }
+      }
+    }
+
+    // Handle table rows (tr > td[label] + td[value])
+    if ('type' in node && node.type === 'table' && 'children' in node) {
+      for (const row of node.children as Descendant[]) {
+        if ('type' in row && row.type === 'tr' && 'children' in row) {
+          const cells = row.children as Descendant[];
+          if (cells.length >= 2) {
+            const labelCell = cells[0];
+            const valueCell = cells[1];
+            if ('type' in labelCell && labelCell.type === 'td' &&
+                'type' in valueCell && valueCell.type === 'td') {
+              const label = extractTextFromPlateNode(labelCell).trim();
+              const value = extractTextFromPlateNode(valueCell).trim();
+              if (label && value) {
+                values[label.toLowerCase()] = value;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Handle todo items (paragraphs with listStyleType: 'todo')
+    if ('type' in node && node.type === 'p' && 'listStyleType' in node && node.listStyleType === 'todo') {
+      // Keep todo items as-is, they don't have label:value format
+      continue;
+    }
+  }
+
+  return values;
+}
+
+/**
+ * Apply field values to a Plate JSON template
+ */
+function applyFieldValues(template: Value, values: Record<string, string>): Value {
+  return template.map((node) => {
+    // Handle list items
+    if ('type' in node && node.type === 'li' && 'children' in node) {
+      const newChildren = (node.children as Descendant[]).map((child) => {
+        if ('type' in child && child.type === 'lic' && 'children' in child) {
+          const text = extractTextFromPlateNode(child);
+          const colonIndex = text.indexOf(':');
+          if (colonIndex > 0) {
+            const label = text.slice(0, colonIndex).trim().toLowerCase();
+            const existingValue = values[label];
+            if (existingValue) {
+              // Rebuild the lic with the value
+              return {
+                ...child,
+                children: [
+                  { text: text.slice(0, colonIndex + 1), bold: true },
+                  { text: ' ' + existingValue },
+                ],
+              };
+            }
+          }
+        }
+        return child;
+      });
+      return { ...node, children: newChildren };
+    }
+
+    // Handle tables
+    if ('type' in node && node.type === 'table' && 'children' in node) {
+      const newRows = (node.children as Descendant[]).map((row) => {
+        if ('type' in row && row.type === 'tr' && 'children' in row) {
+          const cells = row.children as Descendant[];
+          if (cells.length >= 2) {
+            const labelCell = cells[0];
+            if ('type' in labelCell && labelCell.type === 'td') {
+              const label = extractTextFromPlateNode(labelCell).trim().toLowerCase();
+              const existingValue = values[label];
+              if (existingValue) {
+                // Update the value cell
+                const newCells = [...cells];
+                newCells[1] = {
+                  type: 'td',
+                  children: [{ text: existingValue }],
+                };
+                return { ...row, children: newCells };
+              }
+            }
+          }
+        }
+        return row;
+      });
+      return { ...node, children: newRows };
+    }
+
+    return node;
+  }) as Value;
+}
+
+/**
  * Detect sections from Plate JSON content
  */
 function detectSectionsFromJson(content: Value, sections: Record<string, TemplateSection>): string[] {
@@ -366,13 +486,33 @@ export function SupertagPanel({ supertag, content, onContentChange }: SupertagPa
     [content, format, sections, templateTypes, onContentChange]
   );
 
-  // Handle format toggle
+  // Handle format toggle - preserves user-entered values
   const handleFormatChange = useCallback(
     (newFormat: TemplateFormat) => {
       if (newFormat === format) return;
 
+      // Extract field values from current content
+      let fieldValues: Record<string, string> = {};
+      if (isPlateJson(content)) {
+        const parsed = parseJsonContent(content);
+        if (parsed) {
+          fieldValues = extractFieldValues(parsed);
+        }
+      }
+
+      // Build new template in the desired format
       const currentSections = sectionsInUse.length > 0 ? sectionsInUse : Object.keys(sections).slice(0, 2);
-      const newContent = buildTemplate(currentSections, newFormat, sections);
+      const templateNodes: Descendant[] = [];
+      for (const id of currentSections) {
+        const section = sections[id];
+        if (section) {
+          templateNodes.push(...getSectionJson(section, newFormat));
+        }
+      }
+
+      // Apply extracted values to the new template
+      const templateWithValues = applyFieldValues(templateNodes as Value, fieldValues);
+      const newContent = serializePlateContent(templateWithValues);
 
       setFormat(newFormat);
       onContentChange(newContent);
