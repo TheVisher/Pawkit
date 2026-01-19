@@ -38,6 +38,18 @@ function extractTextFromChildren(children: Descendant[]): string {
 }
 
 /**
+ * Check if a node is a todo item (supports both legacy action_item and listStyleType: 'todo')
+ */
+function isTodoItem(node: Descendant): boolean {
+  if (!('type' in node)) return false;
+  // Legacy format: type: 'action_item'
+  if (node.type === 'action_item') return true;
+  // Current format: type: 'p' with listStyleType: 'todo'
+  if (node.type === 'p' && 'listStyleType' in node && node.listStyleType === 'todo') return true;
+  return false;
+}
+
+/**
  * Parse task items from Plate JSON content
  */
 function parseTaskItemsFromPlateJson(
@@ -59,8 +71,8 @@ function parseTaskItemsFromPlateJson(
       }
     }
 
-    // Check for action_item (Plate's task item type)
-    if ('type' in node && node.type === 'action_item') {
+    // Check for todo items (both legacy action_item and listStyleType: 'todo')
+    if (isTodoItem(node)) {
       const checked = Boolean((node as { checked?: boolean }).checked);
       if ('children' in node && Array.isArray(node.children)) {
         const text = extractTextFromChildren(node.children as Descendant[]).trim();
@@ -201,8 +213,8 @@ function getEarliestUncheckedTaskDateFromPlateJson(content: Value): Date | null 
       }
     }
 
-    // Check for action_item (Plate's task item type)
-    if ('type' in node && node.type === 'action_item') {
+    // Check for todo items (both legacy action_item and listStyleType: 'todo')
+    if (isTodoItem(node)) {
       const isUnchecked = !(node as { checked?: boolean }).checked;
       if ('children' in node && Array.isArray(node.children)) {
         const hasText = extractTextFromChildren(node.children as Descendant[]).trim().length > 0;
@@ -352,7 +364,8 @@ function toggleTaskInPlateJson(
   newChecked: boolean
 ): Value {
   return content.map((node) => {
-    if ('type' in node && node.type === 'action_item') {
+    // Handle both legacy action_item and listStyleType: 'todo' formats
+    if (isTodoItem(node)) {
       if ('children' in node && Array.isArray(node.children)) {
         const text = extractTextFromChildren(node.children as Descendant[]).trim();
         if (text === taskText) {
@@ -431,11 +444,13 @@ type PlateElement = {
 };
 
 /**
- * Create a Plate JSON action_item node
+ * Create a Plate JSON todo item node
+ * Uses the listStyleType: 'todo' format that Plate's list plugin renders
  */
-function createPlateActionItem(text: string, checked: boolean = false): PlateElement {
+function createPlateTodoItem(text: string, checked: boolean = false): PlateElement {
   return {
-    type: 'action_item',
+    type: 'p',
+    listStyleType: 'todo',
     checked,
     children: [{ text }],
   };
@@ -456,7 +471,7 @@ function createPlateHeading(text: string, level: 'h1' | 'h2' | 'h3' = 'h2'): Pla
  */
 function addTaskToPlateJson(content: Value, taskText: string): Value {
   const today = format(new Date(), 'MMMM d, yyyy');
-  const newTask = createPlateActionItem(taskText, false);
+  const newTask = createPlateTodoItem(taskText, false);
 
   // Find today's header index
   let todayHeaderIndex = -1;
@@ -597,7 +612,7 @@ export function addTaskToContent(content: string, taskText: string): string {
     const today = format(new Date(), 'MMMM d, yyyy');
     const initialContent: Value = [
       createPlateHeading(today, 'h2'),
-      createPlateActionItem(taskText, false),
+      createPlateTodoItem(taskText, false),
     ];
     return serializePlateContent(initialContent);
   }
@@ -654,7 +669,7 @@ export function createInitialTodoContent(): string {
   const today = format(new Date(), 'MMMM d, yyyy');
   const initialContent: Value = [
     createPlateHeading(today, 'h2'),
-    createPlateActionItem('', false),
+    createPlateTodoItem('', false),
   ];
   return serializePlateContent(initialContent);
 }
