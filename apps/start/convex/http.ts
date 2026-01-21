@@ -26,18 +26,16 @@ http.route({
         });
       }
 
-      // Validate URL
-      try {
-        new URL(url);
-      } catch {
-        return new Response(JSON.stringify({ error: "Invalid URL format" }), {
+      const validated = validateExternalUrl(url);
+      if (!validated.ok) {
+        return new Response(JSON.stringify({ error: validated.error }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         });
       }
 
       // Scrape metadata
-      const metadata = await scrapeUrl(url);
+      const metadata = await scrapeUrl(validated.url);
 
       return new Response(JSON.stringify(metadata), {
         status: 200,
@@ -75,8 +73,16 @@ http.route({
         });
       }
 
+      const validated = validateExternalUrl(url);
+      if (!validated.ok) {
+        return new Response(JSON.stringify({ error: validated.error }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
       // Extract article
-      const article = await extractArticle(url);
+      const article = await extractArticle(validated.url);
 
       return new Response(
         JSON.stringify({ success: true, article }),
@@ -112,7 +118,15 @@ http.route({
 
       // Single URL check
       if (url && typeof url === "string") {
-        const result = await checkLink(url);
+        const validated = validateExternalUrl(url);
+        if (!validated.ok) {
+          return new Response(JSON.stringify({ error: validated.error }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const result = await checkLink(validated.url);
         return new Response(JSON.stringify({ url, ...result }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
@@ -122,9 +136,14 @@ http.route({
       // Batch URL check
       if (urls && Array.isArray(urls)) {
         const MAX_BATCH = 20;
-        const urlsToCheck = urls.slice(0, MAX_BATCH).filter(
-          (u): u is string => typeof u === "string"
-        );
+        const urlsToCheck = urls
+          .slice(0, MAX_BATCH)
+          .filter((u): u is string => typeof u === "string")
+          .map((u) => {
+            const validated = validateExternalUrl(u);
+            return validated.ok ? validated.url : null;
+          })
+          .filter((u): u is string => Boolean(u));
 
         if (urlsToCheck.length === 0) {
           return new Response(
@@ -187,6 +206,57 @@ interface ScrapedMetadata {
   images: string[];
   favicon: string | null;
   domain: string;
+}
+
+function validateExternalUrl(input: string):
+  | { ok: true; url: string }
+  | { ok: false; error: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(input);
+  } catch {
+    return { ok: false, error: "Invalid URL format" };
+  }
+
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    return { ok: false, error: "Unsupported URL protocol" };
+  }
+
+  const host = parsed.hostname.toLowerCase();
+
+  if (host.endsWith(".local")) {
+    return { ok: false, error: "Local URLs are not allowed" };
+  }
+
+  if (isPrivateHost(host)) {
+    return { ok: false, error: "Private network URLs are not allowed" };
+  }
+
+  return { ok: true, url: parsed.toString() };
+}
+
+function isPrivateHost(host: string): boolean {
+  if (host === "localhost") return true;
+  if (host === "::1") return true;
+
+  // IPv4 checks
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    const parts = host.split(".").map((p) => Number(p));
+    if (parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) return true;
+
+    const [a, b] = parts;
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+
+  // IPv6 unique-local, link-local
+  if (host.startsWith("fc") || host.startsWith("fd")) return true;
+  if (host.startsWith("fe80")) return true;
+
+  return false;
 }
 
 function isYouTubeUrl(url: string): boolean {

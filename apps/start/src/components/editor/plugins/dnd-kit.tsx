@@ -1,8 +1,5 @@
 'use client';
 
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-
 import { DndPlugin } from '@platejs/dnd';
 import { PlaceholderPlugin } from '@platejs/media/react';
 
@@ -20,9 +17,7 @@ export const DndKit = [
     },
     render: {
       aboveNodes: BlockDraggable,
-      aboveSlate: ({ children }) => (
-        <DndProvider backend={HTML5Backend}>{children}</DndProvider>
-      ),
+      aboveSlate: ({ children }) => children,
     },
   }),
 ];

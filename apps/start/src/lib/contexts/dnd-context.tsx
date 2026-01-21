@@ -15,6 +15,8 @@ import {
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { snapCenterToCursor } from '@dnd-kit/modifiers';
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 
 interface AppDndProviderProps {
   children: React.ReactNode;
@@ -36,12 +38,14 @@ export function AppDndProvider({ children }: AppDndProviderProps) {
   // This provider just establishes the context and sensors
   
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={pointerWithin}
-      modifiers={[snapCenterToCursor]}
-    >
-      {children}
-    </DndContext>
+    <DndProvider backend={HTML5Backend}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pointerWithin}
+        modifiers={[snapCenterToCursor]}
+      >
+        {children}
+      </DndContext>
+    </DndProvider>
   );
 }

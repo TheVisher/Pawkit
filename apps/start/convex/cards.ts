@@ -518,6 +518,20 @@ export const permanentDelete = mutation({
       await ctx.db.delete(ref._id);
     }
 
+    // Delete associated backlinks (incoming references)
+    const backlinks = await ctx.db
+      .query("references")
+      .withIndex("by_target", (q) => q.eq("targetId", id).eq("targetType", "card"))
+      .collect();
+
+    for (const ref of backlinks) {
+      await ctx.db.delete(ref._id);
+    }
+
+    if (card.storageId) {
+      await ctx.storage.delete(card.storageId);
+    }
+
     // Delete the card
     await ctx.db.delete(id);
   },
@@ -547,6 +561,32 @@ export const emptyTrash = mutation({
 
       for (const note of collectionNotes) {
         await ctx.db.delete(note._id);
+      }
+
+      // Delete associated references
+      const references = await ctx.db
+        .query("references")
+        .withIndex("by_source", (q) => q.eq("sourceId", card._id))
+        .collect();
+
+      for (const ref of references) {
+        await ctx.db.delete(ref._id);
+      }
+
+      // Delete associated backlinks (incoming references)
+      const backlinks = await ctx.db
+        .query("references")
+        .withIndex("by_target", (q) =>
+          q.eq("targetId", card._id).eq("targetType", "card")
+        )
+        .collect();
+
+      for (const ref of backlinks) {
+        await ctx.db.delete(ref._id);
+      }
+
+      if (card.storageId) {
+        await ctx.storage.delete(card.storageId);
       }
 
       // Delete the card

@@ -6,6 +6,7 @@ import { ConvexClientProvider } from '../components/providers/convex-provider'
 import { ThemeProvider } from '../components/providers/theme-provider'
 import { DebugProvider } from '../components/debug'
 import { AppShell } from '../components/layout/app-shell'
+import { AppDndProvider } from '../lib/contexts/dnd-context'
 
 import appCss from '../styles.css?url'
 
@@ -45,7 +46,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ConvexClientProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <DebugProvider>
-              <AppShell>{children}</AppShell>
+              <AppDndProvider>
+                <AppShell>{children}</AppShell>
+              </AppDndProvider>
               <TanStackDevtools
                 config={{
                   position: 'bottom-right',

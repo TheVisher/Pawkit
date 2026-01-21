@@ -136,7 +136,7 @@ export const getCards = query({
     const cards = await Promise.all(
       collectionNotes.map(async (note) => {
         const card = await ctx.db.get(note.cardId);
-        return card && !card.deleted
+        return card && !card.deleted && card.workspaceId === collection.workspaceId
           ? { ...card, _position: note.position }
           : null;
       })
@@ -405,6 +405,14 @@ export const addCard = mutation({
     if (!collection) throw new Error("Collection not found");
 
     await requireWorkspaceAccess(ctx, collection.workspaceId);
+
+    const card = await ctx.db.get(cardId);
+    if (!card) {
+      throw new Error("Card not found");
+    }
+    if (card.workspaceId !== collection.workspaceId) {
+      throw new Error("Card does not belong to this workspace");
+    }
 
     // Check if already in collection
     const existing = await ctx.db

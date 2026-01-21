@@ -234,7 +234,9 @@ export function BillsWidget() {
       }
     };
 
-    checkMissedPayments();
+    void checkMissedPayments().catch(() => {
+      // Ignore missed-payment scan errors to avoid breaking the widget
+    });
   }, [subscriptions, updateCard, cards]);
 
   // Group subscriptions by status

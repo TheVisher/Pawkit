@@ -21,7 +21,6 @@ import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { AppDndProvider } from '@/lib/contexts/dnd-context';
 import { ConvexDataProvider } from '@/lib/contexts/convex-data-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -319,7 +318,6 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
   return (
     <WorkspaceProvider>
       <ConvexDataProvider>
-        <AppDndProvider>
         <div className="h-screen w-screen bg-bg-base text-text-primary">
         {/* Mobile bottom nav - only shows < 768px */}
         <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
@@ -494,7 +492,6 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
         <CardPhotoPickerModal />
         <CardsDragHandler />
         </div>
-        </AppDndProvider>
       </ConvexDataProvider>
     </WorkspaceProvider>
   );

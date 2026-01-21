@@ -40,6 +40,20 @@ export const generateUploadUrl = mutation({
   },
 });
 
+async function requireCardOwner(ctx: any, cardId: Id<"cards">, userId: Id<"users">) {
+  const card = await ctx.db.get(cardId);
+  if (!card) {
+    throw new Error("Card not found");
+  }
+
+  const workspace = await ctx.db.get(card.workspaceId);
+  if (!workspace || workspace.userId !== userId) {
+    throw new Error("Not authorized");
+  }
+
+  return card;
+}
+
 /**
  * Save an uploaded image to a card.
  * Called after the client uploads to the URL from generateUploadUrl().
@@ -55,17 +69,7 @@ export const saveImageToCard = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Verify the card exists and belongs to the user's workspace
-    const card = await ctx.db.get(cardId);
-    if (!card) {
-      throw new Error("Card not found");
-    }
-
-    // Verify workspace ownership
-    const workspace = await ctx.db.get(card.workspaceId);
-    if (!workspace || workspace.userId !== userId) {
-      throw new Error("Not authorized");
-    }
+    await requireCardOwner(ctx, cardId, userId);
 
     // Get the URL for the stored file
     const imageUrl = await ctx.storage.getUrl(storageId);
@@ -92,6 +96,11 @@ export const getUrl = query({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, { storageId }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
     return await ctx.storage.getUrl(storageId);
   },
 });
@@ -102,12 +111,18 @@ export const getUrl = query({
  */
 export const deleteFile = mutation({
   args: {
+    cardId: v.id("cards"),
     storageId: v.id("_storage"),
   },
-  handler: async (ctx, { storageId }) => {
+  handler: async (ctx, { cardId, storageId }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) {
       throw new Error("Not authenticated");
+    }
+
+    const card = await requireCardOwner(ctx, cardId, userId);
+    if (card.storageId !== storageId) {
+      throw new Error("Storage ID does not match card");
     }
 
     await ctx.storage.delete(storageId);
@@ -133,9 +148,28 @@ export const persistImageFromUrl = action({
     imageUrl: v.string(),
   },
   handler: async (ctx, { cardId, imageUrl }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    await requireCardOwner(ctx, cardId, userId);
+
     console.log("[Storage] Persisting image for card:", cardId);
 
     try {
+      const parsedUrl = new URL(imageUrl);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        return { success: false, error: "Unsupported URL protocol" };
+      }
+      const host = parsedUrl.hostname.toLowerCase();
+      if (host === "localhost" || host === "::1") {
+        return { success: false, error: "Local URLs are not allowed" };
+      }
+      if (isPrivateHost(host)) {
+        return { success: false, error: "Private network URLs are not allowed" };
+      }
+
       // Download the image with timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
@@ -205,3 +239,24 @@ export const updateCardWithStoredImage = internalMutation({
     });
   },
 });
+
+function isPrivateHost(host: string): boolean {
+  // IPv4 checks
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    const parts = host.split(".").map((p) => Number(p));
+    if (parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) return true;
+
+    const [a, b] = parts;
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+  }
+
+  // IPv6 unique-local, link-local
+  if (host.startsWith("fc") || host.startsWith("fd")) return true;
+  if (host.startsWith("fe80")) return true;
+
+  return false;
+}

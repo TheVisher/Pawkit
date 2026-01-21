@@ -194,7 +194,11 @@ export function useMentionSearch(
   // Load chrono lazily when there's a query that might be a date
   useEffect(() => {
     if (query.trim() && !chronoModule) {
-      loadChrono().then(() => setChronoLoaded(true));
+      loadChrono()
+        .then(() => setChronoLoaded(true))
+        .catch(() => {
+          setChronoLoaded(false);
+        });
     }
   }, [query]);
 

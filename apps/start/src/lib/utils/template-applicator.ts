@@ -104,18 +104,39 @@ export function applyTemplate(
     return jsonTemplate;
   }
 
-  // For prepend/append, we need to merge JSON content
-  // For now, just replace - more complex merging can be added later
+  const existingJson = normalizeExistingContent(existingContent);
+  if (!existingJson) {
+    return jsonTemplate;
+  }
+
   switch (mode) {
     case 'prepend':
+      return [...jsonTemplate, ...existingJson] as Value;
     case 'append':
-      // TODO: Implement JSON content merging
-      // For now, just return the template
-      return jsonTemplate;
+      return [...existingJson, ...jsonTemplate] as Value;
     case 'replace':
     default:
       return jsonTemplate;
   }
+}
+
+function normalizeExistingContent(content: unknown): Value | null {
+  if (!content) return null;
+
+  if (Array.isArray(content)) {
+    return content as Value;
+  }
+
+  if (typeof content === 'string') {
+    if (isPlateJson(content)) {
+      return parseJsonContent(content);
+    }
+    if (content.trim()) {
+      return htmlToPlateJson(content);
+    }
+  }
+
+  return null;
 }
 
 /**
