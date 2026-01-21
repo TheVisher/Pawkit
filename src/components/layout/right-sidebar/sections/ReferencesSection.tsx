@@ -9,11 +9,21 @@ import { useMemo } from 'react';
 import { AtSign, Calendar, FileText, Link2, FolderOpen, Trash2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import { useReferences, useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections, useCardById, useReferences } from '@/lib/contexts/convex-data-context';
+import type { Card } from '@/lib/types/convex';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { format, parseISO } from 'date-fns';
-import type { LocalReference } from '@/lib/db';
+
+// Local Reference type definition (replaces LocalReference from db)
+interface Reference {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  targetType: 'card' | 'date' | 'pawkit';
+  linkText: string;
+  workspaceId: string;
+}
 
 interface ReferencesSectionProps {
   cardId: string;
@@ -21,7 +31,7 @@ interface ReferencesSectionProps {
 }
 
 interface ReferenceItemProps {
-  reference: LocalReference;
+  reference: Reference;
   label: string;
   subtitle?: string;
   icon: React.ReactNode;
@@ -65,31 +75,66 @@ function ReferenceItem({ reference, label, subtitle, icon, onClick, isDeleted }:
 }
 
 export function ReferencesSection({ cardId, workspaceId }: ReferencesSectionProps) {
+  // Get outgoing references from the Convex references table
   const references = useReferences(cardId);
-  const cards = useCards(workspaceId);
-  const collections = useCollections(workspaceId);
+  const cards = useCards();
+  const collections = useCollections();
   const { openCardDetail } = useModalStore();
   const router = useRouter();
 
-  // Group references by type
+  // Group references by type and enrich with related data
   const grouped = useMemo(() => {
-    const dates: (LocalReference & { parsedDate?: Date; isDeleted?: boolean })[] = [];
-    const cardRefs: (LocalReference & { card?: typeof cards[0]; isDeleted?: boolean })[] = [];
-    const pawkitRefs: (LocalReference & { collection?: typeof collections[0]; isDeleted?: boolean })[] = [];
+    const dates: (Reference & { parsedDate?: Date; isDeleted?: boolean })[] = [];
+    const cardRefs: (Reference & { card?: Card; isDeleted?: boolean })[] = [];
+    const pawkitRefs: (Reference & { collection?: typeof collections[0]; isDeleted?: boolean })[] = [];
 
     for (const ref of references) {
       if (ref.targetType === 'date') {
         try {
-          dates.push({ ...ref, parsedDate: parseISO(ref.targetId) });
+          const parsedDate = parseISO(ref.targetId);
+          dates.push({
+            id: ref._id,
+            sourceId: ref.sourceId,
+            targetId: ref.targetId,
+            targetType: 'date',
+            linkText: ref.linkText,
+            workspaceId: ref.workspaceId,
+            parsedDate,
+          });
         } catch {
-          dates.push(ref);
+          dates.push({
+            id: ref._id,
+            sourceId: ref.sourceId,
+            targetId: ref.targetId,
+            targetType: 'date',
+            linkText: ref.linkText,
+            workspaceId: ref.workspaceId,
+          });
         }
       } else if (ref.targetType === 'card') {
-        const card = cards.find((c) => c.id === ref.targetId);
-        cardRefs.push({ ...ref, card, isDeleted: !card });
+        const referencedCard = cards.find((c) => c._id === ref.targetId);
+        cardRefs.push({
+          id: ref._id,
+          sourceId: ref.sourceId,
+          targetId: ref.targetId,
+          targetType: 'card',
+          linkText: ref.linkText,
+          workspaceId: ref.workspaceId,
+          card: referencedCard,
+          isDeleted: !referencedCard || referencedCard.deleted,
+        });
       } else if (ref.targetType === 'pawkit') {
-        const collection = collections.find((c) => c.slug === ref.targetId);
-        pawkitRefs.push({ ...ref, collection, isDeleted: !collection });
+        const referencedCollection = collections.find((c) => c.slug === ref.targetId);
+        pawkitRefs.push({
+          id: ref._id,
+          sourceId: ref.sourceId,
+          targetId: ref.targetId,
+          targetType: 'pawkit',
+          linkText: ref.linkText,
+          workspaceId: ref.workspaceId,
+          collection: referencedCollection,
+          isDeleted: !referencedCollection || referencedCollection.deleted,
+        });
       }
     }
 

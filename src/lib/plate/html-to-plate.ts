@@ -111,8 +111,40 @@ export function createEmptyPlateContent(): Value {
 /**
  * Serialize Plate content to JSON string for storage
  */
-export function serializePlateContent(content: Descendant[]): string {
+export function serializePlateContent(content: Descendant[]): Value {
+  return content as Value;
+}
+
+export function stringifyPlateContent(content: Descendant[]): string {
   return JSON.stringify(content);
+}
+
+/**
+ * Check if content has any meaningful value
+ */
+export function hasPlateContent(content: unknown): boolean {
+  if (!content) return false;
+  if (Array.isArray(content)) return content.length > 0;
+  if (typeof content === 'string') return content.trim().length > 0;
+  return false;
+}
+
+/**
+ * Get plain text from Plate JSON, JSON string, or HTML string
+ */
+export function getContentText(content: unknown): string {
+  if (!content) return '';
+  if (Array.isArray(content)) {
+    return extractPlateText(content as Value);
+  }
+  if (typeof content === 'string') {
+    if (isPlateJson(content)) {
+      const parsed = parseJsonContent(content);
+      if (parsed) return extractPlateText(parsed);
+    }
+    return content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  return '';
 }
 
 /**

@@ -7,23 +7,28 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { format, isSameDay, startOfDay } from 'date-fns';
-import { db } from '@/lib/db';
 import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useMutations, useDataContext } from '@/lib/contexts/convex-data-context';
+import type { Id } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
-import { isPlateJson, extractPlateText, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
+import {
+  isPlateJson,
+  extractPlateText,
+  parseJsonContent,
+  createEmptyPlateContent,
+} from '@/lib/plate/html-to-plate';
 
 export function TodaysNoteWidget() {
   const [date, setDate] = useState(new Date());
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
-  const isLoading = useDataStore((s) => s.isLoading);
-  const createCard = useDataStore((s) => s.createCard);
+  const cards = useCards();
+  const { isLoading } = useDataContext();
+  const { createCard, restoreCard } = useMutations();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
@@ -34,37 +39,32 @@ export function TodaysNoteWidget() {
     if (!workspace) return null;
     return cards.find(
       (c) =>
-        c.workspaceId === workspace.id &&
+        c.workspaceId === workspace._id &&
         c.isDailyNote &&
-        c.scheduledDate &&
-        isSameDay(new Date(c.scheduledDate), date) &&
-        !c._deleted
+        c.scheduledDates?.[0] &&
+        isSameDay(new Date(c.scheduledDates[0]), date) &&
+        !c.deleted
     ) || null;
   }, [cards, workspace, date]);
-
-  const updateCard = useDataStore((s) => s.updateCard);
 
   const handleCreateNote = async () => {
     if (!workspace) return;
 
     // Check if a note already exists (prevent duplicates from race conditions)
     if (note) {
-      openCardDetail(note.id);
+      openCardDetail(note._id);
       return;
     }
 
     // Check for trashed daily note for this date - restore instead of creating new
-    const trashedCards = await db.cards
-      .where('workspaceId')
-      .equals(workspace.id)
-      .filter(
-        (c) =>
-          c.isDailyNote === true &&
-          c.scheduledDate != null &&
-          isSameDay(new Date(c.scheduledDate), date) &&
-          c._deleted === true
-      )
-      .toArray();
+    const trashedCards = cards.filter(
+      (c) =>
+        c.workspaceId === workspace._id &&
+        c.isDailyNote === true &&
+        c.scheduledDates?.[0] != null &&
+        isSameDay(new Date(c.scheduledDates[0]), date) &&
+        c.deleted === true
+    );
 
     if (trashedCards.length > 0) {
       // Restore only the most recent trashed daily note (preserve all existing content)
@@ -73,35 +73,32 @@ export function TodaysNoteWidget() {
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
       const trashedNote = sortedTrashed[0];
-      await updateCard(trashedNote.id, {
-        _deleted: false,
-      });
-      openCardDetail(trashedNote.id);
+      await restoreCard(trashedNote._id);
+      openCardDetail(trashedNote._id);
       return;
     }
 
     const newNote = await createCard({
-      workspaceId: workspace.id,
+      workspaceId: workspace._id as Id<'workspaces'>,
       type: 'md-note',
       url: '',
       title: format(date, 'MMMM d, yyyy'),
-      content: '',
+      content: createEmptyPlateContent(),
       isDailyNote: true,
-      scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
+      scheduledDates: [startOfDay(date).toISOString()], // Normalize to midnight to avoid timezone drift
       tags: ['daily-note'],
       pinned: false,
-      status: 'READY',
       isFileCard: false,
     });
 
     if (newNote) {
-      openCardDetail(newNote.id);
+      openCardDetail(newNote);
     }
   };
 
   const handleOpenNote = () => {
     if (note) {
-      openCardDetail(note.id);
+      openCardDetail(note._id);
     }
   };
 
@@ -118,7 +115,7 @@ export function TodaysNoteWidget() {
   };
 
   // Get preview text from note content (handles both Plate JSON and HTML)
-  const getPreview = (content: string) => {
+  const getPreview = (content: unknown) => {
     if (!content) return 'Empty note';
 
     let text: string;
@@ -127,9 +124,11 @@ export function TodaysNoteWidget() {
     if (isPlateJson(content)) {
       const parsed = parseJsonContent(content);
       text = parsed ? extractPlateText(parsed) : '';
-    } else {
+    } else if (typeof content === 'string') {
       // Legacy HTML content - strip tags
       text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    } else {
+      return 'Empty note';
     }
 
     return text.length > 120 ? text.slice(0, 120) + '...' : text || 'Empty note';

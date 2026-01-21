@@ -467,7 +467,7 @@ export function TableRowElement({
     >
       {hasControls && (
         <td className="w-2 select-none" contentEditable={false}>
-          <RowDragHandle dragRef={handleRef} />
+          {/* Row drag handle hidden until row reordering is implemented */}
           <RowDropLine />
         </td>
       )}

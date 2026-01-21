@@ -44,7 +44,7 @@ export function SearchResultsPanel({
           </div>
           {searchResults.cards.map((card, idx) => (
             <button
-              key={card.id}
+              key={card._id}
               onClick={() => onSelectResult(getGlobalIndex('cards', idx))}
               className={cn(
                 'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
@@ -78,7 +78,7 @@ export function SearchResultsPanel({
           </div>
           {searchResults.collections.map((col, idx) => (
             <button
-              key={col.id}
+              key={col._id}
               onClick={() => onSelectResult(getGlobalIndex('collections', idx))}
               className={cn(
                 'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { Link } from '@tanstack/react-router';
+import { usePathname, useRouter } from '@/lib/navigation';
 import { Drawer } from 'vaul';
 import {
   Home,
@@ -20,15 +20,15 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
 import { TagTree } from '@/components/tags/tag-tree';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { useConvexUser } from '@/lib/hooks/convex/use-convex-user';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useRightSidebarSettings } from '@/lib/stores/ui-store';
-import { getClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface MobileSidebarProps {
@@ -46,9 +46,10 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const user = useAuthStore((s) => s.user);
+  const { user } = useConvexUser();
   const workspace = useCurrentWorkspace();
   const { toggleSettings } = useRightSidebarSettings();
+  const { signOut } = useAuthActions();
   const [pawkitsExpanded, setPawkitsExpanded] = useState(true);
   const [tagsExpanded, setTagsExpanded] = useState(false);
 
@@ -61,8 +62,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : SunMoon;
 
   const handleSignOut = async () => {
-    const supabase = getClient();
-    await supabase.auth.signOut();
+    await signOut();
     router.push('/login');
     router.refresh();
   };
@@ -85,7 +85,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-4 border-b border-border-subtle">
-            <Link href="/home" onClick={handleNavClick} className="flex items-center gap-2">
+            <Link to="/home" onClick={handleNavClick} className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-[var(--color-accent)] flex items-center justify-center">
                 <span className="text-white font-bold text-sm">P</span>
               </div>
@@ -104,7 +104,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
                 return (
                   <Link
                     key={item.href}
-                    href={item.href}
+                    to={item.href}
                     onClick={handleNavClick}
                     className={cn(
                       'flex items-center px-3 py-3 text-sm transition-colors duration-200 relative rounded-xl',
@@ -135,7 +135,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
                   )}
                 >
                   <Link
-                    href="/pawkits"
+                    to="/pawkits"
                     onClick={handleNavClick}
                     className="flex items-center flex-1"
                   >
@@ -187,7 +187,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
                   )}
                 >
                   <Link
-                    href="/tags"
+                    to="/tags"
                     onClick={handleNavClick}
                     className="flex items-center flex-1"
                   >

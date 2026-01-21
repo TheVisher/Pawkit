@@ -2,21 +2,21 @@
 
 import { useMemo } from 'react';
 import { Flame } from 'lucide-react';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 /**
  * Calculate activity streak from card creation dates
  * A streak is consecutive days with at least one card created
  */
-function calculateStreak(cards: LocalCard[]): number {
+function calculateStreak(cards: Card[]): number {
   if (cards.length === 0) return 0;
 
   // Get unique dates when cards were created (excluding deleted)
   const creationDates = new Set<string>();
   for (const card of cards) {
-    if (card._deleted) continue;
+    if (card.deleted) continue;
     const date = new Date(card.createdAt);
     creationDates.add(date.toISOString().split('T')[0]);
   }
@@ -59,7 +59,7 @@ function calculateStreak(cards: LocalCard[]): number {
  */
 export function useHomeStats() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const cards = useCards();
 
   return useMemo(() => {
     const now = new Date();
@@ -70,7 +70,7 @@ export function useHomeStats() {
     let addedThisWeek = 0;
 
     for (const card of cards) {
-      if (card._deleted) continue;
+      if (card.deleted) continue;
 
       // Unread: URL cards that haven't been read
       if (card.type === 'url' && !card.isRead) {

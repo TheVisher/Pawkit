@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useViewStore, useCardDisplaySettings, useSubPawkitSettings, type SubPawkitSize } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
 import {
   type ContentType,
   type GroupBy,
@@ -58,8 +58,8 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
   const { subPawkitSize, subPawkitColumns, setSubPawkitSize, setSubPawkitColumns } = useSubPawkitSettings();
 
   // All Tags
-  const cards = useCards(workspace?.id);
-  const collections = useCollections(workspace?.id);
+  const cards = useCards();
+  const collections = useCollections();
 
   // Build set of Pawkit slugs to check if card has any Pawkit tags
   const pawkitSlugs = new Set(collections.map((c) => c.slug));
@@ -69,7 +69,7 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
     let noTags = 0;
     let noPawkits = 0;
     for (const card of cards) {
-      if (card._deleted) continue;
+      if (card.deleted) continue;
       const tags = card.tags || [];
       // A card is "in a Pawkit" if any of its tags match a Pawkit slug
       const hasAnyPawkitTag = tags.some((tag) => pawkitSlugs.has(tag));
@@ -91,7 +91,7 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
 
   const handleSettingChange = () => {
     if (workspace) {
-      setTimeout(() => saveViewSettings(workspace.id), 500);
+      setTimeout(() => saveViewSettings(workspace._id), 500);
     }
   };
 

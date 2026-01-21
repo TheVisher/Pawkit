@@ -13,6 +13,9 @@
 import * as cheerio from 'cheerio';
 import { MetadataResult, DEFAULT_CONFIG } from '../types';
 import { extractDomain } from '../generic';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("TikTokHandler");
 
 // TikTok oEmbed endpoint
 const TIKTOK_OEMBED_URL = 'https://www.tiktok.com/oembed';
@@ -71,14 +74,14 @@ async function fetchOEmbed(url: string): Promise<TikTokOEmbedResponse | null> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.warn('[TikTok] oEmbed failed with status:', response.status);
+      log.debug('oEmbed failed with status:', response.status);
       return null;
     }
 
     return (await response.json()) as TikTokOEmbedResponse;
   } catch (error) {
     clearTimeout(timeoutId);
-    console.warn('[TikTok] oEmbed fetch error:', error);
+    log.debug('oEmbed fetch error:', error);
     return null;
   }
 }
@@ -103,7 +106,7 @@ async function scrapeTikTokPage(url: string): Promise<MetadataResult | null> {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      console.warn('[TikTok] Scrape failed with status:', response.status);
+      log.debug('Scrape failed with status:', response.status);
       return null;
     }
 
@@ -152,7 +155,7 @@ async function scrapeTikTokPage(url: string): Promise<MetadataResult | null> {
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    console.warn('[TikTok] Scrape error:', error);
+    log.debug('Scrape error:', error);
     return null;
   }
 }

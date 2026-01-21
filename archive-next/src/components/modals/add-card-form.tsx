@@ -1,0 +1,416 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { Link2, FileText, Loader2, AlertCircle, WifiOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
+import { getEffectivePawkitPrivacy } from '@/lib/services/privacy';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useToast } from '@/lib/stores/toast-store';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { normalizeUrl } from '@/lib/utils/url-normalizer';
+import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+interface AddCardFormProps {
+  defaultTab: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProps) {
+  const createCard = useDataStore((state) => state.createCard);
+  const workspace = useCurrentWorkspace();
+  const workspaceId = workspace?.id;
+  const allCards = useCards(workspaceId);
+  const collections = useCollections(workspaceId);
+  const { success, error } = useToast();
+  const openCardDetail = useModalStore((state) => state.openCardDetail);
+
+  // Bookmark form state
+  const [bookmarkUrl, setBookmarkUrl] = useState('');
+  const [bookmarkTitle, setBookmarkTitle] = useState('');
+  const [bookmarkDescription, setBookmarkDescription] = useState('');
+  const [bookmarkCollection, setBookmarkCollection] = useState<string>('');
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+
+  // Duplicate detection
+  const duplicateCard = useMemo(() => {
+    if (!bookmarkUrl || !workspaceId) return null;
+
+    try {
+      // Validate URL format first
+      new URL(bookmarkUrl);
+    } catch {
+      return null;
+    }
+
+    const normalizedInput = normalizeUrl(bookmarkUrl);
+
+    return allCards.find((card) => {
+      if (card._deleted) return false;
+      if (card.type !== 'url') return false;
+      if (!card.url) return false;
+
+      return normalizeUrl(card.url) === normalizedInput;
+    }) || null;
+  }, [bookmarkUrl, allCards, workspaceId]);
+
+  // Note form state
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteCollection, setNoteCollection] = useState<string>('');
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  const [isLocalOnly, setIsLocalOnly] = useState(false);
+
+  // Default local-only based on selected bookmark collection's privacy
+  useEffect(() => {
+    if (bookmarkCollection) {
+      const collection = collections.find(c => c.slug === bookmarkCollection);
+      if (collection) {
+        const privacy = getEffectivePawkitPrivacy(collection, collections);
+        setIsLocalOnly(privacy.isLocalOnly);
+      }
+    }
+  }, [bookmarkCollection, collections]);
+
+  // Default local-only based on selected note collection's privacy
+  useEffect(() => {
+    if (noteCollection) {
+      const collection = collections.find(c => c.slug === noteCollection);
+      if (collection) {
+        const privacy = getEffectivePawkitPrivacy(collection, collections);
+        setIsLocalOnly(privacy.isLocalOnly);
+      }
+    }
+  }, [noteCollection, collections]);
+
+  // Mock metadata fetch
+  const fetchMetadata = async (url: string) => {
+    if (!url) return;
+    setIsFetchingMetadata(true);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      const urlObj = new URL(url);
+      const domain = urlObj.hostname.replace('www.', '');
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      const mockTitle = pathParts.length > 0
+        ? pathParts[pathParts.length - 1]
+            .replace(/-/g, ' ')
+            .replace(/_/g, ' ')
+            .replace(/\.[^/.]+$/, '')
+            .split(' ')
+            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+        : domain;
+      setBookmarkTitle(mockTitle || domain);
+      setBookmarkDescription(`Content from ${domain}`);
+    } catch {
+      setBookmarkTitle(url);
+    }
+    setIsFetchingMetadata(false);
+  };
+
+  const handleUrlPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    setTimeout(() => fetchMetadata(pastedText), 100);
+  };
+
+  const handleUrlKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      fetchMetadata(bookmarkUrl);
+    }
+  };
+
+  const handleSaveBookmark = async () => {
+    if (!workspaceId || !bookmarkUrl) return;
+    setIsSaving(true);
+    try {
+      let domain = '';
+      try {
+        domain = new URL(bookmarkUrl).hostname.replace('www.', '');
+      } catch {}
+      const tags = bookmarkCollection ? [bookmarkCollection] : [];
+      if (isLocalOnly) {
+        tags.push(SYSTEM_TAGS.LOCAL_ONLY);
+      }
+      await createCard({
+        workspaceId,
+        type: 'url',
+        url: bookmarkUrl,
+        title: bookmarkTitle || bookmarkUrl,
+        description: bookmarkDescription || undefined,
+        domain,
+        status: 'READY',
+        tags,
+        pinned: false,
+        isFileCard: false,
+      });
+      success('Bookmark saved');
+      onSuccess();
+    } catch (err) {
+      console.error('Failed to save bookmark:', err);
+      error('Failed to save bookmark');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveNote = async () => {
+    if (!workspaceId || !noteTitle) return;
+    setIsSaving(true);
+    try {
+      const tags = noteCollection ? [noteCollection] : [];
+      if (isLocalOnly) {
+        tags.push(SYSTEM_TAGS.LOCAL_ONLY);
+      }
+
+      // Convert plain text to Plate JSON format
+      let contentToSave: string | undefined;
+      if (noteContent) {
+        // Split by newlines and create a paragraph for each line
+        const lines = noteContent.split('\n');
+        const plateNodes = lines.map((line) => ({
+          type: 'p' as const,
+          children: [{ text: line }],
+        }));
+        contentToSave = serializePlateContent(plateNodes);
+      }
+
+      await createCard({
+        workspaceId,
+        type: 'md-note',
+        url: '',
+        title: noteTitle,
+        content: contentToSave,
+        status: 'READY',
+        tags,
+        pinned: false,
+        isFileCard: false,
+      });
+      success('Note created');
+      onSuccess();
+    } catch (err) {
+      console.error('Failed to save note:', err);
+      error('Failed to save note');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <TabsList className="grid w-full grid-cols-2 bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+        <TabsTrigger
+          value="bookmark"
+          className="data-[state=active]:bg-[var(--glass-bg-hover)] data-[state=active]:text-text-primary text-text-secondary"
+        >
+          <Link2 className="h-4 w-4 mr-2" />
+          Bookmark
+        </TabsTrigger>
+        <TabsTrigger
+          value="note"
+          className="data-[state=active]:bg-[var(--glass-bg-hover)] data-[state=active]:text-text-primary text-text-secondary"
+        >
+          <FileText className="h-4 w-4 mr-2" />
+          Note
+        </TabsTrigger>
+      </TabsList>
+
+      {/* Bookmark Tab */}
+      <TabsContent value="bookmark" className="space-y-4 mt-4">
+        <div className="space-y-2">
+          <Label htmlFor="url" className="text-text-secondary">URL</Label>
+          <Input
+            id="url"
+            type="url"
+            placeholder="https://example.com/article"
+            value={bookmarkUrl}
+            onChange={(e) => setBookmarkUrl(e.target.value)}
+            onPaste={handleUrlPaste}
+            onKeyDown={handleUrlKeyDown}
+            className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary"
+          />
+
+          {/* Duplicate warning */}
+          {duplicateCard && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-amber-200">
+                  This URL is already saved
+                </p>
+                <p className="text-xs text-amber-200/70 truncate mt-0.5">
+                  {duplicateCard.title || duplicateCard.url}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    openCardDetail(duplicateCard.id);
+                    onCancel();
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300 mt-1.5 underline"
+                >
+                  View existing bookmark →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="title" className="text-text-secondary">Title</Label>
+          <div className="relative">
+            <Input
+              id="title"
+              placeholder="Page title"
+              value={bookmarkTitle}
+              onChange={(e) => setBookmarkTitle(e.target.value)}
+              disabled={isFetchingMetadata}
+              className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary"
+            />
+            {isFetchingMetadata && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="collection" className="text-text-secondary">Collection (optional)</Label>
+          <Select value={bookmarkCollection} onValueChange={setBookmarkCollection}>
+            <SelectTrigger className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary">
+              <SelectValue placeholder="Select a collection" />
+            </SelectTrigger>
+            <SelectContent className="bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-[var(--glass-border)]">
+              {collections.map((collection) => (
+                <SelectItem
+                  key={collection.id}
+                  value={collection.slug}
+                  className="text-text-secondary"
+                >
+                  {collection.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4">
+          <Switch
+            id="local-only-bookmark"
+            checked={isLocalOnly}
+            onCheckedChange={(checked: boolean) => setIsLocalOnly(checked)}
+          />
+          <label
+            htmlFor="local-only-bookmark"
+            className="text-sm text-text-secondary flex items-center gap-1.5 cursor-pointer"
+          >
+            <WifiOff className="h-3.5 w-3.5" />
+            Local only (won&apos;t sync to server)
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <Button variant="ghost" onClick={onCancel} className="text-text-secondary">Cancel</Button>
+          <Button
+            onClick={handleSaveBookmark}
+            disabled={!bookmarkUrl || isSaving}
+            className="bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/50 text-[var(--color-accent)]"
+          >
+            {isSaving ? 'Saving...' : 'Save Bookmark'}
+          </Button>
+        </div>
+      </TabsContent>
+
+      {/* Note Tab */}
+      <TabsContent value="note" className="space-y-4 mt-4">
+        <div className="space-y-2">
+          <Label htmlFor="note-title" className="text-text-secondary">Title</Label>
+          <Input
+            id="note-title"
+            placeholder="Note title"
+            value={noteTitle}
+            onChange={(e) => setNoteTitle(e.target.value)}
+            className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="note-content" className="text-text-secondary">Content</Label>
+          <Textarea
+            id="note-content"
+            placeholder="Write your note..."
+            value={noteContent}
+            onChange={(e) => setNoteContent(e.target.value)}
+            rows={6}
+            className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary resize-none"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="note-collection" className="text-text-secondary">Collection (optional)</Label>
+          <Select value={noteCollection} onValueChange={setNoteCollection}>
+            <SelectTrigger className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary">
+              <SelectValue placeholder="Select a collection" />
+            </SelectTrigger>
+            <SelectContent className="bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-[var(--glass-border)]">
+              {collections.map((collection) => (
+                <SelectItem
+                  key={collection.id}
+                  value={collection.slug}
+                  className="text-text-secondary"
+                >
+                  {collection.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4">
+          <Switch
+            id="local-only-note"
+            checked={isLocalOnly}
+            onCheckedChange={(checked: boolean) => setIsLocalOnly(checked)}
+          />
+          <label
+            htmlFor="local-only-note"
+            className="text-sm text-text-secondary flex items-center gap-1.5 cursor-pointer"
+          >
+            <WifiOff className="h-3.5 w-3.5" />
+            Local only (won&apos;t sync to server)
+          </label>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4">
+          <Button variant="ghost" onClick={onCancel} className="text-text-secondary">Cancel</Button>
+          <Button
+            onClick={handleSaveNote}
+            disabled={!noteTitle || isSaving}
+            className="bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/50 text-[var(--color-accent)]"
+          >
+            {isSaving ? 'Saving...' : 'Save Note'}
+          </Button>
+        </div>
+      </TabsContent>
+    </Tabs>
+  );
+}

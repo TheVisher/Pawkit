@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -348,7 +348,7 @@ function extractWarrantyInfoFromPlateJson(content: any[]): {
   return result;
 }
 
-export function extractWarrantyInfo(content: string): {
+export function extractWarrantyInfo(content: unknown): {
   supportUrl?: string;
   supportPhone?: string;
   supportEmail?: string;
@@ -359,6 +359,10 @@ export function extractWarrantyInfo(content: string): {
     if (parsed) {
       return extractWarrantyInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -421,7 +425,7 @@ export function getWarrantyTemplateJson(type: string = 'simple', format: Templat
   const templateType = WARRANTY_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['product-info', 'warranty-info', 'notes'];
   const nodes = buildWarrantyTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

@@ -1,11 +1,11 @@
 'use client';
 
 import { useDndMonitor, DragEndEvent } from '@dnd-kit/core';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useToastStore } from '@/lib/stores/toast-store';
 
 export function CardsDragHandler() {
-    const addCardToCollection = useDataStore((state) => state.addCardToCollection);
+    const { addCardToCollection } = useMutations();
     const toast = useToastStore((state) => state.toast);
 
     useDndMonitor({

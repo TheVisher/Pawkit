@@ -6,7 +6,7 @@
 
 import { DEBUG_DEFAULTS, useDebugStore, type DebugState } from '@/lib/stores/debug-store';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = import.meta.env.DEV;
 
 /**
  * Get a single debug value

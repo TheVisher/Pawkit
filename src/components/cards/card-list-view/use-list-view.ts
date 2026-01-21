@@ -3,17 +3,17 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useDndMonitor } from '@dnd-kit/core';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useViewStore } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useSelectionStore } from '@/lib/stores/selection-store';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { type ColumnId, type SortDirection, DEFAULT_COLUMN_ORDER, DEFAULT_COLUMN_WIDTHS, MIN_COLUMN_WIDTH, getCardType } from './types';
 
-export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: string[]) => void) {
+export function useListView(cards: Card[], onReorder?: (reorderedIds: string[]) => void) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const workspace = useCurrentWorkspace();
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { updateCard } = useMutations();
 
   // Get column state from view store (persisted)
   const listColumnOrder = useViewStore((s) => s.listColumnOrder);
@@ -37,7 +37,7 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
   // DnD state for row reordering
   const [activeRowId, setActiveRowId] = useState<string | null>(null);
   const [overRowId, setOverRowId] = useState<string | null>(null);
-  const [activeDragCard, setActiveDragCard] = useState<LocalCard | null>(null);
+  const [activeDragCard, setActiveDragCard] = useState<Card | null>(null);
 
   // Multi-select state (global store for omnibar integration)
   const selectedIds = useSelectionStore((s) => s.selectedIds);
@@ -59,7 +59,7 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
       clearTimeout(saveTimeoutRef.current);
     }
     saveTimeoutRef.current = setTimeout(() => {
-      saveViewSettings(workspace.id);
+      saveViewSettings(workspace._id);
     }, 500);
   }, [workspace, saveViewSettings]);
 
@@ -149,7 +149,7 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
 
   // Selection handlers (using global store)
   const handleSelectAll = useCallback(() => {
-    selectAllCards(cards.map((c) => c.id));
+    selectAllCards(cards.map((c) => c._id));
   }, [cards, selectAllCards]);
 
   const handleToggleSelect = useCallback((id: string, e: React.MouseEvent) => {
@@ -194,8 +194,8 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
   );
 
   const handleRowClick = useCallback(
-    (card: LocalCard) => {
-      openCardDetail(card.id);
+    (card: Card) => {
+      openCardDetail(card._id);
     },
     [openCardDetail]
   );
@@ -204,7 +204,7 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
   useDndMonitor({
     onDragStart: (event) => {
       const id = event.active.id as string;
-      const card = cards.find((c) => c.id === id);
+      const card = cards.find((c) => c._id === id);
       if (!card) return;
       setActiveRowId(id);
       setOverRowId(null);
@@ -223,14 +223,14 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
       setActiveDragCard(null);
 
       if (over && active.id !== over.id && onReorder) {
-        const oldIndex = cards.findIndex((c) => c.id === active.id);
-        const newIndex = cards.findIndex((c) => c.id === over.id);
+        const oldIndex = cards.findIndex((c) => c._id === active.id);
+        const newIndex = cards.findIndex((c) => c._id === over.id);
 
         if (oldIndex !== -1 && newIndex !== -1) {
           const newOrder = [...cards];
           const [removed] = newOrder.splice(oldIndex, 1);
           newOrder.splice(newIndex, 0, removed);
-          onReorder(newOrder.map((c) => c.id));
+          onReorder(newOrder.map((c) => c._id));
         }
       }
     },
@@ -242,7 +242,7 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
   });
 
   // Card IDs for sortable context
-  const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
+  const cardIds = useMemo(() => cards.map((c) => c._id), [cards]);
 
   // Sort cards
   const sortedCards = useMemo(() => {

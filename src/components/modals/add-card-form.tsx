@@ -4,14 +4,15 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link2, FileText, Loader2, AlertCircle, WifiOff } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
-import { getEffectivePawkitPrivacy } from '@/lib/services/privacy';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import type { Id } from '@/lib/types/convex';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { useToast } from '@/lib/stores/toast-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import type { Value } from 'platejs';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,13 +33,14 @@ interface AddCardFormProps {
 }
 
 export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProps) {
-  const createCard = useDataStore((state) => state.createCard);
+  const { createCard } = useMutations();
   const workspace = useCurrentWorkspace();
-  const workspaceId = workspace?.id;
-  const allCards = useCards(workspaceId);
-  const collections = useCollections(workspaceId);
+  const workspaceId = workspace?._id;
+  const allCards = useCards();
+  const collections = useCollections();
   const { success, error } = useToast();
   const openCardDetail = useModalStore((state) => state.openCardDetail);
+  const isWorkspaceReady = Boolean(workspaceId);
 
   // Bookmark form state
   const [bookmarkUrl, setBookmarkUrl] = useState('');
@@ -61,7 +63,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
     const normalizedInput = normalizeUrl(bookmarkUrl);
 
     return allCards.find((card) => {
-      if (card._deleted) return false;
+      if (card.deleted) return false;
       if (card.type !== 'url') return false;
       if (!card.url) return false;
 
@@ -83,8 +85,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
     if (bookmarkCollection) {
       const collection = collections.find(c => c.slug === bookmarkCollection);
       if (collection) {
-        const privacy = getEffectivePawkitPrivacy(collection, collections);
-        setIsLocalOnly(privacy.isLocalOnly);
+        setIsLocalOnly(collection.isLocalOnly ?? false);
       }
     }
   }, [bookmarkCollection, collections]);
@@ -94,8 +95,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
     if (noteCollection) {
       const collection = collections.find(c => c.slug === noteCollection);
       if (collection) {
-        const privacy = getEffectivePawkitPrivacy(collection, collections);
-        setIsLocalOnly(privacy.isLocalOnly);
+        setIsLocalOnly(collection.isLocalOnly ?? false);
       }
     }
   }, [noteCollection, collections]);
@@ -142,25 +142,18 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
     if (!workspaceId || !bookmarkUrl) return;
     setIsSaving(true);
     try {
-      let domain = '';
-      try {
-        domain = new URL(bookmarkUrl).hostname.replace('www.', '');
-      } catch {}
       const tags = bookmarkCollection ? [bookmarkCollection] : [];
       if (isLocalOnly) {
         tags.push(SYSTEM_TAGS.LOCAL_ONLY);
       }
       await createCard({
-        workspaceId,
+        workspaceId: workspaceId as Id<'workspaces'>,
         type: 'url',
         url: bookmarkUrl,
         title: bookmarkTitle || bookmarkUrl,
         description: bookmarkDescription || undefined,
-        domain,
-        status: 'READY',
         tags,
         pinned: false,
-        isFileCard: false,
       });
       success('Bookmark saved');
       onSuccess();
@@ -182,7 +175,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
       }
 
       // Convert plain text to Plate JSON format
-      let contentToSave: string | undefined;
+      let contentToSave: Value | undefined;
       if (noteContent) {
         // Split by newlines and create a paragraph for each line
         const lines = noteContent.split('\n');
@@ -194,15 +187,12 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
       }
 
       await createCard({
-        workspaceId,
+        workspaceId: workspaceId as Id<'workspaces'>,
         type: 'md-note',
-        url: '',
         title: noteTitle,
         content: contentToSave,
-        status: 'READY',
         tags,
         pinned: false,
-        isFileCard: false,
       });
       success('Note created');
       onSuccess();
@@ -216,6 +206,19 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      {!isWorkspaceReady && (
+        <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
+            <div>
+              <div className="font-medium">Workspace not ready</div>
+              <div className="text-amber-200/80">
+                Sign out and back in, or refresh to initialize your workspace.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <TabsList className="grid w-full grid-cols-2 bg-[var(--glass-bg)] border border-[var(--glass-border)]">
         <TabsTrigger
           value="bookmark"
@@ -262,7 +265,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
                 <button
                   type="button"
                   onClick={() => {
-                    openCardDetail(duplicateCard.id);
+                    openCardDetail(duplicateCard._id);
                     onCancel();
                   }}
                   className="text-xs text-amber-400 hover:text-amber-300 mt-1.5 underline"
@@ -302,7 +305,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
             <SelectContent className="bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-[var(--glass-border)]">
               {collections.map((collection) => (
                 <SelectItem
-                  key={collection.id}
+                  key={collection._id}
                   value={collection.slug}
                   className="text-text-secondary"
                 >
@@ -332,7 +335,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
           <Button variant="ghost" onClick={onCancel} className="text-text-secondary">Cancel</Button>
           <Button
             onClick={handleSaveBookmark}
-            disabled={!bookmarkUrl || isSaving}
+            disabled={!bookmarkUrl || isSaving || !isWorkspaceReady}
             className="bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/50 text-[var(--color-accent)]"
           >
             {isSaving ? 'Saving...' : 'Save Bookmark'}
@@ -374,7 +377,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
             <SelectContent className="bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-[var(--glass-border)]">
               {collections.map((collection) => (
                 <SelectItem
-                  key={collection.id}
+                  key={collection._id}
                   value={collection.slug}
                   className="text-text-secondary"
                 >
@@ -404,7 +407,7 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
           <Button variant="ghost" onClick={onCancel} className="text-text-secondary">Cancel</Button>
           <Button
             onClick={handleSaveNote}
-            disabled={!noteTitle || isSaving}
+            disabled={!noteTitle || isSaving || !isWorkspaceReady}
             className="bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/50 text-[var(--color-accent)]"
           >
             {isSaving ? 'Saving...' : 'Save Note'}

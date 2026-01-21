@@ -3,8 +3,19 @@
  * Extracts date fields from supertag card content for calendar integration
  */
 
-import type { LocalCard } from '@/lib/db';
 import { getCalendarFieldsFromTags, extractFieldValues } from '@/lib/tags/supertags';
+
+/**
+ * Minimal card interface for date extraction
+ * Works with both Card (Convex with _id) and LocalCard (Dexie with id)
+ */
+interface CardLike {
+  _id?: string;
+  id?: string;
+  content?: unknown;
+  tags?: string[] | null;
+  title?: string | null;
+}
 
 export interface ExtractedDate {
   field: string;              // 'birthday', 'renewalDay', etc.
@@ -104,8 +115,9 @@ export function parseDayOfMonth(value: string): number | null {
 
 /**
  * Extract dates from a card based on its supertag calendar fields
+ * Works with both Card (Convex) and LocalCard (Dexie) types
  */
-export function extractDatesFromCard(card: LocalCard): ExtractedDate[] {
+export function extractDatesFromCard(card: CardLike): ExtractedDate[] {
   if (!card.content || !card.tags?.length) return [];
 
   // Get calendar fields defined by the card's supertags

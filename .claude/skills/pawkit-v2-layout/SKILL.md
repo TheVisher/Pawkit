@@ -4,7 +4,7 @@
 
 **Created**: December 20, 2025
 
-**Status**: **STILL APPLICABLE** - Layout patterns, icon conventions, and panel behavior apply to TanStack Start app. File paths may differ (TanStack Start routing vs Next.js App Router).
+**Status**: **STILL APPLICABLE** - Layout patterns, icon conventions, and panel behavior apply to TanStack Start app. Routes are now in `src/routes/` instead of `src/app/(dashboard)/`. Component paths in `src/components/` remain the same.
 
 ---
 
@@ -256,10 +256,10 @@ function MyPageWithActions() {
 5. **For pages with header actions**: Don't wrap PageHeader in `w-fit`. Instead, build custom header layout so actions stay right-aligned
 
 **Pages Using This Pattern**:
-- Home (`src/app/(dashboard)/home/page.tsx`)
-- Library (`src/app/(dashboard)/library/page.tsx`)
-- Pawkits (`src/app/(dashboard)/pawkits/page.tsx`)
-- Tags (`src/app/(dashboard)/tags/page.tsx`)
+- Home (`src/pages/home.tsx` or `src/routes/home.tsx`)
+- Library (`src/pages/library.tsx` or `src/routes/library.tsx`)
+- Pawkits (`src/pages/pawkits.tsx` or `src/routes/pawkits.tsx`)
+- Tags (`src/pages/tags.tsx` or `src/routes/tags.tsx`)
 - Calendar (`src/components/calendar/calendar-header.tsx`)
 - Pawkit Detail (`src/components/pawkits/pawkit-header.tsx`)
 

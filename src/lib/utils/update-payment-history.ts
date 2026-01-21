@@ -11,10 +11,11 @@
  * - Oldest years at bottom, newest at top
  */
 
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, htmlToPlateJson, createEmptyPlateContent } from '@/lib/plate/html-to-plate';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PlateNode = any;
+type CardContent = string | PlateNode[] | null | undefined;
 
 const MONTHS_FIRST_HALF = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
 const MONTHS_SECOND_HALF = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -96,15 +97,20 @@ function yearTableExists(content: string, year: number): boolean {
  * Creates it if missing, returns updated content
  * Supports both HTML and Plate JSON content
  */
-export function ensurePaymentHistorySection(content: string, year?: number): string {
+export function ensurePaymentHistorySection(content: CardContent, year?: number): PlateNode[] {
   const currentYear = year || new Date().getFullYear();
 
   // Check if content is Plate JSON
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
-    if (!parsed) return content;
+    if (!parsed) return createEmptyPlateContent();
     const updated = ensurePaymentHistorySectionJson(parsed, currentYear);
-    return serializePlateContent(updated);
+    return updated;
+  }
+
+  if (typeof content !== 'string') {
+    const section = generatePaymentHistorySection(currentYear);
+    return htmlToPlateJson(section);
   }
 
   // HTML fallback
@@ -115,9 +121,10 @@ export function ensurePaymentHistorySection(content: string, year?: number): str
       // Add new year table at the top of the section (after h2)
       const newYearTable = generateYearTable(currentYear);
       const h2End = content.indexOf('</h2>', existing.start) + 5;
-      return content.substring(0, h2End) + '\n' + newYearTable + content.substring(h2End);
+      const html = content.substring(0, h2End) + '\n' + newYearTable + content.substring(h2End);
+      return htmlToPlateJson(html);
     }
-    return content;
+    return htmlToPlateJson(content);
   }
 
   // Create new section at the bottom
@@ -125,7 +132,7 @@ export function ensurePaymentHistorySection(content: string, year?: number): str
 
   // Ensure there's proper spacing
   const trimmedContent = content.trimEnd();
-  return trimmedContent + '\n\n' + section;
+  return htmlToPlateJson(trimmedContent + '\n\n' + section);
 }
 
 /**
@@ -221,61 +228,45 @@ function updateMonthCell(
  * Mark a month as paid (green with checkmark)
  * Supports both HTML and Plate JSON content
  */
-export function markMonthPaid(content: string, year: number, month: number): string {
-  // Check if content is Plate JSON
-  if (isPlateJson(content)) {
-    const parsed = parseJsonContent(content);
-    if (!parsed) return content;
-    const withSection = ensurePaymentHistorySectionJson(parsed, year);
-    const updated = updateMonthCellJson(withSection, year, month, COLOR_PAID, '✓');
-    return serializePlateContent(updated);
-  }
-
-  // HTML fallback
+export function markMonthPaid(content: CardContent, year: number, month: number): PlateNode[] {
   const withSection = ensurePaymentHistorySection(content, year);
-  return updateMonthCell(withSection, year, month, COLOR_PAID, '✓');
+  return updateMonthCellJson(withSection, year, month, COLOR_PAID, '✓');
 }
 
 /**
  * Mark a month as unpaid (clear the cell)
  * Supports both HTML and Plate JSON content
  */
-export function markMonthUnpaid(content: string, year: number, month: number): string {
+export function markMonthUnpaid(content: CardContent, year: number, month: number): PlateNode[] {
   // Check if content is Plate JSON
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
-    if (!parsed) return content;
+    if (!parsed) return createEmptyPlateContent();
     const sectionIndex = findPaymentHistorySectionJson(parsed);
-    if (sectionIndex === -1) return content; // No section, nothing to clear
-    const updated = updateMonthCellJson(parsed, year, month, null, '');
-    return serializePlateContent(updated);
+    if (sectionIndex === -1) return parsed; // No section, nothing to clear
+    return updateMonthCellJson(parsed, year, month, null, '');
+  }
+
+  if (typeof content !== 'string') {
+    return createEmptyPlateContent();
   }
 
   // HTML fallback
   const existing = findPaymentHistorySection(content);
   if (!existing) {
-    return content; // No section, nothing to clear
+    return htmlToPlateJson(content); // No section, nothing to clear
   }
-  return updateMonthCell(content, year, month, null, '');
+  const updatedHtml = updateMonthCell(content, year, month, null, '');
+  return htmlToPlateJson(updatedHtml);
 }
 
 /**
  * Mark a month as missed (red with X)
  * Supports both HTML and Plate JSON content
  */
-export function markMonthMissed(content: string, year: number, month: number): string {
-  // Check if content is Plate JSON
-  if (isPlateJson(content)) {
-    const parsed = parseJsonContent(content);
-    if (!parsed) return content;
-    const withSection = ensurePaymentHistorySectionJson(parsed, year);
-    const updated = updateMonthCellJson(withSection, year, month, COLOR_MISSED, '✗');
-    return serializePlateContent(updated);
-  }
-
-  // HTML fallback
+export function markMonthMissed(content: CardContent, year: number, month: number): PlateNode[] {
   const withSection = ensurePaymentHistorySection(content, year);
-  return updateMonthCell(withSection, year, month, COLOR_MISSED, '✗');
+  return updateMonthCellJson(withSection, year, month, COLOR_MISSED, '✗');
 }
 
 /**
@@ -283,12 +274,16 @@ export function markMonthMissed(content: string, year: number, month: number): s
  * Returns 'paid', 'missed', or 'empty'
  * Supports both HTML and Plate JSON content
  */
-export function getMonthStatus(content: string, year: number, month: number): 'paid' | 'missed' | 'empty' {
+export function getMonthStatus(content: CardContent, year: number, month: number): 'paid' | 'missed' | 'empty' {
   // Check if content is Plate JSON
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
     if (!parsed) return 'empty';
     return getMonthStatusJson(parsed, year, month);
+  }
+
+  if (typeof content !== 'string') {
+    return 'empty';
   }
 
   // HTML fallback
@@ -338,7 +333,7 @@ export function getMonthStatus(content: string, year: number, month: number): 'p
  * Returns array of {year, month} that need to be marked as missed
  */
 export function checkForMissedPayments(
-  content: string,
+  content: CardContent,
   paidMonths: Array<{ year: number; month: number }>,
   subscriptionStartDate?: Date
 ): Array<{ year: number; month: number }> {

@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -343,7 +343,7 @@ function extractRecipeInfoFromPlateJson(content: any[]): { sourceUrl?: string } 
   return result;
 }
 
-export function extractRecipeInfo(content: string): {
+export function extractRecipeInfo(content: unknown): {
   sourceUrl?: string;
 } {
   // Check if content is Plate JSON
@@ -352,6 +352,10 @@ export function extractRecipeInfo(content: string): {
     if (parsed) {
       return extractRecipeInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -396,7 +400,7 @@ export function getRecipeTemplateJson(type: string = 'quick', format: TemplateFo
   const templateType = RECIPE_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['info', 'ingredients', 'instructions', 'notes'];
   const nodes = buildRecipeTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

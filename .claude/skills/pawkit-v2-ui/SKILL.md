@@ -4,7 +4,7 @@
 
 **Created**: December 20, 2025
 
-**Status**: **STILL APPLICABLE** - These design patterns apply to the TanStack Start + Convex app. File paths may differ slightly (e.g., `app/styles/` instead of `src/app/`).
+**Status**: **STILL APPLICABLE** - These design patterns apply to the TanStack Start + Convex app. CSS is in `src/styles.css`.
 
 ---
 
@@ -125,7 +125,7 @@
 
 **CRITICAL: Always use CSS variables for glass styling - NEVER hardcode values.**
 
-All glass styling uses CSS variables defined in `src/app/globals.css`. This allows changing the look and feel of the entire app by modifying a few values.
+All glass styling uses CSS variables defined in `src/styles.css`. This allows changing the look and feel of the entire app by modifying a few values.
 
 ### Glass Variables (defined in globals.css)
 
@@ -525,7 +525,7 @@ Time-based views use similar gap approach:
 
 ## TAILWIND CONFIGURATION
 
-These classes are registered in `app/globals.css` via `@theme inline`:
+These classes are registered in `src/styles.css` via `@theme inline`:
 
 ```css
 @theme inline {

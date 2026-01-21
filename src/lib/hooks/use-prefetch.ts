@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 
 // Debounce time to prevent rapid-fire prefetch calls
 const PREFETCH_DEBOUNCE_MS = 50;
@@ -26,11 +26,11 @@ const PREFETCH_DEBOUNCE_MS = 50;
  * const { prefetch, prefetchOnInteraction } = usePrefetch();
  *
  * // Manual prefetch
- * <Link onMouseEnter={() => prefetch('/library')} href="/library">
+ * <Link onMouseEnter={() => prefetch('/library')} to="/library">
  *
  * // Or get event handlers for a route
  * const handlers = prefetchOnInteraction('/library');
- * <Link {...handlers} href="/library">
+ * <Link {...handlers} to="/library">
  * ```
  */
 export function usePrefetch() {

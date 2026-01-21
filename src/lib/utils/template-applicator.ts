@@ -5,7 +5,14 @@
  */
 
 import { getSupertagDefinition, getSupertagTemplate, isSupertag } from '@/lib/tags/supertags';
-import { htmlToPlateJson, serializePlateContent, isPlateJson } from '@/lib/plate/html-to-plate';
+import {
+  htmlToPlateJson,
+  isPlateJson,
+  parseJsonContent,
+  hasPlateContent,
+  createEmptyPlateContent,
+} from '@/lib/plate/html-to-plate';
+import type { Value } from 'platejs';
 
 export interface TemplateApplicationResult {
   shouldApply: boolean;
@@ -24,7 +31,7 @@ export interface TemplateApplicationResult {
 export function checkSupertagAddition(
   oldTags: string[],
   newTags: string[],
-  currentContent: string | undefined
+  currentContent: unknown
 ): TemplateApplicationResult {
   // Find newly added tags
   const addedTags = newTags.filter((tag) => !oldTags.includes(tag));
@@ -35,7 +42,7 @@ export function checkSupertagAddition(
       const definition = getSupertagDefinition(tag);
       if (definition?.template) {
         const template = getSupertagTemplate(tag) || '';
-        const hasContent = currentContent && currentContent.trim().length > 0;
+        const hasContent = hasPlateContent(currentContent);
 
         return {
           shouldApply: !hasContent, // Auto-apply if empty
@@ -59,19 +66,22 @@ export function checkSupertagAddition(
  * Convert HTML template to JSON string
  * If already JSON, return as-is
  */
-export function convertTemplateToJson(template: string): string {
+export function convertTemplateToJson(template: string): Value {
   if (!template || !template.trim()) {
-    return '';
+    return createEmptyPlateContent();
   }
 
   // If already JSON, return as-is
   if (isPlateJson(template)) {
-    return template;
+    const parsed = parseJsonContent(template);
+    if (parsed) {
+      return parsed;
+    }
   }
 
   // Convert HTML to Plate JSON
   const plateContent = htmlToPlateJson(template);
-  return serializePlateContent(plateContent);
+  return plateContent as Value;
 }
 
 /**
@@ -83,29 +93,50 @@ export function convertTemplateToJson(template: string): string {
  * @returns New content as JSON string
  */
 export function applyTemplate(
-  existingContent: string | undefined,
+  existingContent: unknown,
   template: string,
   mode: 'replace' | 'prepend' | 'append' = 'replace'
-): string {
+): Value {
   // Convert template to JSON
   const jsonTemplate = convertTemplateToJson(template);
 
-  if (!existingContent || existingContent.trim().length === 0) {
+  if (!hasPlateContent(existingContent)) {
     return jsonTemplate;
   }
 
-  // For prepend/append, we need to merge JSON content
-  // For now, just replace - more complex merging can be added later
+  const existingJson = normalizeExistingContent(existingContent);
+  if (!existingJson) {
+    return jsonTemplate;
+  }
+
   switch (mode) {
     case 'prepend':
+      return [...jsonTemplate, ...existingJson] as Value;
     case 'append':
-      // TODO: Implement JSON content merging
-      // For now, just return the template
-      return jsonTemplate;
+      return [...existingJson, ...jsonTemplate] as Value;
     case 'replace':
     default:
       return jsonTemplate;
   }
+}
+
+function normalizeExistingContent(content: unknown): Value | null {
+  if (!content) return null;
+
+  if (Array.isArray(content)) {
+    return content as Value;
+  }
+
+  if (typeof content === 'string') {
+    if (isPlateJson(content)) {
+      return parseJsonContent(content);
+    }
+    if (content.trim()) {
+      return htmlToPlateJson(content);
+    }
+  }
+
+  return null;
 }
 
 /**

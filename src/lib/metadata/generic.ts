@@ -6,6 +6,9 @@
 
 import * as cheerio from 'cheerio';
 import { MetadataResult, DEFAULT_CONFIG, MetadataConfig } from './types';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("GenericMetadata");
 
 // Meta tag priority for images
 const IMAGE_META_KEYS = [
@@ -229,7 +232,7 @@ async function fetchHtml(
     return await response.text();
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('[Generic Metadata] Fetch error:', error);
+    log.warn('Fetch error:', error);
     return null;
   }
 }

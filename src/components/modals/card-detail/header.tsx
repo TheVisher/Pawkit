@@ -8,7 +8,7 @@
  */
 
 import { useState, memo } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ui/image';
 import { Globe, ExternalLink, Maximize2, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCardIcon } from './types';

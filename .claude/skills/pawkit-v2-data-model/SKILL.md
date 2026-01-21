@@ -6,8 +6,8 @@
 >
 > The app now uses **TanStack Start + Convex**. See:
 > - `.claude/skills/pawkit-tanstack-convex/SKILL.md` - New stack overview
-> - `apps/start/docs/convex-guide.md` - Convex schema and patterns
-> - `apps/start/convex/schema.ts` - Actual schema file
+> - `docs/convex-guide.md` - Convex schema and patterns
+> - `convex/schema.ts` - Actual schema file (at project root)
 >
 > **Deprecated**: January 21, 2026
 

@@ -22,7 +22,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import type { ToastType } from '@/lib/stores/toast-store';
-import type { LocalCard, LocalCollection } from '@/lib/db';
+import type { Card, Collection } from '@/lib/types/convex';
 
 // =============================================================================
 // TYPES
@@ -38,8 +38,8 @@ export interface SearchableAction {
 }
 
 export interface SearchResults {
-  cards: LocalCard[];
-  collections: LocalCollection[];
+  cards: Card[];
+  collections: Collection[];
   actions: SearchableAction[];
   tags?: string[];
 }

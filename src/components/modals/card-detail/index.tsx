@@ -10,10 +10,6 @@ import { Drawer } from 'vaul';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useMobile } from '@/lib/hooks/use-mobile';
-import { triggerSync } from '@/lib/services/sync-queue';
-import { syncCardToCalendar } from '@/lib/utils/card-calendar-sync';
-import { getCalendarFieldsFromTags } from '@/lib/tags/supertags';
-import { db } from '@/lib/db';
 import { cn } from '@/lib/utils';
 import { CardDetailContent } from './content';
 
@@ -31,31 +27,10 @@ export function CardDetailModal() {
     }
   }, [activeCardId]);
 
-  // Handle close with sync
-  const handleClose = useCallback(async () => {
-    const cardIdToSync = lastCardIdRef.current;
+  // Handle close - Convex handles sync automatically
+  const handleClose = useCallback(() => {
     closeCardDetail();
-
-    // Trigger sync queue (fire-and-forget)
-    triggerSync().catch(() => {
-      // Ignore sync errors on close
-    });
-
-    // Sync card to calendar if it has calendar fields
-    if (cardIdToSync) {
-      try {
-        const card = await db.cards.get(cardIdToSync);
-        if (card && card.tags && card.tags.length > 0) {
-          const calendarFields = getCalendarFieldsFromTags(card.tags);
-          if (calendarFields.length > 0) {
-            await syncCardToCalendar(card, card.workspaceId);
-          }
-        }
-      } catch (err) {
-        // Ignore calendar sync errors on close
-        console.warn('[CardDetailModal] Calendar sync failed:', err);
-      }
-    }
+    // Note: Sync and calendar updates are handled by Convex mutations
   }, [closeCardDetail]);
 
   // Close on escape

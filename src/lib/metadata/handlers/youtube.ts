@@ -4,6 +4,9 @@
  */
 
 import type { MetadataResult } from '../types';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("YouTubeHandler");
 
 // oEmbed API timeout (5 seconds as specified)
 const OEMBED_TIMEOUT = 5000;
@@ -176,10 +179,7 @@ async function fetchOEmbedMetadata(
       author: data.author_name || null,
     };
   } catch (error) {
-    console.log(
-      '[YouTube oEmbed] Failed:',
-      error instanceof Error ? error.message : String(error)
-    );
+    log.debug('oEmbed failed:', error instanceof Error ? error.message : String(error));
     return null;
   }
 }

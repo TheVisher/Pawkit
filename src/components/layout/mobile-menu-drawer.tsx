@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { Drawer } from 'vaul';
 import {
   Settings,
@@ -17,7 +17,7 @@ import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
 import { TagTree } from '@/components/tags/tag-tree';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { useConvexUser } from '@/lib/hooks/convex/use-convex-user';
 import { useRightSidebarSettings } from '@/lib/stores/ui-store';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +29,7 @@ interface MobileMenuDrawerProps {
 export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const user = useAuthStore((s) => s.user);
+  const { user } = useConvexUser();
   const { toggleSettings } = useRightSidebarSettings();
   const userEmail = user?.email;
   

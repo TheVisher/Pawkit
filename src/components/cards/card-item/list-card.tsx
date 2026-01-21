@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ui/image';
 import { Pin } from 'lucide-react';
-import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import { cn } from '@/lib/utils';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import {
   type CardDisplaySettings,
   DEFAULT_CARD_DISPLAY,
@@ -15,7 +14,7 @@ import { TagBadgeList } from '@/components/tags/tag-badge';
 import { getSystemTagsForCard, type SystemTag } from '@/lib/utils/system-tags';
 
 interface ListCardProps {
-  card: LocalCard;
+  card: Card;
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   /** Called when a user tag in the footer is clicked (for filtering) */
@@ -40,7 +39,7 @@ export function ListCard({
   // Reset image error state when card or image changes
   useEffect(() => {
     setImageError(false);
-  }, [card.id, card.image]);
+  }, [card._id, card.image]);
 
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
@@ -97,13 +96,6 @@ export function ListCard({
           {card.title || 'Untitled'}
         </h3>
       )}
-
-      {/* Sync status indicator */}
-      <SyncStatusIndicator
-        cardId={card.id}
-        isSynced={card._synced}
-        variant="icon"
-      />
 
       {/* Pinned */}
       {card.pinned && (

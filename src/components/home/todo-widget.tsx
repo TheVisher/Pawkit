@@ -7,11 +7,12 @@
 
 import { useMemo, useState, useCallback, KeyboardEvent } from 'react';
 import { CheckSquare, Plus, Check, ArrowUpRight, AlertTriangle, Calendar } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { Card as UICard, CardContent } from '@/components/ui/card';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import { Id } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
 import {
   parseTaskItemsFromCard,
@@ -23,7 +24,6 @@ import {
   isDateHeaderToday,
   type TaskItem,
 } from '@/lib/utils/parse-task-items';
-import type { LocalCard } from '@/lib/db';
 
 interface TodoTaskItemProps {
   task: TaskItem;
@@ -75,10 +75,9 @@ function TodoTaskItem({ task, onToggle, onClick }: TodoTaskItemProps) {
 
 export function TodoWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
-  const updateCard = useDataStore((s) => s.updateCard);
-  const createCard = useDataStore((s) => s.createCard);
+  const { updateCard, createCard } = useMutations();
 
   const [inputValue, setInputValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
@@ -86,7 +85,7 @@ export function TodoWidget() {
   // Get all todo cards
   const todoCards = useMemo(() => {
     return cards.filter((c) => {
-      if (c._deleted) return false;
+      if (c.deleted) return false;
       return c.tags?.includes('todo');
     });
   }, [cards]);
@@ -149,11 +148,11 @@ export function TodoWidget() {
 
   // Toggle a task's completion status
   const handleToggle = useCallback(async (task: TaskItem, checked: boolean) => {
-    const card = cards.find((c) => c.id === task.cardId);
+    const card = cards.find((c) => c._id === task.cardId);
     if (!card || !card.content) return;
 
     const updatedContent = toggleTaskInContent(card.content, task.text, checked);
-    await updateCard(card.id, { content: updatedContent });
+    await updateCard(card._id, { content: updatedContent });
   }, [cards, updateCard]);
 
   // Add a new task
@@ -164,33 +163,35 @@ export function TodoWidget() {
     setIsAdding(true);
     try {
       // Find existing todo card or create one
-      let todoCard = todoCards[0]; // Use first todo card if multiple
+      const todoCard = todoCards[0]; // Use first todo card if multiple
 
-      if (!todoCard && workspace?.id) {
-        // Create a new todo card
-        todoCard = await createCard({
-          workspaceId: workspace.id,
+      if (!todoCard && workspace?._id) {
+        // Create a new todo card with the task already in it
+        const content = addTaskToContent(createInitialTodoContent(), text);
+        await createCard({
+          workspaceId: workspace._id as Id<'workspaces'>,
           type: 'md-note',
           url: '',
           title: 'Todos',
-          content: createInitialTodoContent(),
+          content,
           tags: ['todo'],
           pinned: false,
           isFileCard: false,
-          status: 'READY',
         });
+        setInputValue('');
+        return;
       }
 
       if (todoCard) {
-        // Add task to the card
+        // Add task to the existing card
         const updatedContent = addTaskToContent(todoCard.content || '', text);
-        await updateCard(todoCard.id, { content: updatedContent });
+        await updateCard(todoCard._id, { content: updatedContent });
         setInputValue('');
       }
     } finally {
       setIsAdding(false);
     }
-  }, [inputValue, isAdding, todoCards, workspace?.id, createCard, updateCard]);
+  }, [inputValue, isAdding, todoCards, workspace?._id, createCard, updateCard]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -200,11 +201,11 @@ export function TodoWidget() {
   };
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">
+    <UICard className="border-border-subtle bg-bg-surface-2 h-full py-0">
       <CardContent className="p-3 h-full flex flex-col">
         {/* Header - clickable to open todo card */}
         <button
-          onClick={() => todoCards[0] && openCardDetail(todoCards[0].id)}
+          onClick={() => todoCards[0] && openCardDetail(todoCards[0]._id)}
           disabled={todoCards.length === 0}
           className={cn(
             'flex items-center gap-2 mb-2 w-full text-left rounded-lg transition-colors',
@@ -344,6 +345,6 @@ export function TodoWidget() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </UICard>
   );
 }

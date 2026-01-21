@@ -6,6 +6,9 @@
 import * as cheerio from 'cheerio';
 import type { MetadataResult } from '../types';
 import { DEFAULT_CONFIG } from '../types';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("AmazonHandler");
 
 // Amazon domains (full domains and short links)
 const AMAZON_DOMAINS = [
@@ -294,7 +297,7 @@ export async function fetchAmazonMetadata(url: string): Promise<MetadataResult> 
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('[Amazon Handler] Error:', error);
+    log.error('Error:', error);
 
     // Return partial result
     return {

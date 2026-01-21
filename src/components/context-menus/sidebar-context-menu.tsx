@@ -12,22 +12,22 @@ import {
   FolderPlus,
   Trash2,
 } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
-import { useCollections } from '@/lib/hooks/use-live-data';
+import { useCollections } from '@/lib/contexts/convex-data-context';
 import { slugify } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 
 interface SidebarContextMenuProps {
   children: ReactNode;
 }
 
 export function SidebarContextMenu({ children }: SidebarContextMenuProps) {
-  const createCollection = useDataStore((s) => s.createCollection);
+  const { createCollection } = useMutations();
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const toast = useToastStore((s) => s.toast);
-  const collections = useCollections(currentWorkspace?.id);
+  const collections = useCollections();
   const router = useRouter();
 
   const handleCreatePawkit = async () => {
@@ -38,22 +38,17 @@ export function SidebarContextMenu({ children }: SidebarContextMenuProps) {
       const slug = slugify(name);
 
       // Check if slug already exists in this workspace
-      const exists = collections.find(c => c.slug === slug && !c._deleted);
+      const exists = collections.find(c => c.slug === slug && !c.deleted);
       if (exists) {
         toast({ type: 'error', message: 'A Pawkit with this name already exists' });
         return;
       }
 
       await createCollection({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentWorkspace._id,
         name: name.trim(),
         slug,
-        position: 0,
         isPrivate: false,
-        isSystem: false,
-        pinned: false,
-        hidePreview: false,
-        useCoverAsBackground: false,
       });
       toast({ type: 'success', message: `Created ${name}` });
     }

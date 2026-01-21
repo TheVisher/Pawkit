@@ -8,16 +8,16 @@
 import { useMemo } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { CalendarCheck, ChevronRight, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card as UICard, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 interface ScheduledCardItemProps {
-  card: LocalCard;
+  card: Card;
   onClick: () => void;
 }
 
@@ -59,17 +59,17 @@ function ScheduledCardItem({ card, onClick }: ScheduledCardItemProps) {
 
 export function ScheduledTodayWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const scheduledToday = useMemo(() => {
     const today = new Date();
     return cards
       .filter((c) => {
-        if (c._deleted) return false;
+        if (c.deleted) return false;
         if (c.isDailyNote) return false; // Exclude daily notes
-        if (!c.scheduledDate) return false;
-        return isSameDay(new Date(c.scheduledDate), today);
+        if (!c.scheduledDates?.[0]) return false;
+        return isSameDay(new Date(c.scheduledDates[0]), today);
       })
       .sort((a, b) => {
         // Sort by creation date, newest first
@@ -81,15 +81,15 @@ export function ScheduledTodayWidget() {
   const totalScheduled = useMemo(() => {
     const today = new Date();
     return cards.filter((c) => {
-      if (c._deleted) return false;
+      if (c.deleted) return false;
       if (c.isDailyNote) return false;
-      if (!c.scheduledDate) return false;
-      return isSameDay(new Date(c.scheduledDate), today);
+      if (!c.scheduledDates?.[0]) return false;
+      return isSameDay(new Date(c.scheduledDates[0]), today);
     }).length;
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">
+    <UICard className="border-border-subtle bg-bg-surface-2 h-full py-0">
       <CardContent className="p-3 h-full flex flex-col">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-2 rounded-lg bg-blue-500/20">
@@ -107,9 +107,9 @@ export function ScheduledTodayWidget() {
           <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
             {scheduledToday.map((card) => (
               <ScheduledCardItem
-                key={card.id}
+                key={card._id}
                 card={card}
-                onClick={() => openCardDetail(card.id)}
+                onClick={() => openCardDetail(card._id)}
               />
             ))}
             {totalScheduled > 5 && (
@@ -128,6 +128,6 @@ export function ScheduledTodayWidget() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </UICard>
   );
 }

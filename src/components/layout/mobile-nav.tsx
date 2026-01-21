@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { Link } from '@tanstack/react-router';
+import { usePathname } from '@/lib/navigation';
 import { Home, Library, Calendar, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MobileSidebar } from './mobile-sidebar';
@@ -105,7 +105,7 @@ export function MobileNav({ className }: MobileNavProps) {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              to={item.href}
               className={cn(
                 'flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[64px]',
                 isActive

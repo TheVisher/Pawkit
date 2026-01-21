@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useDebugStore } from '@/lib/stores/debug-store';
 import { DebugPanel } from './debug-panel';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = import.meta.env.DEV;
 
 interface DebugProviderProps {
   children: ReactNode;

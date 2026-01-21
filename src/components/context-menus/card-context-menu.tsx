@@ -34,28 +34,25 @@ import {
   FileText,
   Download,
 } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { updateReadTag } from '@/lib/utils/system-tags';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { AddToPawkitSubmenu } from './add-to-pawkit-submenu';
 import { ScheduleSubmenu } from './schedule-submenu';
-import { queueMetadataFetch, clearMetadataCache } from '@/lib/services/metadata-service';
 import { copyHtmlAsMarkdown, downloadHtmlAsMarkdown } from '@/lib/utils/markdown-export';
 
 interface CardContextMenuProps {
-  card: LocalCard;
+  card: Card;
   children: ReactNode;
   /** Current collection slug if viewing inside a collection */
   currentCollection?: string;
 }
 
 export function CardContextMenu({ card, children, currentCollection }: CardContextMenuProps) {
-  const updateCard = useDataStore((s) => s.updateCard);
-  const deleteCard = useDataStore((s) => s.deleteCard);
-  const removeCardFromCollection = useDataStore((s) => s.removeCardFromCollection);
+  const { updateCard, deleteCard } = useMutations();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const openEditThumbnail = useModalStore((s) => s.openEditThumbnail);
   const toast = useToastStore((s) => s.toast);
@@ -97,22 +94,19 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   };
 
   const performRefetchMetadata = async () => {
-    // Clear the cache entry so the card can be refetched
-    clearMetadataCache();
-    // Queue the card for metadata fetching
-    queueMetadataFetch(card.id);
     // Reset the articleContentEdited flag since we're getting fresh content
-    await updateCard(card.id, { articleContentEdited: false });
+    // The card will be refetched by the grid-card's metadata re-fetch logic
+    await updateCard(card._id, { articleContentEdited: false });
     toast({ type: 'info', message: 'Refreshing metadata...' });
     setShowReextractDialog(false);
   };
 
   const handleEditThumbnail = () => {
-    openEditThumbnail(card.id);
+    openEditThumbnail(card._id);
   };
 
   const handleTogglePin = async () => {
-    await updateCard(card.id, { pinned: !isPinned });
+    await updateCard(card._id, { pinned: !isPinned });
     toast({
       type: 'success',
       message: isPinned ? 'Unpinned' : 'Pinned'
@@ -120,7 +114,7 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
   };
 
   const handleEdit = () => {
-    openCardDetail(card.id);
+    openCardDetail(card._id);
   };
 
   const handleToggleRead = async () => {
@@ -129,13 +123,13 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
       // Mark as unread AND set sticky flag to prevent auto-marking
       // Also remove 'read' tag
       const newTags = updateReadTag(currentTags, false);
-      await updateCard(card.id, { isRead: false, manuallyMarkedUnread: true, tags: newTags });
+      await updateCard(card._id, { isRead: false, manuallyMarkedUnread: true, tags: newTags });
       toast({ type: 'success', message: 'Marked as unread (will not auto-mark)' });
     } else {
       // Mark as read and clear the sticky flag
       // Also add 'read' tag
       const newTags = updateReadTag(currentTags, true);
-      await updateCard(card.id, { isRead: true, manuallyMarkedUnread: false, tags: newTags });
+      await updateCard(card._id, { isRead: true, manuallyMarkedUnread: false, tags: newTags });
       toast({ type: 'success', message: 'Marked as read' });
     }
     // Trigger Muuri layout refresh after tag change
@@ -144,14 +138,17 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
 
   const handleRemoveFromCollection = async () => {
     if (currentCollection) {
-      await removeCardFromCollection(card.id, currentCollection);
+      // Remove collection slug from card tags
+      const currentTags = card.tags || [];
+      const newTags = currentTags.filter(t => t !== currentCollection);
+      await updateCard(card._id, { tags: newTags });
       toast({ type: 'success', message: 'Removed from collection' });
     }
   };
 
   const handleDelete = async () => {
     if (confirm('Delete this card?')) {
-      await deleteCard(card.id);
+      await deleteCard(card._id);
       toast({ type: 'success', message: 'Card deleted' });
     }
   };
@@ -288,11 +285,11 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
           </ContextMenuItem>
 
           {/* Add to Pawkit submenu */}
-          <AddToPawkitSubmenu cardId={card.id} cardCollections={card.tags || []} />
+          <AddToPawkitSubmenu cardId={card._id} cardCollections={card.tags || []} />
 
           {/* Schedule submenu - for bookmark cards */}
           {isBookmark && (
-            <ScheduleSubmenu cardId={card.id} currentSchedule={card.scheduledDate} />
+            <ScheduleSubmenu cardId={card._id} currentSchedule={card.scheduledDates?.[0]} />
           )}
 
           {/* Mark as Read/Unread - for bookmarks with extracted article content */}

@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -327,7 +327,7 @@ function extractWishlistInfoFromPlateJson(content: any[]): { storeUrl?: string }
   return result;
 }
 
-export function extractWishlistInfo(content: string): {
+export function extractWishlistInfo(content: unknown): {
   storeUrl?: string;
 } {
   // Check if content is Plate JSON
@@ -336,6 +336,10 @@ export function extractWishlistInfo(content: string): {
     if (parsed) {
       return extractWishlistInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -380,7 +384,7 @@ export function getWishlistTemplateJson(type: string = 'simple', format: Templat
   const templateType = WISHLIST_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['item-info', 'notes'];
   const nodes = buildWishlistTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

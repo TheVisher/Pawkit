@@ -14,59 +14,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useCurrentWorkspace, useWorkspaceStore } from '@/lib/stores/workspace-store';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { useCurrentWorkspace, useWorkspaces } from '@/lib/stores/workspace-store';
+import { useConvexUser } from '@/lib/hooks/convex/use-convex-user';
 
 export function AccountSection() {
   const workspace = useCurrentWorkspace();
-  const { workspaces } = useWorkspaceStore();
-  const user = useAuthStore((state) => state.user);
+  const workspaces = useWorkspaces();
+  const { user } = useConvexUser();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteLocal = async () => {
-    const databases = await indexedDB.databases();
-    await Promise.all(
-      databases.map((db) => {
-        return new Promise<void>((resolve, reject) => {
-          if (!db.name) {
-            resolve();
-            return;
-          }
-          const request = indexedDB.deleteDatabase(db.name);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-        });
-      })
-    );
-  };
-
   const handleDeleteAccount = async () => {
     if (confirmText !== 'DELETE') return;
 
-    setIsDeleting(true);
-    try {
-      // 1. Delete local IndexedDB data
-      await handleDeleteLocal();
-
-      // 2. Delete database and user account via API
-      const response = await fetch('/api/user/delete-account', {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete account');
-      }
-
-      // 3. Redirect to home/login page
-      window.location.href = '/';
-    } catch (error) {
-      console.error('Delete account failed:', error);
-      alert(`Failed to delete account: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      setIsDeleting(false);
-    }
+    alert('Account deletion is not available yet.');
   };
 
   const closeDialog = () => {

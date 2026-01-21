@@ -17,8 +17,8 @@
 - Debugging data flow or real-time sync issues
 
 **Documentation files:**
-- `apps/start/docs/convex-guide.md` - Convex schemas, queries, mutations, React hooks, auth, file storage
-- `apps/start/docs/tanstack-start-guide.md` - Routing, server functions, layouts, head management
+- `docs/convex-guide.md` - Convex schemas, queries, mutations, React hooks, auth, file storage
+- `docs/tanstack-start-guide.md` - Routing, server functions, layouts, head management
 
 **Read these docs before implementing significant features.** Don't guess at patterns - check the docs first.
 
@@ -27,26 +27,26 @@
 ## PROJECT STRUCTURE
 
 ```
-apps/start/
-├── app/
+Pawkit/                   # Root (flat structure, not monorepo)
+├── src/
 │   ├── routes/           # TanStack Start file-based routing
 │   │   ├── __root.tsx    # Root layout
 │   │   └── *.tsx         # Route files
-│   ├── client.tsx        # Client entry
+│   ├── components/       # React components
+│   ├── hooks/            # Custom hooks
+│   ├── lib/              # Utilities, stores
+│   ├── pages/            # Page components
 │   ├── router.tsx        # Router config
 │   ├── routeTree.gen.ts  # Auto-generated (don't edit)
-│   └── ssr.tsx           # SSR handler
+│   └── styles.css        # Global CSS
 ├── convex/
 │   ├── schema.ts         # Database schema
 │   ├── *.ts              # Queries, mutations, actions
 │   └── _generated/       # Auto-generated (don't edit)
-├── src/
-│   ├── components/       # React components
-│   ├── hooks/            # Custom hooks
-│   ├── lib/              # Utilities
-│   └── styles/           # CSS
 ├── docs/                 # Stack documentation
-└── app.config.ts         # Vite/Start config
+├── public/               # Static assets
+├── archive-next/         # Old Next.js version (archived)
+└── vite.config.ts        # Vite/Start config
 ```
 
 ---
@@ -54,14 +54,14 @@ apps/start/
 ## KEY PATTERNS
 
 ### Routing (TanStack Start)
-- File-based routing in `app/routes/`
+- File-based routing in `src/routes/`
 - Use `createFileRoute` for routes
 - `$param` for dynamic segments
 - `_layout` for pathless layouts
 - Route path is auto-managed - don't hardcode
 
 ### Data (Convex)
-- Schema in `convex/schema.ts`
+- Schema in `convex/schema.ts` (at project root)
 - Queries for reads (real-time subscribed)
 - Mutations for writes (transactional)
 - Actions for external API calls
@@ -180,4 +180,4 @@ pnpm start            # Start production server
 
 ---
 
-**Remember: When in doubt, read the docs in `apps/start/docs/` first.**
+**Remember: When in doubt, read the docs in `docs/` first.**

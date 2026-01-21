@@ -5,14 +5,14 @@
  * Routes to the correct content component based on card type
  */
 
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
 import { ArticleContent } from './article-content';
 import { NoteContent } from './note-content';
 import { VideoContent } from './video-content';
 
 interface ContentRouterProps {
-  card: LocalCard;
+  card: Card;
   title: string;
   setTitle?: (title: string) => void;
   onTitleBlur?: () => void;

@@ -1,19 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ui/image';
 import { useSortable } from '@dnd-kit/sortable';
 import { MoreVertical, ExternalLink, Copy, Trash2, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDataStore } from '@/lib/stores/data-store';
-import type { LocalCard } from '@/lib/db';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import type { Card } from '@/lib/types/convex';
 import { getCardIcon } from './types';
 
 // =============================================================================
 // LIST ROW ICON
 // =============================================================================
 
-export function ListRowIcon({ card }: { card: LocalCard }) {
+export function ListRowIcon({ card }: { card: Card }) {
   const [imageError, setImageError] = useState(false);
 
   if (card.favicon && !imageError) {
@@ -38,14 +38,14 @@ export function ListRowIcon({ card }: { card: LocalCard }) {
 // =============================================================================
 
 interface ListRowActionsProps {
-  card: LocalCard;
+  card: Card;
   onEdit: () => void;
 }
 
 export function ListRowActions({ card, onEdit }: ListRowActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const deleteCard = useDataStore((s) => s.deleteCard);
+  const { deleteCard } = useMutations();
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -75,7 +75,7 @@ export function ListRowActions({ card, onEdit }: ListRowActionsProps) {
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to delete this card?')) {
-      await deleteCard(card.id);
+      await deleteCard(card._id);
     }
     setIsOpen(false);
   };
@@ -148,7 +148,7 @@ export function ListRowActions({ card, onEdit }: ListRowActionsProps) {
 // =============================================================================
 
 interface SortableListRowProps {
-  card: LocalCard;
+  card: Card;
   children: React.ReactNode;
   isDragging: boolean;
   isDropTarget: boolean;
@@ -161,7 +161,7 @@ export function SortableListRow({
   isDropTarget,
 }: SortableListRowProps) {
   const { attributes, listeners, setNodeRef } = useSortable({
-    id: card.id,
+    id: card._id,
     data: { type: 'Card', card },
   });
 

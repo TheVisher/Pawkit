@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { getTagStyle } from '@/lib/utils/tag-colors';
 import { TagInput } from '@/components/tags/tag-input';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useCardDetailSidebar, usePendingNoteText, useUIStore } from '@/lib/stores/ui-store';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
@@ -27,14 +27,15 @@ import { PawkitPlateEditor } from '@/components/editor';
 type PlateContent = any[];
 import {
   serializePlateContent,
+  stringifyPlateContent,
   isPlateJson,
   parseJsonContent,
   createEmptyPlateContent,
   htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
-import type { LocalCard, LocalCollection } from '@/lib/db';
+import type { Card, Collection, Id } from '@/lib/types/convex';
 import { useToastStore } from '@/lib/stores/toast-store';
-import { useCard } from '@/lib/hooks/use-live-data';
+import { useCardById } from '@/lib/contexts/convex-data-context';
 
 type CardDetailTab = 'details' | 'notes' | 'chat';
 
@@ -45,8 +46,8 @@ const TABS: { id: CardDetailTab; label: string; icon: typeof Info }[] = [
 ];
 
 interface CardDetailsPanelProps {
-  card: LocalCard;
-  collections: LocalCollection[];
+  card: Card;
+  collections: Collection[];
   isTransitioning: boolean;
 }
 
@@ -54,7 +55,7 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
   const [copied, setCopied] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [isEditingPawkits, setIsEditingPawkits] = useState(false);
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { updateCard } = useMutations();
   const { cardDetailTab, setTab } = useCardDetailSidebar();
   const visualStyle = useSettingsStore((s) => s.visualStyle);
   const isHighContrast = visualStyle === 'highContrast';
@@ -73,10 +74,10 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
 
   // Handle content changes from template panel
   const handleContentChange = useCallback(
-    (newContent: string) => {
-      updateCard(card.id, { content: newContent });
+    (newContent: PlateContent) => {
+      updateCard(card._id, { content: newContent });
     },
-    [card.id, updateCard]
+    [card._id, updateCard]
   );
 
   // Undo/Redo handlers
@@ -96,7 +97,7 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
     const oldTags = card.tags || [];
 
     // Update tags
-    updateCard(card.id, { tags: newTags });
+    updateCard(card._id, { tags: newTags });
 
     // Trigger Muuri layout refresh after a short delay to allow React to re-render
     // This ensures the masonry grid recalculates when card footer height changes
@@ -109,7 +110,7 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
     if (result.shouldApply && result.template) {
       // Auto-apply template to empty card
       const newContent = applyTemplate(card.content, result.template);
-      updateCard(card.id, { content: newContent });
+      updateCard(card._id, { content: newContent });
     } else if (result.needsPrompt && result.template) {
       // For cards with content, show a confirmation
       const confirmed = window.confirm(
@@ -118,10 +119,10 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
       if (confirmed) {
         // Use applyTemplate to convert HTML template to JSON format
         const newContent = applyTemplate('', result.template);
-        updateCard(card.id, { content: newContent });
+        updateCard(card._id, { content: newContent });
       }
     }
-  }, [card.id, card.tags, card.content, updateCard, triggerMuuriLayout]);
+  }, [card._id, card.tags, card.content, updateCard, triggerMuuriLayout]);
 
   const handleCopyUrl = async () => {
     if (!card.url) return;
@@ -227,8 +228,8 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
 
 // Details Tab - Contains all the existing card detail content
 interface DetailsTabContentProps {
-  card: LocalCard;
-  collections: LocalCollection[];
+  card: Card;
+  collections: Collection[];
   copied: boolean;
   isEditingTags: boolean;
   setIsEditingTags: (editing: boolean) => void;
@@ -241,7 +242,7 @@ interface DetailsTabContentProps {
   handleRedo: () => void;
   handleTagsChange: (tags: string[]) => void;
   handleContentChange: (content: string) => void;
-  updateCard: (id: string, updates: Partial<LocalCard>) => Promise<void>;
+  updateCard: (id: string | Id<'cards'>, updates: Partial<Card>) => Promise<void>;
 }
 
 function DetailsTabContent({
@@ -355,19 +356,26 @@ function DetailsTabContent({
                 const templateHtml = getSupertagTemplate(newSupertagTag) || '';
 
                 // Convert template HTML to Plate JSON for consistent storage
-                let newContent = '';
+                let newContent = createEmptyPlateContent();
                 if (templateHtml) {
                   try {
-                    const plateNodes = htmlToPlateJson(templateHtml);
-                    newContent = serializePlateContent(plateNodes);
+                    if (isPlateJson(templateHtml)) {
+                      const parsed = parseJsonContent(templateHtml);
+                      if (parsed) {
+                        newContent = parsed;
+                      }
+                    } else {
+                      const plateNodes = htmlToPlateJson(templateHtml);
+                      newContent = serializePlateContent(plateNodes);
+                    }
                   } catch (err) {
                     console.warn('[CardDetailsPanel] Failed to convert template to JSON:', err);
-                    newContent = templateHtml; // Fallback to HTML
+                    newContent = createEmptyPlateContent();
                   }
                 }
 
                 // Update everything in one call - this is an explicit conversion action
-                await updateCard(card.id, {
+                await updateCard(card._id, {
                   tags: newTags,
                   title: newTitle,
                   content: newContent,
@@ -498,7 +506,7 @@ function DetailsTabContent({
                           <button
                             onClick={() => {
                               const newTags = (card.tags || []).filter(t => t !== collectionSlug);
-                              updateCard(card.id, { tags: newTags });
+                              updateCard(card._id, { tags: newTags });
                               // Trigger layout refresh after React re-renders
                               setTimeout(() => triggerMuuriLayout(), 100);
                             }}
@@ -518,10 +526,10 @@ function DetailsTabContent({
                     <div className="flex flex-wrap gap-1.5">
                       {availablePawkits.map((collection) => (
                         <button
-                          key={collection.id}
+                          key={collection._id}
                           onClick={() => {
                             const newTags = [...(card.tags || []), collection.slug];
-                            updateCard(card.id, { tags: newTags });
+                            updateCard(card._id, { tags: newTags });
                             // Trigger layout refresh after React re-renders
                             setTimeout(() => triggerMuuriLayout(), 100);
                           }}
@@ -577,7 +585,7 @@ function DetailsTabContent({
       <Separator className="bg-border-subtle" />
 
       {/* References Section - outgoing @ mentions (includes its own separator) */}
-      <ReferencesSection cardId={card.id} workspaceId={card.workspaceId} />
+      <ReferencesSection cardId={card._id} workspaceId={card.workspaceId} />
 
       {/* Backlinks Section - incoming @ mentions */}
       <BacklinksSection card={card} workspaceId={card.workspaceId} />
@@ -598,24 +606,22 @@ function DetailsTabContent({
 
 // Notes Tab - Dedicated notes editor for user annotations
 interface NotesTabContentProps {
-  card: LocalCard;
+  card: Card;
 }
 
 function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
-  const updateCard = useDataStore((s) => s.updateCard);
-  const createCard = useDataStore((s) => s.createCard);
-  const createReference = useDataStore((s) => s.createReference);
+  const { updateCard, createCard, createReference } = useMutations();
   const toast = useToastStore((s) => s.toast);
   const { pendingNoteText, clearPendingNoteText } = usePendingNoteText();
   const [isExporting, setIsExporting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Use live card data so exportedNoteId updates reactively
-  const card = useCard(cardProp.id) ?? cardProp;
+  const card = useCardById(cardProp._id) ?? cardProp;
 
   // Check if the exported note still exists
-  const exportedNote = useCard(card.exportedNoteId);
-  const noteExists = !!exportedNote && !exportedNote._deleted;
+  const exportedNote = useCardById(card.exportedNoteId);
+  const noteExists = !!exportedNote && !exportedNote.deleted;
 
   // Handle pending note text from article selection
   useEffect(() => {
@@ -669,22 +675,22 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
             }
             return true;
           });
-          newNotes = serializePlateContent([...filtered, ...pendingNodes] as PlateContent);
+          newNotes = stringifyPlateContent([...filtered, ...pendingNodes] as PlateContent);
         } else {
-          newNotes = serializePlateContent(pendingNodes);
+          newNotes = stringifyPlateContent(pendingNodes);
         }
       } else if (currentNotes && currentNotes !== '<p></p>') {
         // Existing content is HTML - convert to Plate JSON first, then append new content
         const existingAsJson = htmlToPlateJson(currentNotes);
-        newNotes = serializePlateContent([...existingAsJson, ...pendingNodes] as PlateContent);
+        newNotes = stringifyPlateContent([...existingAsJson, ...pendingNodes] as PlateContent);
       } else {
-        newNotes = serializePlateContent(pendingNodes);
+        newNotes = stringifyPlateContent(pendingNodes);
       }
 
-      updateCard(card.id, { notes: newNotes });
+      updateCard(card._id, { notes: newNotes });
       clearPendingNoteText();
     }
-  }, [pendingNoteText, card.id, card.notes, updateCard, clearPendingNoteText]);
+  }, [pendingNoteText, card._id, card.notes, updateCard, clearPendingNoteText]);
 
   // Parse notes content - could be HTML (legacy) or JSON string (new format)
   const parsedNotesContent = useMemo(() => {
@@ -707,9 +713,9 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
        'text' in firstNode.children[0] &&
        (firstNode.children[0] as { text: string }).text === '');
 
-    const jsonString = isEmpty ? undefined : serializePlateContent(value);
-    updateCard(card.id, { notes: jsonString });
-  }, [card.id, updateCard]);
+    const jsonString = isEmpty ? undefined : stringifyPlateContent(value);
+    updateCard(card._id, { notes: jsonString });
+  }, [card._id, updateCard]);
 
   // Helper: Parse notes content into individual content blocks
   // Handles both JSON (Plate) and HTML formats
@@ -765,9 +771,9 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     if (card.exportedNoteId && exportedCount > 0 && exportedCount > totalBlockCount) {
       // The stored count is higher than actual blocks - this indicates format drift
       // Reset to current total to prevent re-exporting already-exported content
-      updateCard(card.id, { exportedHighlightCount: totalBlockCount });
+      updateCard(card._id, { exportedHighlightCount: totalBlockCount });
     }
-  }, [card.id, card.exportedNoteId, exportedCount, totalBlockCount, updateCard]);
+  }, [card._id, card.exportedNoteId, exportedCount, totalBlockCount, updateCard]);
 
   // Export notes to a new standalone note card
   const handleExportToNote = useCallback(async () => {
@@ -808,13 +814,13 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       await createReference({
         workspaceId: card.workspaceId,
         sourceId: newNote.id,
-        targetId: card.id,
+        targetId: card._id,
         targetType: 'card',
         linkText: card.title || 'Untitled',
       });
 
       // Store the exported note ID and count of content blocks exported
-      await updateCard(card.id, {
+      await updateCard(card._id, {
         exportedNoteId: newNote.id,
         exportedHighlightCount: totalBlockCount,
       });
@@ -832,7 +838,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [card.notes, card.title, card.workspaceId, card.id, totalBlockCount, currentContentBlocks, createCard, createReference, updateCard, toast]);
+  }, [card.notes, card.title, card.workspaceId, card._id, totalBlockCount, currentContentBlocks, createCard, createReference, updateCard, toast]);
 
   // Update existing exported note by appending only NEW content blocks
   const handleUpdateNote = useCallback(async () => {
@@ -850,7 +856,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
         type: 'warning',
         message: 'Original note not found, use New Note',
       });
-      await updateCard(card.id, { exportedNoteId: undefined, exportedHighlightCount: undefined });
+      await updateCard(card._id, { exportedNoteId: undefined, exportedHighlightCount: undefined });
       return;
     }
 
@@ -869,13 +875,13 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     try {
       // Append new blocks to existing content
       const existingContent = exportedNote.content || '';
-      let newContent: string;
+      let newContent: PlateContent;
 
       if (isPlateJson(existingContent)) {
         // Existing is Plate JSON - append new blocks
         const existingNodes = parseJsonContent(existingContent) || [];
         newContent = serializePlateContent([...existingNodes, ...newBlocks] as PlateContent);
-      } else if (existingContent && existingContent !== '<p></p>') {
+      } else if (typeof existingContent === 'string' && existingContent && existingContent !== '<p></p>') {
         // Existing is HTML - convert to JSON, then append
         const existingNodes = htmlToPlateJson(existingContent);
         newContent = serializePlateContent([...existingNodes, ...newBlocks] as PlateContent);
@@ -887,7 +893,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
       await updateCard(card.exportedNoteId, { content: newContent });
 
       // Update the exported count
-      await updateCard(card.id, { exportedHighlightCount: totalBlockCount });
+      await updateCard(card._id, { exportedHighlightCount: totalBlockCount });
 
       toast({
         type: 'success',
@@ -902,7 +908,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
     } finally {
       setIsUpdating(false);
     }
-  }, [card.exportedNoteId, card.id, noteExists, currentContentBlocks, adjustedExportedCount, totalBlockCount, exportedNote, updateCard, toast]);
+  }, [card.exportedNoteId, card._id, noteExists, currentContentBlocks, adjustedExportedCount, totalBlockCount, exportedNote, updateCard, toast]);
 
   // Check if there are any notes (works for both JSON and HTML)
   const hasNotes = currentContentBlocks.length > 0;
@@ -924,7 +930,7 @@ function NotesTabContent({ card: cardProp }: NotesTabContentProps) {
           onChange={handleNotesChange}
           placeholder="Jot down your thoughts, key takeaways, or to-dos..."
           workspaceId={card.workspaceId}
-          cardId={card.id}
+          cardId={card._id}
           variant="notes"
         />
       </div>

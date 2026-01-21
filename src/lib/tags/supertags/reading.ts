@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -397,7 +397,7 @@ function extractReadingInfoFromPlateJson(content: any[]): { storeUrl?: string } 
   return result;
 }
 
-export function extractReadingInfo(content: string): {
+export function extractReadingInfo(content: unknown): {
   storeUrl?: string;
 } {
   // Check if content is Plate JSON
@@ -406,6 +406,10 @@ export function extractReadingInfo(content: string): {
     if (parsed) {
       return extractReadingInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -450,7 +454,7 @@ export function getReadingTemplateJson(type: string = 'fiction', format: Templat
   const templateType = READING_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['book-info', 'progress', 'notes'];
   const nodes = buildReadingTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

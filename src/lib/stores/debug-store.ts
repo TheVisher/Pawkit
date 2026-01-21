@@ -64,10 +64,6 @@ export interface DebugState {
   widthTolerance: number;
   persistDebounceMs: number;
 
-  // === IndexedDB/Dexie ===
-  enableDexieCache: boolean;
-  dexieWriteDebounce: number;
-
   // === Metrics Display ===
   showFpsCounter: boolean;
   showFrameDrops: boolean;
@@ -158,10 +154,6 @@ export const DEBUG_DEFAULTS: DebugState = {
   cacheEnabled: true,
   widthTolerance: 20,
   persistDebounceMs: 1000,
-
-  // IndexedDB/Dexie
-  enableDexieCache: true,
-  dexieWriteDebounce: 2000,
 
   // Metrics (OFF by default)
   showFpsCounter: false,
@@ -303,4 +295,4 @@ export const useDebugStore = create<DebugStore>()(
 // DEV CHECK
 // =============================================================================
 
-export const isDev = process.env.NODE_ENV === 'development';
+export const isDev = import.meta.env.DEV;

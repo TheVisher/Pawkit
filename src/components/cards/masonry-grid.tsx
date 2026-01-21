@@ -4,7 +4,7 @@ import { useMemo, memo, useRef } from 'react';
 import { CardItem, type CardDisplaySettings } from './card-item';
 import type { SystemTag } from '@/lib/utils/system-tags';
 import { CardContextMenu } from '@/components/context-menus';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useUIStore, selectMuuriLayoutVersion } from '@/lib/stores/ui-store';
 import { MuuriGridComponent, MuuriItemWrapper, type MuuriGridRef } from './muuri-grid';
@@ -19,7 +19,7 @@ const CARD_SIZE_WIDTHS: Record<CardSize, number> = {
 };
 
 interface MasonryGridProps {
-  cards: LocalCard[];
+  cards: Card[];
   cardSize?: CardSize;
   cardSpacing?: number;
   displaySettings?: Partial<CardDisplaySettings>;
@@ -35,7 +35,7 @@ interface MasonryGridProps {
 }
 
 interface MasonryCardProps {
-  card: LocalCard;
+  card: Card;
   onClick: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   currentCollection?: string;
@@ -108,7 +108,7 @@ const MasonryCard = memo(
   (prevProps, nextProps) => {
     // Only re-render if the card content actually changed
     return (
-      prevProps.card.id === nextProps.card.id &&
+      prevProps.card._id === nextProps.card._id &&
       prevProps.card.title === nextProps.card.title &&
       prevProps.card.image === nextProps.card.image &&
       prevProps.card.favicon === nextProps.card.favicon &&
@@ -117,15 +117,18 @@ const MasonryCard = memo(
       prevProps.card.content === nextProps.card.content &&
       prevProps.card.type === nextProps.card.type &&
       prevProps.card.pinned === nextProps.card.pinned &&
-      prevProps.card._synced === nextProps.card._synced &&
+      // _synced removed - with native Convex, cards are always synced
       prevProps.card.status === nextProps.card.status &&
       prevProps.card.convertedToTodo === nextProps.card.convertedToTodo &&
       prevProps.card.dismissedTodoSuggestion === nextProps.card.dismissedTodoSuggestion &&
-      prevProps.card.scheduledDate === nextProps.card.scheduledDate &&
+      prevProps.card.scheduledDates?.[0] === nextProps.card.scheduledDates?.[0] &&
       prevProps.card.linkStatus === nextProps.card.linkStatus &&
       prevProps.card.isRead === nextProps.card.isRead &&
       prevProps.card.readProgress === nextProps.card.readProgress &&
       prevProps.card.readingTime === nextProps.card.readingTime &&
+      prevProps.card.dominantColor === nextProps.card.dominantColor &&
+      prevProps.card.aspectRatio === nextProps.card.aspectRatio &&
+      prevProps.card.blurDataUri === nextProps.card.blurDataUri &&
       prevProps.currentCollection === nextProps.currentCollection &&
       prevProps.priority === nextProps.priority &&
       arraysShallowEqual(prevProps.card.tags, nextProps.card.tags) &&
@@ -162,7 +165,7 @@ export function MasonryGrid({
   const minCardWidth = CARD_SIZE_WIDTHS[cardSize];
 
   // Generate a string key from card IDs to detect when cards change
-  const cardIdsKey = useMemo(() => cards.map((c) => c.id).join(','), [cards]);
+  const cardIdsKey = useMemo(() => cards.map((c) => c._id).join(','), [cards]);
 
   // Empty state
   if (cards.length === 0) {
@@ -186,14 +189,14 @@ export function MasonryGrid({
       {(calculatedWidth) =>
         cards.map((card, index) => (
           <MuuriItemWrapper
-            key={card.id}
-            cardId={card.id}
+            key={card._id}
+            cardId={card._id}
             width={calculatedWidth}
             spacing={cardSpacing}
           >
             <MasonryCard
               card={card}
-              onClick={() => openCardDetail(card.id)}
+              onClick={() => openCardDetail(card._id)}
               displaySettings={displaySettings}
               currentCollection={currentCollection}
               onTagClick={onTagClick}

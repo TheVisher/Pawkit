@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import { stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -286,7 +286,7 @@ export function getProjectTemplateJson(type: string = 'personal', format: Templa
   const templateType = PROJECT_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['overview', 'goals', 'resources', 'notes'];
   const nodes = buildProjectTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

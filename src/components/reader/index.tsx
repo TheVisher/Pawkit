@@ -112,12 +112,18 @@ export function Reader({
     if (typeof window === 'undefined') return '';
 
     // Convert Plate JSON to HTML if needed
-    let htmlContent = content;
+    let htmlContent = '';
     if (isPlateJson(content)) {
       const parsed = parseJsonContent(content);
       if (parsed) {
         htmlContent = plateToHtml(parsed);
       }
+    } else if (typeof content === 'string') {
+      htmlContent = content;
+    }
+
+    if (!htmlContent) {
+      return '';
     }
 
     // Sanitize

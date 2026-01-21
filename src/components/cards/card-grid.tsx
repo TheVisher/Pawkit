@@ -9,7 +9,7 @@ import type { SystemTag } from '@/lib/utils/system-tags';
 import { MasonryGrid } from './masonry-grid';
 import { CardListView, type CardGroup } from './card-list-view';
 import { CardContextMenu } from '@/components/context-menus';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { useModalStore } from '@/lib/stores/modal-store';
 
 type CardSize = 'small' | 'medium' | 'large' | 'xl';
@@ -45,7 +45,7 @@ const SortableGridCard = memo(function SortableGridCard({
   onTagClick,
   onSystemTagClick,
 }: {
-  card: LocalCard;
+  card: Card;
   onClick: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   isDraggingThis: boolean;
@@ -55,7 +55,7 @@ const SortableGridCard = memo(function SortableGridCard({
   onSystemTagClick?: (tag: SystemTag) => void;
 }) {
   const { attributes, listeners, setNodeRef } = useSortable({
-    id: card.id,
+    id: card._id,
     data: { type: 'Card', card },
   });
 
@@ -91,7 +91,7 @@ const SortableGridCard = memo(function SortableGridCard({
 });
 
 interface CardGridProps {
-  cards: LocalCard[];
+  cards: Card[];
   layout: string;
   onReorder?: (reorderedIds: string[]) => void;
   cardSize?: CardSize;
@@ -125,7 +125,7 @@ export function CardGrid({
   // DnD state for grid view
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  const [activeDragItem, setActiveDragItem] = useState<LocalCard | null>(null);
+  const [activeDragItem, setActiveDragItem] = useState<Card | null>(null);
 
   // DnD monitor for grid view
   useDndMonitor({
@@ -134,7 +134,7 @@ export function CardGrid({
       if (layout !== 'grid') return;
       setActiveId(event.active.id as string);
       setOverId(null);
-      const card = cards.find((c) => c.id === event.active.id);
+      const card = cards.find((c) => c._id === event.active.id);
       setActiveDragItem(card || null);
     },
     onDragOver: (event) => {
@@ -155,14 +155,14 @@ export function CardGrid({
       setActiveDragItem(null);
 
       if (over && active.id !== over.id && onReorder) {
-        const oldIndex = cards.findIndex((c) => c.id === active.id);
-        const newIndex = cards.findIndex((c) => c.id === over.id);
+        const oldIndex = cards.findIndex((c) => c._id === active.id);
+        const newIndex = cards.findIndex((c) => c._id === over.id);
 
         if (oldIndex !== -1 && newIndex !== -1) {
           const newOrder = [...cards];
           const [removed] = newOrder.splice(oldIndex, 1);
           newOrder.splice(newIndex, 0, removed);
-          onReorder(newOrder.map((c) => c.id));
+          onReorder(newOrder.map((c) => c._id));
         }
       }
     },
@@ -173,7 +173,7 @@ export function CardGrid({
     },
   });
 
-  const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
+  const cardIds = useMemo(() => cards.map((c) => c._id), [cards]);
 
   // Masonry layout with IntersectionObserver-based virtualization
   if (layout === 'masonry') {
@@ -220,12 +220,12 @@ export function CardGrid({
         >
           {cards.map((card) => (
             <SortableGridCard
-              key={card.id}
+              key={card._id}
               card={card}
-              onClick={() => openCardDetail(card.id)}
+              onClick={() => openCardDetail(card._id)}
               displaySettings={displaySettings}
-              isDraggingThis={activeId === card.id}
-              isDropTarget={overId === card.id && activeId !== card.id}
+              isDraggingThis={activeId === card._id}
+              isDropTarget={overId === card._id && activeId !== card._id}
               currentCollection={currentCollection}
               onTagClick={onTagClick}
               onSystemTagClick={onSystemTagClick}

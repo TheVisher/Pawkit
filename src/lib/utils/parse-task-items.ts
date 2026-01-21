@@ -3,15 +3,17 @@
  * Extract and manipulate task items from both Plate JSON and legacy HTML content
  */
 
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { format } from 'date-fns';
 import {
   isPlateJson,
   parseJsonContent,
-  serializePlateContent,
   htmlToPlateJson,
+  createEmptyPlateContent,
 } from '@/lib/plate/html-to-plate';
 import type { Descendant, Value } from 'platejs';
+
+type CardContent = string | Value | Descendant[] | null | undefined;
 
 export interface TaskItem {
   id: string;           // Unique identifier (cardId-index)
@@ -138,19 +140,23 @@ function parseTaskItemsFromHtml(
 /**
  * Parse task items from a card's content (supports both Plate JSON and HTML)
  */
-export function parseTaskItemsFromCard(card: LocalCard): TaskItem[] {
+export function parseTaskItemsFromCard(card: Card): TaskItem[] {
   if (!card.content) return [];
 
   // Try Plate JSON first
   if (isPlateJson(card.content)) {
     const parsed = parseJsonContent(card.content);
     if (parsed) {
-      return parseTaskItemsFromPlateJson(parsed, card.id, card.title || 'Untitled Todo');
+      return parseTaskItemsFromPlateJson(parsed, card._id, card.title || 'Untitled Todo');
     }
   }
 
   // Fall back to HTML parsing
-  return parseTaskItemsFromHtml(card.content, card.id, card.title || 'Untitled Todo');
+  if (typeof card.content === 'string') {
+    return parseTaskItemsFromHtml(card.content, card._id, card.title || 'Untitled Todo');
+  }
+
+  return [];
 }
 
 /**
@@ -278,7 +284,7 @@ function getEarliestUncheckedTaskDateFromHtml(content: string): Date | null {
  * Used to determine the scheduledDate for overdue checking
  * Supports both Plate JSON and legacy HTML
  */
-export function getEarliestUncheckedTaskDate(content: string | undefined | null): Date | null {
+export function getEarliestUncheckedTaskDate(content: CardContent): Date | null {
   if (!content) return null;
 
   // Try Plate JSON first
@@ -290,7 +296,11 @@ export function getEarliestUncheckedTaskDate(content: string | undefined | null)
   }
 
   // Fall back to HTML parsing
-  return getEarliestUncheckedTaskDateFromHtml(content);
+  if (typeof content === 'string') {
+    return getEarliestUncheckedTaskDateFromHtml(content);
+  }
+
+  return null;
 }
 
 /**
@@ -417,21 +427,35 @@ function toggleTaskInHtml(
  * Returns the updated content string
  */
 export function toggleTaskInContent(
-  content: string,
+  content: CardContent,
   taskText: string,
   newChecked: boolean
-): string {
+): Value {
   // Try Plate JSON first
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
     if (parsed) {
       const updated = toggleTaskInPlateJson(parsed, taskText, newChecked);
-      return serializePlateContent(updated);
+      return updated;
     }
   }
 
-  // Fall back to HTML
-  return toggleTaskInHtml(content, taskText, newChecked);
+  // Fall back to HTML (convert result to JSON)
+  if (typeof content === 'string') {
+    try {
+      const converted = htmlToPlateJson(content);
+      if (converted && converted.length > 0) {
+        return toggleTaskInPlateJson(converted, taskText, newChecked);
+      }
+    } catch (err) {
+      console.warn('[parseTaskItems] Failed to convert HTML to JSON:', err);
+    }
+
+    const updatedHtml = toggleTaskInHtml(content, taskText, newChecked);
+    return htmlToPlateJson(updatedHtml);
+  }
+
+  return createEmptyPlateContent();
 }
 
 /**
@@ -608,15 +632,15 @@ function addTaskToHtml(content: string, taskText: string): string {
  * Creates the date header if it doesn't exist
  * Supports both Plate JSON and legacy HTML
  */
-export function addTaskToContent(content: string, taskText: string): string {
+export function addTaskToContent(content: CardContent, taskText: string): Value {
   // If content is empty or not provided, create new Plate JSON content
-  if (!content || !content.trim()) {
+  if (!content || (typeof content === 'string' && !content.trim())) {
     const today = format(new Date(), 'MMMM d, yyyy');
     const initialContent: Value = [
       createPlateHeading(today, 'h2'),
       createPlateTodoItem(taskText, false),
     ];
-    return serializePlateContent(initialContent);
+    return initialContent;
   }
 
   // Try Plate JSON first
@@ -624,34 +648,39 @@ export function addTaskToContent(content: string, taskText: string): string {
     const parsed = parseJsonContent(content);
     if (parsed) {
       const updated = addTaskToPlateJson(parsed, taskText);
-      return serializePlateContent(updated);
+      return updated;
     }
   }
 
-  // Convert HTML to Plate JSON, then add task
-  // This ensures all saves are JSON format going forward
-  try {
-    const converted = htmlToPlateJson(content);
-    if (converted && converted.length > 0) {
-      const updated = addTaskToPlateJson(converted, taskText);
-      return serializePlateContent(updated);
+  if (typeof content === 'string') {
+    // Convert HTML to Plate JSON, then add task
+    // This ensures all saves are JSON format going forward
+    try {
+      const converted = htmlToPlateJson(content);
+      if (converted && converted.length > 0) {
+        const updated = addTaskToPlateJson(converted, taskText);
+        return updated;
+      }
+    } catch (err) {
+      console.warn('[parseTaskItems] Failed to convert HTML to JSON:', err);
     }
-  } catch (err) {
-    console.warn('[parseTaskItems] Failed to convert HTML to JSON:', err);
+
+    // Last resort: use HTML fallback (should rarely happen)
+    const updatedHtml = addTaskToHtml(content, taskText);
+    return htmlToPlateJson(updatedHtml);
   }
 
-  // Last resort: use HTML fallback (should rarely happen)
-  return addTaskToHtml(content, taskText);
+  return createEmptyPlateContent();
 }
 
 /**
  * Get all incomplete tasks from multiple cards
  */
-export function getIncompleteTasksFromCards(cards: LocalCard[]): TaskItem[] {
+export function getIncompleteTasksFromCards(cards: Card[]): TaskItem[] {
   const allTasks: TaskItem[] = [];
 
   for (const card of cards) {
-    if (card._deleted) continue;
+    if (card.deleted) continue;
     if (!card.tags?.includes('todo')) continue;
 
     const tasks = parseTaskItemsFromCard(card);
@@ -667,11 +696,11 @@ export function getIncompleteTasksFromCards(cards: LocalCard[]): TaskItem[] {
  * Create initial todo note content with today's header
  * Returns Plate JSON format
  */
-export function createInitialTodoContent(): string {
+export function createInitialTodoContent(): Value {
   const today = format(new Date(), 'MMMM d, yyyy');
   const initialContent: Value = [
     createPlateHeading(today, 'h2'),
     createPlateTodoItem('', false),
   ];
-  return serializePlateContent(initialContent);
+  return initialContent;
 }

@@ -6,16 +6,15 @@
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from '@/lib/navigation';
 import { format, isSameDay, startOfDay } from 'date-fns';
-import { db } from '@/lib/db';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useTagStore } from '@/lib/stores/tag-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
+import { Id } from '@/lib/types/convex';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, type SearchResults } from '../types';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
@@ -27,6 +26,8 @@ import {
   parseJsonContent,
   serializePlateContent,
   htmlToPlateJson,
+  getContentText,
+  createEmptyPlateContent,
 } from '@/lib/plate/html-to-plate';
 import type { Value, Descendant } from 'platejs';
 
@@ -94,13 +95,22 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar);
   const openAddCard = useModalStore((s) => s.openAddCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
-  const createCard = useDataStore((s) => s.createCard);
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { createCard, updateCard } = useMutations();
   const currentWorkspace = useCurrentWorkspace();
-  const cards = useCards(currentWorkspace?.id);
-  const collections = useCollections(currentWorkspace?.id);
-  const uniqueTags = useTagStore((s) => s.uniqueTags);
-  const createTag = useTagStore((s) => s.createTag);
+  const cards = useCards();
+  const collections = useCollections();
+
+  // Derive uniqueTags from cards instead of using tag-store
+  const uniqueTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const card of cards) {
+      if (card.deleted) continue;
+      for (const tag of card.tags || []) {
+        tagSet.add(tag);
+      }
+    }
+    return Array.from(tagSet).sort();
+  }, [cards]);
 
   // Debounce search query
   const debouncedQuery = useDebounce(quickNoteText, 150);
@@ -206,8 +216,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   // SEARCH LOGIC
   // ==========================================================================
 
-  const stripHtml = useCallback((html: string): string => {
-    return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const stripHtml = useCallback((content: unknown): string => {
+    return getContentText(content);
   }, []);
 
   // Only compute recent cards when actually in quick note mode
@@ -369,7 +379,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
 
     if (index < currentIdx + searchResults.cards.length) {
       const card = searchResults.cards[index - currentIdx];
-      openCardDetail(card.id);
+      openCardDetail(card._id);
       resetSearch();
       return;
     }
@@ -432,7 +442,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         const normalizedInput = normalizeUrl(url);
 
         const existingCard = cards.find((card) => {
-          if (card._deleted) return false;
+          if (card.deleted) return false;
           if (card.type !== 'url') return false;
           if (!card.url) return false;
           return normalizeUrl(card.url) === normalizedInput;
@@ -444,22 +454,21 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
             message: 'This URL is already saved',
             action: {
               label: 'View existing',
-              onClick: () => openCardDetail(existingCard.id),
+              onClick: () => openCardDetail(existingCard._id),
             },
           });
           return;
         }
 
         await createCard({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentWorkspace._id as Id<'workspaces'>,
           type: 'url',
           url: url,
           title: '',
-          content: '',
+          content: createEmptyPlateContent(),
           tags: [],
           pinned: false,
           isFileCard: false,
-          status: 'PENDING',
         });
 
         resetSearch();
@@ -481,18 +490,15 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         ],
       }));
 
-      // Find today's daily note
-      const existingNotes = await db.cards
-        .where('workspaceId')
-        .equals(currentWorkspace.id)
-        .filter(
-          (c) =>
-            c.isDailyNote === true &&
-            c.scheduledDate != null &&
-            isSameDay(new Date(c.scheduledDate), today) &&
-            c._deleted !== true
-        )
-        .toArray();
+      // Find today's daily note from the cards array
+      const existingNotes = cards.filter(
+        (c) =>
+          c.workspaceId === currentWorkspace._id &&
+          c.isDailyNote === true &&
+          c.scheduledDates?.[0] != null &&
+          isSameDay(new Date(c.scheduledDates[0]), today) &&
+          c.deleted !== true
+      );
 
       let dailyNote = existingNotes.length > 0
         ? existingNotes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
@@ -500,7 +506,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
 
       if (dailyNote) {
         // Prepend entry (newest at top)
-        let newContent: string;
+        let newContent: Value;
         if (dailyNote.content && isPlateJson(dailyNote.content)) {
           // Existing content is Plate JSON - prepend new nodes
           const existingContent = parseJsonContent(dailyNote.content);
@@ -516,44 +522,44 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         } else {
           newContent = serializePlateContent(entryNodes as Value);
         }
-        await updateCard(dailyNote.id, { content: newContent });
+        await updateCard(dailyNote._id, { content: newContent });
       } else {
         // Create new daily note with Plate JSON content
         await createCard({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentWorkspace._id as Id<'workspaces'>,
           type: 'md-note',
           url: '',
           title: format(today, 'MMMM d, yyyy'),
           content: serializePlateContent(entryNodes as Value),
           isDailyNote: true,
-          scheduledDate: startOfDay(today),
+          scheduledDates: [startOfDay(today).toISOString()],
           tags: ['daily-note'],
           pinned: false,
           isFileCard: false,
-          status: 'READY',
         });
       }
 
       // Todo detection: if text is a task, also add to todo card
       const todoResult = detectTodo(trimmedText);
       if (todoResult.isTodo) {
-        // Find existing todo card
-        const todoCards = await db.cards
-          .where('workspaceId')
-          .equals(currentWorkspace.id)
-          .filter((c) => c.tags?.includes('todo') && c._deleted !== true)
-          .toArray();
+        // Find existing todo card from the cards array
+        const todoCardsList = cards.filter(
+          (c) =>
+            c.workspaceId === currentWorkspace._id &&
+            c.tags?.includes('todo') &&
+            c.deleted !== true
+        );
 
-        const todoCard = todoCards.length > 0 ? todoCards[0] : null;
+        const todoCard = todoCardsList.length > 0 ? todoCardsList[0] : null;
 
         if (todoCard) {
           const newContent = addTaskToContent(todoCard.content || '', trimmedText);
-          await updateCard(todoCard.id, { content: newContent });
+          await updateCard(todoCard._id, { content: newContent });
         } else {
           // Create new todo card with task
           const content = addTaskToContent('', trimmedText);
           await createCard({
-            workspaceId: currentWorkspace.id,
+            workspaceId: currentWorkspace._id as Id<'workspaces'>,
             type: 'md-note',
             url: '',
             title: 'Todos',
@@ -561,7 +567,6 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
             tags: ['todo'],
             pinned: false,
             isFileCard: false,
-            status: 'READY',
           });
         }
 
@@ -613,28 +618,27 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         message: `Similar tag${similarTags.length > 1 ? 's' : ''} exist${similarTags.length === 1 ? 's' : ''}: ${similarTags.join(', ')}. Press Enter again to create anyway.`,
       });
     } else {
-      // No similar tags, create directly
-      createTag(cleaned);
-      toast({ type: 'success', message: `Tag "${cleaned}" created` });
+      // No similar tags - tags are created when added to cards, just show success
+      toast({ type: 'success', message: `Tag "${cleaned}" is available for use` });
       // Clear URL filter before resetting (resetSearch sets isQuickNoteMode=false which prevents URL cleanup)
       if (isOnTagsPage) {
         router.replace('/tags', { scroll: false });
       }
       resetSearch();
     }
-  }, [quickNoteText, uniqueTags, toast, createTag, resetSearch, isOnTagsPage, router]);
+  }, [quickNoteText, uniqueTags, toast, resetSearch, isOnTagsPage, router]);
 
   const confirmTagCreation = useCallback(() => {
     if (!pendingTagCreation) return;
 
-    createTag(pendingTagCreation);
-    toast({ type: 'success', message: `Tag "${pendingTagCreation}" created` });
+    // Tags are created when added to cards - just confirm availability
+    toast({ type: 'success', message: `Tag "${pendingTagCreation}" is available for use` });
     // Clear URL filter before resetting
     if (isOnTagsPage) {
       router.replace('/tags', { scroll: false });
     }
     resetSearch();
-  }, [pendingTagCreation, createTag, toast, resetSearch, isOnTagsPage, router]);
+  }, [pendingTagCreation, toast, resetSearch, isOnTagsPage, router]);
 
   const cancelTagCreation = useCallback(() => {
     setPendingTagCreation(null);

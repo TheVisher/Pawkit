@@ -20,25 +20,22 @@ import {
   ContextMenuSeparator,
 } from '@/components/ui/context-menu';
 import { Calendar } from '@/components/ui/calendar';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useToastStore } from '@/lib/stores/toast-store';
-import { useCards, useReferences } from '@/lib/hooks/use-live-data';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { updateScheduleTags } from '@/lib/utils/system-tags';
 
 interface ScheduleSubmenuProps {
   cardId: string;
-  currentSchedule?: Date;
+  currentSchedule?: string;
 }
 
 export function ScheduleSubmenu({ cardId, currentSchedule }: ScheduleSubmenuProps) {
   const [showCalendar, setShowCalendar] = useState(false);
-  const updateCard = useDataStore((s) => s.updateCard);
-  const createReference = useDataStore((s) => s.createReference);
-  const deleteReference = useDataStore((s) => s.deleteReference);
+  const { updateCard } = useMutations();
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
-  const references = useReferences(cardId);
+  const cards = useCards();
   const toast = useToastStore((s) => s.toast);
 
   const today = new Date();
@@ -47,15 +44,12 @@ export function ScheduleSubmenu({ cardId, currentSchedule }: ScheduleSubmenuProp
   const nextMonth = startOfMonth(addMonths(today, 1));
 
   // Get current card's tags and scheduledDates
-  const currentCard = cards.find(c => c.id === cardId);
+  const currentCard = cards.find(c => c._id === cardId);
   const currentTags = currentCard?.tags || [];
   const currentScheduledDates = currentCard?.scheduledDates || [];
 
-  // Get existing date references for this card
-  const dateReferences = references.filter(r => r.targetType === 'date');
-
   const handleSchedule = async (date: Date | undefined) => {
-    if (!workspace?.id) return;
+    if (!workspace?._id) return;
 
     if (date) {
       const dateStr = format(date, 'yyyy-MM-dd');
@@ -69,34 +63,19 @@ export function ScheduleSubmenu({ cardId, currentSchedule }: ScheduleSubmenuProp
         return;
       }
 
-      // Create a reference for the date
-      await createReference({
-        workspaceId: workspace.id,
-        sourceId: cardId,
-        targetId: dateStr,
-        targetType: 'date',
-        linkText: format(date, 'MMMM d, yyyy'),
-      });
-
       // Update scheduledDates array and tags
       const newScheduledDates = [...currentScheduledDates, dateStr];
       const newTags = updateScheduleTags(currentTags, date);
-      await updateCard(cardId, { scheduledDates: newScheduledDates, tags: newTags });
+      await updateCard(cardId as any, { scheduledDates: newScheduledDates, tags: newTags });
 
       toast({
         type: 'success',
         message: `Scheduled for ${format(date, 'MMM d')}`,
       });
     } else {
-      // Clear all scheduled dates
-      // Delete all date references
-      for (const ref of dateReferences) {
-        await deleteReference(ref.id);
-      }
-
-      // Clear scheduledDates and update tags
+      // Clear all scheduled dates and update tags
       const newTags = updateScheduleTags(currentTags, undefined);
-      await updateCard(cardId, { scheduledDates: [], tags: newTags });
+      await updateCard(cardId as any, { scheduledDates: [], tags: newTags });
 
       toast({
         type: 'success',

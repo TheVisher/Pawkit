@@ -4,7 +4,7 @@
  * Supports both HTML (legacy) and Plate JSON content formats
  */
 
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { isSameDay, addDays, setDate, isBefore, isAfter } from 'date-fns';
 import { isPlateJson, parseJsonContent } from '@/lib/plate/html-to-plate';
 
@@ -43,7 +43,7 @@ function extractTextFromPlateContent(content: any[]): string {
 /**
  * Parse subscription info from a card's content (HTML or JSON)
  */
-export function parseSubscriptionInfo(card: LocalCard): SubscriptionInfo | null {
+export function parseSubscriptionInfo(card: Card): SubscriptionInfo | null {
   if (!card.content) return null;
   if (!card.tags?.includes('subscription')) return null;
 
@@ -55,6 +55,7 @@ export function parseSubscriptionInfo(card: LocalCard): SubscriptionInfo | null 
     if (!parsed) return null;
     textContent = extractTextFromPlateContent(parsed);
   } else {
+    if (typeof card.content !== 'string') return null;
     // Fall back to HTML parsing
     const parser = new DOMParser();
     const doc = parser.parseFromString(card.content, 'text/html');
@@ -75,7 +76,7 @@ export function parseSubscriptionInfo(card: LocalCard): SubscriptionInfo | null 
   const twoDaysFromNow = addDays(today, 2);
 
   return {
-    cardId: card.id,
+    cardId: card._id,
     cardTitle: card.title || 'Untitled Subscription',
     amount,
     renewalDay,
@@ -149,11 +150,11 @@ function getDueDateForMonth(day: number, referenceDate: Date): Date {
 /**
  * Get all subscription info from cards
  */
-export function getSubscriptionsFromCards(cards: LocalCard[]): SubscriptionInfo[] {
+export function getSubscriptionsFromCards(cards: Card[]): SubscriptionInfo[] {
   const subscriptions: SubscriptionInfo[] = [];
 
   for (const card of cards) {
-    if (card._deleted) continue;
+    if (card.deleted) continue;
     const info = parseSubscriptionInfo(card);
     if (info) {
       subscriptions.push(info);

@@ -24,13 +24,29 @@ import {
   parseJsonContent,
   serializePlateContent,
   htmlToPlateJson,
+  hasPlateContent,
+  getContentText,
+  createEmptyPlateContent,
 } from '@/lib/plate/html-to-plate';
 import type { Descendant, Value } from 'platejs';
 
 interface SupertagPanelProps {
   supertag: SupertagDefinition;
-  content: string;
-  onContentChange: (newContent: string) => void;
+  content: string | Value;
+  onContentChange: (newContent: Value) => void;
+}
+
+type SupertagContent = string | Value;
+
+function normalizeContent(content: SupertagContent): Value {
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) return parsed;
+  }
+  if (typeof content === 'string') {
+    return htmlToPlateJson(content);
+  }
+  return createEmptyPlateContent();
 }
 
 // =============================================================================
@@ -220,8 +236,8 @@ function detectSectionsFromHtml(content: string, sections: Record<string, Templa
 /**
  * Detect sections in content (handles both JSON and HTML)
  */
-function detectSectionsInContent(content: string, sections: Record<string, TemplateSection>): string[] {
-  if (!content || !content.trim()) return [];
+function detectSectionsInContent(content: SupertagContent, sections: Record<string, TemplateSection>): string[] {
+  if (!hasPlateContent(content)) return [];
 
   // Try JSON first
   if (isPlateJson(content)) {
@@ -232,7 +248,11 @@ function detectSectionsInContent(content: string, sections: Record<string, Templ
   }
 
   // Fall back to HTML parsing
-  return detectSectionsFromHtml(content, sections);
+  if (typeof content === 'string') {
+    return detectSectionsFromHtml(content, sections);
+  }
+
+  return [];
 }
 
 /**
@@ -303,27 +323,31 @@ function removeSectionFromJson(content: Value, sectionName: string): Value {
  * Remove a section from content (handles both JSON and HTML)
  */
 function removeSectionFromContent(
-  content: string,
+  content: SupertagContent,
   sectionId: string,
   sections: Record<string, TemplateSection>
-): string {
+): Value {
   const section = sections[sectionId];
-  if (!section) return content;
+  if (!section) return normalizeContent(content);
 
   // Try JSON first
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
     if (parsed) {
       const updated = removeSectionFromJson(parsed, section.name);
-      return serializePlateContent(updated);
+      return updated;
     }
+  }
+
+  if (typeof content !== 'string') {
+    return normalizeContent(content);
   }
 
   // Fall back to HTML
   const headerRegex = new RegExp(`<h2>${section.name}</h2>`, 'i');
   const match = content.match(headerRegex);
 
-  if (!match || match.index === undefined) return content;
+  if (!match || match.index === undefined) return normalizeContent(content);
 
   const startIndex = match.index;
   const afterHeader = content.slice(startIndex + match[0].length);
@@ -333,7 +357,8 @@ function removeSectionFromContent(
     ? startIndex + match[0].length + nextH2Match.index
     : content.length;
 
-  return (content.slice(0, startIndex) + content.slice(endIndex)).trim();
+  const html = (content.slice(0, startIndex) + content.slice(endIndex)).trim();
+  return convertTemplateToJson(html);
 }
 
 /**
@@ -374,17 +399,21 @@ function reorderSectionsInJson(
  * Reorder sections in content (handles both JSON and HTML)
  */
 function reorderSections(
-  content: string,
+  content: SupertagContent,
   newOrder: string[],
   sections: Record<string, TemplateSection>
-): string {
+): Value {
   // Try JSON first
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
     if (parsed) {
       const reordered = reorderSectionsInJson(parsed, newOrder, sections);
-      return serializePlateContent(reordered);
+      return reordered;
     }
+  }
+
+  if (typeof content !== 'string') {
+    return normalizeContent(content);
   }
 
   // Fall back to HTML (convert result to JSON)
@@ -419,7 +448,7 @@ function buildTemplate(
   sectionIds: string[],
   format: TemplateFormat,
   sections: Record<string, TemplateSection>
-): string {
+): Value {
   const nodes: Descendant[] = [];
 
   for (const id of sectionIds) {
@@ -430,10 +459,10 @@ function buildTemplate(
   }
 
   if (nodes.length === 0) {
-    return serializePlateContent([{ type: 'p', children: [{ text: '' }] }] as Value);
+    return createEmptyPlateContent();
   }
 
-  return serializePlateContent(nodes as Value);
+  return nodes as Value;
 }
 
 // =============================================================================
@@ -466,7 +495,7 @@ export function SupertagPanel({ supertag, content, onContentChange }: SupertagPa
     (typeKey: string) => {
       if (!templateTypes) return;
 
-      const hasContent = content.trim().length > 50;
+      const hasContent = getContentText(content).trim().length > 50;
       const typeConfig = templateTypes[typeKey];
 
       if (hasContent) {
@@ -560,13 +589,14 @@ export function SupertagPanel({ supertag, content, onContentChange }: SupertagPa
 
       // Fall back to HTML handling (convert result to JSON)
       const sectionHtml = getSectionHtml(section, format);
-      let newHtml = content;
-      const notesIndex = content.toLowerCase().lastIndexOf('<h2>notes</h2>');
+      const baseHtml = typeof content === 'string' ? content : '';
+      let newHtml = baseHtml;
+      const notesIndex = baseHtml.toLowerCase().lastIndexOf('<h2>notes</h2>');
 
       if (notesIndex > -1) {
-        newHtml = content.slice(0, notesIndex) + sectionHtml + '\n' + content.slice(notesIndex);
+        newHtml = baseHtml.slice(0, notesIndex) + sectionHtml + '\n' + baseHtml.slice(notesIndex);
       } else {
-        newHtml = content + '\n' + sectionHtml;
+        newHtml = baseHtml + '\n' + sectionHtml;
       }
 
       onContentChange(convertTemplateToJson(newHtml));

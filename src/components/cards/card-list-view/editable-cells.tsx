@@ -6,7 +6,7 @@ import { TagBadgeList } from '@/components/tags/tag-badge';
 import { TagInput } from '@/components/tags/tag-input';
 import { getSystemTagsForCard, type SystemTag } from '@/lib/utils/system-tags';
 import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 // =============================================================================
 // EDITABLE CELL
@@ -113,7 +113,7 @@ export function EditableCell({
 // =============================================================================
 
 interface EditableTagsCellProps {
-  card: LocalCard;
+  card: Card;
   onSave: (cardId: string, field: string, value: string[] | string) => void;
   isEditing: boolean;
   onStartEdit: () => void;
@@ -132,7 +132,7 @@ export function EditableTagsCell({
   onSystemTagClick,
 }: EditableTagsCellProps) {
   const tags = card.tags || [];
-  const cardId = card.id;
+  const cardId = card._id;
   const systemTags = getSystemTagsForCard(card);
   const [localTags, setLocalTags] = useState(tags);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -159,7 +159,8 @@ export function EditableTagsCell({
         `Apply ${result.supertagName} template? This will replace your existing content.`
       );
       if (confirmed) {
-        onSave(cardId, 'content', result.template);
+        const newContent = applyTemplate(card.content, result.template);
+        onSave(cardId, 'content', newContent);
       }
     }
   };

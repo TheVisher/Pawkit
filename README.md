@@ -1,436 +1,290 @@
-# Pawkit
+Welcome to your new TanStack app! 
 
-<p align="center">
-  <img src="public/images/logo.png" alt="Pawkit Logo" width="120" />
-</p>
+# Getting Started
 
-<p align="center">
-  <strong>Your local-first bookmark and knowledge management system</strong>
-</p>
-
-<p align="center">
-  <a href="#features">Features</a> ·
-  <a href="#getting-started">Getting Started</a> ·
-  <a href="#browser-extensions">Extensions</a> ·
-  <a href="#mobile-app">Mobile</a> ·
-  <a href="#security">Security</a> ·
-  <a href="#documentation">Docs</a>
-</p>
-
----
-
-## About
-
-Pawkit is a privacy-focused bookmark manager that keeps your data on YOUR device, with optional encrypted cloud sync. Think Notion meets Pinterest meets Obsidian.
-
-Built with a **local-first architecture**, your data lives in IndexedDB on your device and syncs in the background when online. This means instant load times, full offline functionality, and you always own your data.
-
-### Why Pawkit?
-
-- 🔐 **Local-first** - Data stored on your device, instant access
-- 🔒 **Privacy-focused** - No tracking, no analytics, your data stays yours
-- 📱 **Cross-platform** - Web app, browser extensions (Chrome/Firefox), iOS app
-- 🔄 **Smart sync** - Bidirectional sync with conflict resolution
-- 📝 **Rich notes** - Markdown editor with wiki-links and backlinks
-- 🎨 **Beautiful** - Clean glassmorphism interface with dark mode
-- 🔍 **Powerful search** - Full-text search with operators
-- 📎 **File attachments** - Connect your own cloud storage (Filen, Google Drive, Dropbox, OneDrive)
-
----
-
-## Features
-
-### Content Management
-- 📑 **Visual bookmarks** - Auto-fetch metadata (title, description, favicon, images)
-- ✍️ **Markdown notes** - Full editor with GFM support, wiki-links `[[like this]]`
-- 📎 **File uploads** - Images, PDFs, audio, video, documents
-- 📄 **PDF viewer** - Built-in reader with zoom and navigation
-- 🎥 **YouTube embeds** - Video playback with transcript extraction
-- 📅 **Daily notes** - Template-based notes attached to calendar days
-- 📖 **Reader mode** - Distraction-free article reading
-
-### Organization
-- 📁 **Nested collections (Pawkits)** - Hierarchical folders with drag-and-drop
-- 🔒 **Private collections** - Hidden from searches and main views
-- 📌 **Pinned favorites** - Quick access to frequently used items
-- 🏷️ **Tags** - Multi-tag support with filtering
-- 🗑️ **Trash & recovery** - 30-day soft delete with restore
-
-### Views & Discovery
-- 📚 **Library view** - Grid, list, masonry, and timeline layouts
-- 📅 **Calendar view** - Month/week views with scheduled items
-- 🏠 **Home dashboard** - Recent items, quick access, weekly overview
-- 🔍 **Smart search** - Fuzzy matching with operators (`is:note`, `tag:work`)
-- 🎯 **Rediscover mode** - Tinder-style card review for forgotten bookmarks
-- 🕸️ **Knowledge graph** - Visual connections between notes
-
-### Sync & Storage
-- ⚡ **Local-first** - IndexedDB for instant offline access
-- 🔄 **Bidirectional sync** - Automatic background sync with Supabase
-- ⏱️ **Offline queue** - Changes sync automatically when back online
-- 🖥️ **Multi-tab aware** - Cross-tab sync via BroadcastChannel
-- ☁️ **Cloud storage** - Bring your own (Filen, Google Drive, Dropbox, OneDrive)
-
-### AI Assistant (Kit)
-- 💬 **Chat with Kit** - Ask questions about your bookmarks and notes
-- 📝 **Summarize** - Get summaries of articles and web pages
-- 🏷️ **Auto-tagging** - Smart tag suggestions based on content
-- 🔍 **Context-aware** - Responses use your actual saved content
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 20+ (LTS recommended)
-- pnpm (recommended) or npm/yarn
-- Supabase account (for sync - optional for local-only use)
-
-### Installation
+To run this application:
 
 ```bash
-# Clone the repository
-git clone https://github.com/TheVisher/Pawkit.git
-cd Pawkit
-
-# Install dependencies
 pnpm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Edit .env.local with your Supabase credentials
-
-# Run migrations
-pnpm prisma:migrate
-pnpm prisma:generate
-
-# Start development server
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+# Building For Production
 
-### Configuration
-
-See [`.env.example`](.env.example) for all available environment variables.
-
-Required:
-- `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
-- `DATABASE_URL` - PostgreSQL connection string
-
-Optional:
-- `ANTHROPIC_API_KEY` - For AI features (Kit assistant)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - For Google Drive integration
-- OAuth credentials for Dropbox, OneDrive, etc.
-
----
-
-## Browser Extensions
-
-Browser extensions are **live** on Chrome and Firefox stores.
-
-| Browser | Version | Status | Link |
-|---------|---------|--------|------|
-| Chrome  | v1.1.0  | ✅ Published | [Chrome Web Store](#) |
-| Firefox | v1.1.0  | ✅ Published | [Firefox Add-ons](#) |
-| Safari  | —       | Not planned | — |
-
-### Features
-- One-click save from any page
-- Right-click context menu for images and links
-- Popup UI for quick saves with collection selector
-- Secure OAuth-style authentication
-- Offline queue (saves sync when online)
-
-Extension source: [`packages/extension/`](packages/extension/)
-
----
-
-## Mobile App
-
-iOS app is currently in TestFlight beta.
-
-| Platform | Status | Link |
-|----------|--------|------|
-| iOS      | 🟡 TestFlight | [Join Beta](#) |
-| Android  | 🔵 Planned | — |
-
-### Features
-- Full bookmark and note access
-- Share extension - save from any app
-- Camera capture for receipts/documents
-- Offline-capable with automatic sync
-- Native iOS design
-
-Mobile source: [`mobile/`](mobile/)
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| **Framework** | Next.js 16 (App Router) |
-| **UI** | React 19, TypeScript |
-| **Styling** | Tailwind CSS 4, CSS Variables (theme-aware) |
-| **Components** | Radix UI + shadcn/ui |
-| **Icons** | Lucide React |
-| **Database** | PostgreSQL via Supabase |
-| **ORM** | Prisma |
-| **State** | Zustand |
-| **Local Storage** | IndexedDB (via Dexie.js) |
-| **Auth** | Supabase Auth |
-| **File Storage** | Filen SDK / Google Drive / Dropbox / OneDrive |
-| **AI** | Anthropic Claude API |
-| **Testing** | Vitest + Testing Library |
-| **Deployment** | Vercel |
-
----
-
-## Project Structure
-
-```
-pawkit/
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── (auth)/            # Authentication routes
-│   │   ├── (dashboard)/       # Main app routes
-│   │   └── api/               # API endpoints
-│   ├── components/            # React components
-│   ├── lib/                   # Business logic
-│   │   ├── services/         # API and sync services
-│   │   ├── stores/           # Zustand state stores
-│   │   └── utils/            # Helper functions
-│   └── styles/               # Global styles
-├── packages/
-│   └── extension/            # Browser extensions
-├── mobile/                   # React Native iOS app
-├── prisma/                   # Database schema & migrations
-├── public/                   # Static assets
-└── docs/                     # Documentation
-```
-
----
-
-## Architecture
-
-Pawkit follows a **local-first architecture**:
-
-1. **Data lives in IndexedDB** - Your device is the source of truth
-2. **Instant operations** - No waiting for server responses
-3. **Background sync** - Changes sync automatically when online
-4. **Offline-capable** - Full functionality without internet
-5. **Conflict resolution** - Automatic merge with last-write-wins
-
-### Data Flow
-
-```
-User Action → IndexedDB (instant) → UI Update → Sync Queue → Server (background)
-                  ↓
-            Source of Truth
-```
-
-See [LOCAL_FIRST_ARCHITECTURE.md](./docs/LOCAL_FIRST_ARCHITECTURE.md) for details.
-
----
-
-## Security
-
-Security is a top priority. Pawkit implements:
-
-- 🔒 **Authentication** - Session-based with Supabase Auth
-- 🛡️ **Authorization** - Row Level Security (RLS) at database level
-- 🔐 **Encryption** - TLS 1.3 for all data in transit
-- 🚫 **SSRF Protection** - Blocks private IPs and localhost
-- ⏱️ **Rate Limiting** - Prevents API abuse
-- 🔑 **Strong Passwords** - 12+ characters with complexity requirements
-- 🛡️ **Security Headers** - CSP, X-Frame-Options, and more
-- 🔒 **Private Collections** - Server-side filtering via RLS
-
-**For full security details, see [SECURITY.md](./SECURITY.md)**
-
----
-
-## Development
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Build for production |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint |
-| `pnpm type-check` | Run TypeScript compiler check |
-| `pnpm test` | Run tests with Vitest |
-| `pnpm test:ui` | Run tests with UI |
-| `pnpm prisma:migrate` | Run database migrations |
-| `pnpm prisma:generate` | Generate Prisma client |
-| `pnpm prisma:studio` | Open Prisma Studio |
-
-### Testing
+To build this application for production:
 
 ```bash
-# Run all tests
+pnpm build
+```
+
+## Testing
+
+This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+
+```bash
 pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Run tests with coverage
-pnpm test:coverage
-
-# Run specific test file
-pnpm test src/lib/services/sync-service.test.ts
 ```
 
-**Current coverage:** 24 tests covering sync logic, conflict resolution, and queue management.
+## Styling
 
----
+This project uses CSS for styling.
 
-## Deployment
 
-### Vercel (Recommended)
 
-1. Push your code to GitHub
-2. Connect repository to Vercel
-3. Add environment variables
-4. Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/TheVisher/Pawkit)
+## Routing
+This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
 
-### Docker
+### Adding A Route
+
+To add a new route to your application just add another a new file in the `./src/routes` directory.
+
+TanStack will automatically generate the content of the route file for you.
+
+Now that you have two routes you can use a `Link` component to navigate between them.
+
+### Adding Links
+
+To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
+
+```tsx
+import { Link } from "@tanstack/react-router";
+```
+
+Then anywhere in your JSX you can use it like so:
+
+```tsx
+<Link to="/about">About</Link>
+```
+
+This will create a link that will navigate to the `/about` route.
+
+More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
+
+### Using A Layout
+
+In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
+
+Here is an example layout that includes a header:
+
+```tsx
+import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+
+import { Link } from "@tanstack/react-router";
+
+export const Route = createRootRoute({
+  component: () => (
+    <>
+      <header>
+        <nav>
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
+        </nav>
+      </header>
+      <Outlet />
+      <TanStackRouterDevtools />
+    </>
+  ),
+})
+```
+
+The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
+
+More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
+
+
+## Data Fetching
+
+There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
+
+For example:
+
+```tsx
+const peopleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/people",
+  loader: async () => {
+    const response = await fetch("https://swapi.dev/api/people");
+    return response.json() as Promise<{
+      results: {
+        name: string;
+      }[];
+    }>;
+  },
+  component: () => {
+    const data = peopleRoute.useLoaderData();
+    return (
+      <ul>
+        {data.results.map((person) => (
+          <li key={person.name}>{person.name}</li>
+        ))}
+      </ul>
+    );
+  },
+});
+```
+
+Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
+
+### React-Query
+
+React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
+
+First add your dependencies:
 
 ```bash
-# Build image
-docker build -t pawkit .
-
-# Run container
-docker run -p 3000:3000 --env-file .env.local pawkit
+pnpm add @tanstack/react-query @tanstack/react-query-devtools
 ```
 
-### Self-Hosting
+Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
 
-See [DEPLOYMENT.md](./docs/DEPLOYMENT.md) for detailed self-hosting instructions.
+```tsx
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
----
+// ...
 
-## Roadmap
+const queryClient = new QueryClient();
 
-### In Progress
-- [ ] Note folders with nested hierarchy
-- [ ] Kit AI improvements and public rollout
-- [ ] iOS App Store release
+// ...
 
-### Planned (Q1 2026)
-- [ ] BYOAI - Bring your own AI via MCP support
-- [ ] Connected Platforms - Import from Reddit, YouTube, Twitter
-- [ ] Google Calendar integration
-- [ ] Quick Notes with auto-consolidation
-- [ ] Weekly email digest
-- [ ] Android app
+if (!rootElement.innerHTML) {
+  const root = ReactDOM.createRoot(rootElement);
 
-### Future Ideas
-- [ ] Browser history integration
-- [ ] Reading mode with highlights
-- [ ] Collaborative collections (share with others)
-- [ ] Subscription tracking for recurring services
+  root.render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
+}
+```
 
-See [TODO.md](./.claude/tasks/PRIORITY_TASKS.md) for the full development roadmap.
+You can also add TanStack Query Devtools to the root route (optional).
 
----
+```tsx
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-## Privacy
+const rootRoute = createRootRoute({
+  component: () => (
+    <>
+      <Outlet />
+      <ReactQueryDevtools buttonPosition="top-right" />
+      <TanStackRouterDevtools />
+    </>
+  ),
+});
+```
 
-Pawkit is designed with privacy as a core principle:
+Now you can use `useQuery` to fetch your data.
 
-- ✅ **Local-first** - Your data stays on your device
-- ✅ **No tracking** - Zero analytics or usage tracking
-- ✅ **No ads** - Will never show ads or sell data
-- ✅ **No content scanning** - We don't read your files
-- ✅ **User control** - Export/delete your data anytime
-- ✅ **Open source** - Audit the code yourself
+```tsx
+import { useQuery } from "@tanstack/react-query";
 
-**What we collect:**
-- Email address (for authentication)
-- Bookmarks and notes (optional sync to our servers)
-- File attachments (stored in YOUR cloud provider)
+import "./App.css";
 
-**What we DON'T collect:**
-- Browsing history (unless you explicitly save bookmarks)
-- Usage analytics
-- Device information
-- Location data
+function App() {
+  const { data } = useQuery({
+    queryKey: ["people"],
+    queryFn: () =>
+      fetch("https://swapi.dev/api/people")
+        .then((res) => res.json())
+        .then((data) => data.results as { name: string }[]),
+    initialData: [],
+  });
 
-See our full [Privacy Policy](./PRIVACY.md) for details.
+  return (
+    <div>
+      <ul>
+        {data.map((person) => (
+          <li key={person.name}>{person.name}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
----
+export default App;
+```
 
-## Contributing
+You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
 
-Contributions are welcome! Here's how to get started:
+## State Management
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/your-feature`
-3. Make your changes
-4. Add tests if applicable
-5. Run the test suite: `pnpm test`
-6. Commit your changes: `git commit -m 'Add feature'`
-7. Push to your fork: `git push origin feature/your-feature`
-8. Open a Pull Request
+Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
 
-### Development Guidelines
+First you need to add TanStack Store as a dependency:
 
-- Follow the existing code style (ESLint + Prettier)
-- Write meaningful commit messages
-- Add tests for new features
-- Update documentation as needed
-- Keep components under 300 lines (see [PLAYBOOK.md](./docs/PLAYBOOK.md))
+```bash
+pnpm add @tanstack/store
+```
 
----
+Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
 
-## Support
+```tsx
+import { useStore } from "@tanstack/react-store";
+import { Store } from "@tanstack/store";
+import "./App.css";
 
-### Get Help
+const countStore = new Store(0);
 
-- 📧 **Email:** support@pawkit.app
-- 💬 **Discord:** [discord.gg/pawkit](#)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/TheVisher/Pawkit/issues)
-- 📚 **Docs:** [Documentation](./docs/)
+function App() {
+  const count = useStore(countStore);
+  return (
+    <div>
+      <button onClick={() => countStore.setState((n) => n + 1)}>
+        Increment - {count}
+      </button>
+    </div>
+  );
+}
 
-### Report Security Issues
+export default App;
+```
 
-Please report security vulnerabilities to **security@pawkit.app**  
-See [SECURITY.md](./SECURITY.md) for our responsible disclosure policy.
+One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
 
----
+Let's check this out by doubling the count using derived state.
 
-## License
+```tsx
+import { useStore } from "@tanstack/react-store";
+import { Store, Derived } from "@tanstack/store";
+import "./App.css";
 
-MIT License - see [LICENSE](./LICENSE) for details.
+const countStore = new Store(0);
 
----
+const doubledStore = new Derived({
+  fn: () => countStore.state * 2,
+  deps: [countStore],
+});
+doubledStore.mount();
 
-## Acknowledgments
+function App() {
+  const count = useStore(countStore);
+  const doubledCount = useStore(doubledStore);
 
-Built with:
-- [Next.js](https://nextjs.org/) by Vercel
-- [Supabase](https://supabase.com/) for backend
-- [Radix UI](https://www.radix-ui.com/) for accessible components
-- [Tailwind CSS](https://tailwindcss.com/) for styling
-- [Anthropic Claude](https://www.anthropic.com/) for AI features
+  return (
+    <div>
+      <button onClick={() => countStore.setState((n) => n + 1)}>
+        Increment - {count}
+      </button>
+      <div>Doubled - {doubledCount}</div>
+    </div>
+  );
+}
 
-Special thanks to all contributors and early adopters! 🙏
+export default App;
+```
 
----
+We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
 
-<p align="center">
-  Made with ❤️ by <a href="https://github.com/TheVisher">Erik</a>
-</p>
+Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
 
-<p align="center">
-  <a href="https://github.com/TheVisher/Pawkit/stargazers">⭐ Star on GitHub</a>
-</p>
+You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
+
+# Demo files
+
+Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
+
+# Learn More
+
+You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).

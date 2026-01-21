@@ -4,7 +4,13 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import {
+  isPlateJson,
+  parseJsonContent,
+  stringifyPlateContent,
+  htmlToPlateJson,
+  createEmptyPlateContent,
+} from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -19,6 +25,19 @@ import type { Descendant, Value } from 'platejs';
 // =============================================================================
 
 export type ContactTemplateType = 'personal' | 'work' | 'gaming' | 'family' | 'service';
+
+type ContactContent = string | Value | Descendant[] | null | undefined;
+
+function normalizeContactContent(content: ContactContent): Value {
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) return parsed;
+  }
+  if (typeof content === 'string') {
+    return htmlToPlateJson(content);
+  }
+  return createEmptyPlateContent();
+}
 
 // =============================================================================
 // SECTIONS
@@ -354,7 +373,7 @@ export function getContactTemplateJson(type: string = 'personal', format: Templa
   const templateType = CONTACT_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['contact-info', 'notes'];
   const nodes = buildContactTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**
@@ -402,7 +421,35 @@ export function getContactSection(sectionId: string, format: TemplateFormat = 'l
 // SECTION DETECTION & MANIPULATION
 // =============================================================================
 
-export function detectSectionsInContent(content: string): string[] {
+function detectSectionsFromJson(content: Value): string[] {
+  const detected: { id: string; index: number }[] = [];
+
+  for (let i = 0; i < content.length; i++) {
+    const node = content[i];
+    if ('type' in node && node.type === 'h2') {
+      const text = extractTextFromPlateNode(node).trim().toLowerCase();
+      for (const [id, section] of Object.entries(CONTACT_SECTIONS)) {
+        if (section.name.toLowerCase() === text) {
+          detected.push({ id, index: i });
+          break;
+        }
+      }
+    }
+  }
+
+  return detected.sort((a, b) => a.index - b.index).map((d) => d.id);
+}
+
+export function detectSectionsInContent(content: ContactContent): string[] {
+  if (!content) return [];
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return detectSectionsFromJson(parsed);
+    }
+  }
+  if (typeof content !== 'string') return [];
+
   const detected: { id: string; index: number }[] = [];
   const lower = content.toLowerCase();
 
@@ -441,15 +488,54 @@ export function detectSectionsInContent(content: string): string[] {
   return detected.sort((a, b) => a.index - b.index).map((d) => d.id);
 }
 
-export function removeSectionFromContent(content: string, sectionId: string): string {
+function findSectionRangeInJson(content: Value, sectionName: string): [number, number] | null {
+  const sectionNameLower = sectionName.toLowerCase();
+  let startIndex = -1;
+
+  for (let i = 0; i < content.length; i++) {
+    const node = content[i];
+    if ('type' in node && node.type === 'h2') {
+      const text = extractTextFromPlateNode(node).trim().toLowerCase();
+      if (text === sectionNameLower) {
+        startIndex = i;
+      } else if (startIndex !== -1) {
+        return [startIndex, i];
+      }
+    }
+  }
+
+  if (startIndex !== -1) {
+    return [startIndex, content.length];
+  }
+
+  return null;
+}
+
+function removeSectionFromJson(content: Value, sectionName: string): Value {
+  const range = findSectionRangeInJson(content, sectionName);
+  if (!range) return content;
+  const [startIndex, endIndex] = range;
+  return [...content.slice(0, startIndex), ...content.slice(endIndex)] as Value;
+}
+
+export function removeSectionFromContent(content: ContactContent, sectionId: string): Value {
   const section = CONTACT_SECTIONS[sectionId];
-  if (!section) return content;
+  if (!section) return normalizeContactContent(content);
+
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return removeSectionFromJson(parsed, section.name);
+    }
+  }
+
+  if (typeof content !== 'string') return normalizeContactContent(content);
 
   const sectionName = section.name;
   const headerRegex = new RegExp(`<h2>${sectionName}</h2>`, 'i');
   const match = content.match(headerRegex);
 
-  if (!match || match.index === undefined) return content;
+  if (!match || match.index === undefined) return normalizeContactContent(content);
 
   const startIndex = match.index;
   const afterHeader = content.slice(startIndex + match[0].length);
@@ -465,12 +551,29 @@ export function removeSectionFromContent(content: string, sectionId: string): st
   const before = content.slice(0, startIndex);
   const after = content.slice(endIndex);
 
-  return (before + after).trim();
+  const html = (before + after).trim();
+  return htmlToPlateJson(html);
 }
 
-export function extractSectionFromContent(content: string, sectionId: string): string | null {
+function extractSectionFromJson(content: Value, sectionName: string): Value | null {
+  const range = findSectionRangeInJson(content, sectionName);
+  if (!range) return null;
+  const [startIndex, endIndex] = range;
+  return content.slice(startIndex, endIndex) as Value;
+}
+
+export function extractSectionFromContent(content: ContactContent, sectionId: string): Value | null {
   const section = CONTACT_SECTIONS[sectionId];
   if (!section) return null;
+
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return extractSectionFromJson(parsed, section.name);
+    }
+  }
+
+  if (typeof content !== 'string') return null;
 
   const sectionName = section.name;
   const headerRegex = new RegExp(`<h2>${sectionName}</h2>`, 'i');
@@ -489,20 +592,57 @@ export function extractSectionFromContent(content: string, sectionId: string): s
     endIndex = content.length;
   }
 
-  return content.slice(startIndex, endIndex).trim();
+  const html = content.slice(startIndex, endIndex).trim();
+  return htmlToPlateJson(html);
 }
 
-export function reorderSections(content: string, newOrder: string[]): string {
-  const sections: { id: string; html: string }[] = [];
+function reorderSectionsInJson(content: Value, newOrder: string[]): Value {
+  const nodes: Descendant[] = [];
 
   for (const sectionId of newOrder) {
-    const html = extractSectionFromContent(content, sectionId);
-    if (html) {
-      sections.push({ id: sectionId, html });
+    const section = CONTACT_SECTIONS[sectionId];
+    if (!section) continue;
+    const extracted = extractSectionFromJson(content, section.name);
+    if (extracted) {
+      nodes.push(...extracted);
     }
   }
 
-  return sections.map((s) => s.html).join('\n');
+  return nodes.length > 0 ? (nodes as Value) : createEmptyPlateContent();
+}
+
+export function reorderSections(content: ContactContent, newOrder: string[]): Value {
+  if (isPlateJson(content)) {
+    const parsed = parseJsonContent(content);
+    if (parsed) {
+      return reorderSectionsInJson(parsed, newOrder);
+    }
+  }
+
+  if (typeof content !== 'string') return normalizeContactContent(content);
+
+  const extracted: string[] = [];
+  for (const sectionId of newOrder) {
+    const section = CONTACT_SECTIONS[sectionId];
+    if (!section) continue;
+
+    const headerRegex = new RegExp(`<h2>${section.name}</h2>`, 'i');
+    const match = content.match(headerRegex);
+    if (!match || match.index === undefined) continue;
+
+    const startIndex = match.index;
+    const afterHeader = content.slice(startIndex + match[0].length);
+    const nextH2Match = afterHeader.match(/<h2>/i);
+
+    const endIndex = nextH2Match?.index !== undefined
+      ? startIndex + match[0].length + nextH2Match.index
+      : content.length;
+
+    extracted.push(content.slice(startIndex, endIndex).trim());
+  }
+
+  const html = extracted.join('\n');
+  return htmlToPlateJson(html);
 }
 
 // =============================================================================
@@ -580,13 +720,17 @@ function extractContactInfoFromPlateJson(content: any[]): { phone?: string; emai
   return result;
 }
 
-export function extractContactInfo(content: string): { phone?: string; email?: string } {
+export function extractContactInfo(content: ContactContent): { phone?: string; email?: string } {
   // Check if content is Plate JSON
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
     if (parsed) {
       return extractContactInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -755,13 +899,17 @@ function extractFieldValuesFromPlateJson(content: any[]): Record<string, string>
   return values;
 }
 
-export function extractFieldValues(content: string): Record<string, string> {
+export function extractFieldValues(content: ContactContent): Record<string, string> {
   // Check if content is Plate JSON
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);
     if (parsed) {
       return extractFieldValuesFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -808,7 +956,7 @@ function injectValuesIntoSection(sectionHtml: string, values: Record<string, str
   return result;
 }
 
-export function convertFormat(content: string, targetFormat: TemplateFormat, sectionIds: string[]): string {
+export function convertFormat(content: ContactContent, targetFormat: TemplateFormat, sectionIds: string[]): Value {
   const values = extractFieldValues(content);
 
   const newContent = sectionIds
@@ -820,7 +968,7 @@ export function convertFormat(content: string, targetFormat: TemplateFormat, sec
     .filter(Boolean)
     .join('\n');
 
-  return newContent;
+  return htmlToPlateJson(newContent);
 }
 
 // =============================================================================

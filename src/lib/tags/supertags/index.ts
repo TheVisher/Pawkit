@@ -23,6 +23,7 @@ import { meetingSupertag } from './meeting';
 import { habitSupertag } from './habit';
 import { wishlistSupertag } from './wishlist';
 import { warrantySupertag } from './warranty';
+import { getContentText } from '@/lib/plate/html-to-plate';
 
 // Re-export contact utilities (used by SupertagPanel and grid-card)
 export {
@@ -315,9 +316,11 @@ export function getActionsForTags(tags: string[]): NonNullable<SupertagDefinitio
 /**
  * Suggest supertags based on note content
  */
-export function suggestSupertagsFromContent(content: string): SupertagDefinition[] {
+export function suggestSupertagsFromContent(content: unknown): SupertagDefinition[] {
   const suggestions: SupertagDefinition[] = [];
-  const lower = content.toLowerCase();
+  const plainText = getContentText(content);
+  if (!plainText) return suggestions;
+  const lower = plainText.toLowerCase();
 
   // Contact patterns
   if (
@@ -325,7 +328,7 @@ export function suggestSupertagsFromContent(content: string): SupertagDefinition
     lower.includes('email:') ||
     lower.includes('birthday:') ||
     lower.includes('@') ||
-    /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(content)
+    /\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(plainText)
   ) {
     const def = getSupertagDefinition('contact');
     if (def) suggestions.push(def);

@@ -14,11 +14,13 @@ import {
   isAfter,
   isSameDay,
 } from 'date-fns';
-import type { LocalCalendarEvent } from '@/lib/db/types';
+import type { CalendarEvent } from '@/lib/types/convex';
 
-export interface ExpandedEvent extends LocalCalendarEvent {
+import type { Id } from '@/lib/types/convex';
+
+export interface ExpandedEvent extends CalendarEvent {
   // The original recurring event ID (for editing the series)
-  originalEventId?: string;
+  originalEventId?: Id<'calendarEvents'>;
   // Whether this is a generated occurrence (vs the original event)
   isOccurrence?: boolean;
   // The occurrence date (may differ from original event.date)
@@ -51,7 +53,7 @@ function getNextOccurrence(
  * Expand a single recurring event into occurrences for a date range
  */
 export function expandRecurringEvent(
-  event: LocalCalendarEvent,
+  event: CalendarEvent,
   rangeStart: Date,
   rangeEnd: Date
 ): ExpandedEvent[] {
@@ -98,7 +100,7 @@ export function expandRecurringEvent(
     ) {
       occurrences.push({
         ...event,
-        originalEventId: event.id,
+        originalEventId: event._id,
         isOccurrence: !isSameDay(currentDate, eventDate),
         occurrenceDate: dateStr,
       });
@@ -116,7 +118,7 @@ export function expandRecurringEvent(
  * Expand all recurring events for a date range
  */
 export function expandRecurringEvents(
-  events: LocalCalendarEvent[],
+  events: CalendarEvent[],
   rangeStart: Date,
   rangeEnd: Date
 ): ExpandedEvent[] {

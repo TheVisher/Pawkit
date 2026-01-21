@@ -9,7 +9,7 @@
 
 import * as React from 'react';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { Plate, usePlateEditor, useEditorRef, PlateContainer, PlateContent } from 'platejs/react';
 import { getEditorDOMFromHtmlString } from 'platejs/static';
 import { cva } from 'class-variance-authority';
@@ -23,8 +23,7 @@ import {
   createEmptyPlateContent,
   htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useReferences } from '@/lib/hooks/use-live-data';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 
@@ -213,43 +212,14 @@ function PawkitEditorInner({
   const router = useRouter();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const setCalendarDate = useCalendarStore((s) => s.setDate);
+  const { updateCard } = useMutations();
 
-  // Reference sync dependencies
-  const createReference = useDataStore((s) => s.createReference);
-  const deleteReference = useDataStore((s) => s.deleteReference);
-  const updateCard = useDataStore((s) => s.updateCard);
-  const existingRefs = useReferences(cardId);
-
-  const existingRefsRef = useRef(existingRefs);
   const hasEditedRef = useRef(false);
 
-  // Keep existingRefs ref in sync
-  useEffect(() => {
-    existingRefsRef.current = existingRefs;
-  }, [existingRefs]);
-
-  // Sync references on blur
+  // Blur handler - reference sync removed (references not used in Convex migration)
   const handleBlur = useCallback(async () => {
-    if (!cardId || !workspaceId) return;
-
-    try {
-      const content = editor.children;
-      const { syncReferencesFromPlateContent } = await import('@/lib/plate/mention-parser');
-      await syncReferencesFromPlateContent(
-        cardId,
-        workspaceId,
-        content,
-        existingRefsRef.current,
-        {
-          createReference,
-          deleteReference,
-          updateCard,
-        }
-      );
-    } catch (err) {
-      console.error('[PawkitPlateEditor] Failed to sync references:', err);
-    }
-  }, [cardId, workspaceId, editor, createReference, deleteReference, updateCard]);
+    // No-op for now, references sync not yet implemented in Convex
+  }, []);
 
   return (
     <PlateContainer

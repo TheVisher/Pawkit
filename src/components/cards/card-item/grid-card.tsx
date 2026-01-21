@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef, startTransition } from 'react';
-import Image from 'next/image';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
 import {
   Globe,
@@ -26,16 +26,13 @@ import {
   extractWishlistInfo,
   extractWarrantyInfo,
 } from '@/lib/tags/supertags';
-import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import { cn } from '@/lib/utils';
-import type { LocalCard } from '@/lib/db';
+import { buildConvexHttpUrl } from '@/lib/convex-site-url';
+import type { Card } from '@/lib/types/convex';
 import { TagBadgeList } from '@/components/tags/tag-badge';
 import { getSystemTagsForCard } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useDataContext } from '@/lib/contexts/data-context';
-import { getCardPrivacy } from '@/lib/services/privacy';
-import { SYSTEM_TAGS } from '@/lib/constants/system-tags';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useImageColorWorker, isImageWorkerSupported } from '@/lib/hooks/use-image-color-worker';
 import {
   type CardDisplaySettings,
@@ -63,7 +60,7 @@ const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; sty
 
 // Extract all info from content based on tags
 // Note: All extract functions now support both Plate JSON and HTML formats
-function extractAllInfo(content: string, tags: string[]): Record<string, string | undefined> {
+function extractAllInfo(content: unknown, tags: string[]): Record<string, string | undefined> {
   const info: Record<string, string | undefined> = {};
 
   const tagSet = new Set(tags.map((t) => t.toLowerCase()));
@@ -111,7 +108,7 @@ function extractAllInfo(content: string, tags: string[]): Record<string, string 
 }
 
 interface GridCardProps {
-  card: LocalCard;
+  card: Card;
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   uniformHeight?: boolean;
@@ -146,17 +143,16 @@ export function GridCard({
   // Reset error states when card or image/favicon changes
   useEffect(() => {
     setImageError(false);
-  }, [card.id, card.image]);
+  }, [card._id, card.image]);
 
   useEffect(() => {
     setFaviconError(false);
-  }, [card.id, card.favicon]);
-  const domain = card.domain || getDomain(card.url);
+  }, [card._id, card.favicon]);
+  const domain = card.domain || (card.url ? getDomain(card.url) : undefined);
 
   // Worker hook for off-main-thread color extraction
   const { extractImageData } = useImageColorWorker();
-  const updateCard = useDataStore((s) => s.updateCard);
-  const { collections } = useDataContext();
+  const { updateCard } = useMutations();
   const processingRef = useRef(false);
   const idleCallbackIdRef = useRef<number | null>(null);
   const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,16 +178,15 @@ export function GridCard({
 
     // Use requestIdleCallback for non-blocking processing
     const processImage = async () => {
-      const result = await extractImageData(card.id, card.image!);
+      const result = await extractImageData(card._id, card.image!);
       if (result) {
-        // Persist to DB using startTransition for low-priority update
-        // This prevents blocking scroll/interactions while React applies the state change
-        startTransition(() => {
-          updateCard(card.id, {
-            dominantColor: result.dominantColor,
-            aspectRatio: result.aspectRatio,
-            blurDataUri: result.blurDataUri,
-          });
+        // Persist to DB - updates trigger Convex subscription which updates the UI
+        // Note: Previously used startTransition but it was causing updates to be
+        // deferred indefinitely, preventing Convex reactivity from working
+        updateCard(card._id, {
+          dominantColor: result.dominantColor,
+          aspectRatio: result.aspectRatio,
+          blurDataUri: result.blurDataUri,
         });
       }
       processingRef.current = false;
@@ -223,7 +218,62 @@ export function GridCard({
         timeoutIdRef.current = null;
       }
     };
-  }, [card.id, card.image, card.aspectRatio, card.blurDataUri, extractImageData, updateCard]);
+  }, [card._id, card.image, card.aspectRatio, card.blurDataUri, extractImageData, updateCard]);
+
+  // Effect: Re-fetch metadata for URL cards that don't have it
+  // This handles cards where Convex's simple scraper failed (Reddit, TikTok, etc.)
+  // Uses the Next.js API route which has site-specific handlers
+  const metadataFetchRef = useRef(false);
+  useEffect(() => {
+    // Only process URL cards that need metadata
+    if (card.type !== 'url' || !card.url) return;
+
+    // Skip if already has proper metadata (title that's not just the URL, and has image)
+    const hasProperTitle = card.title && card.title !== card.url && !card.title.startsWith('http');
+    if (hasProperTitle && card.image) return;
+
+    // Skip if already fetching or previously attempted
+    if (metadataFetchRef.current) return;
+
+    // Skip if status indicates we shouldn't retry (avoid infinite loops)
+    if (card.status === 'READY' && hasProperTitle) return;
+
+    metadataFetchRef.current = true;
+
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch(buildConvexHttpUrl('/api/metadata'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: card.url }),
+        });
+
+        if (!response.ok) return;
+
+        const metadata = await response.json();
+
+        // Only update if we got useful data
+        if (metadata.title || metadata.image) {
+          // Update card - Convex subscription will trigger UI refresh
+          updateCard(card._id, {
+            ...(metadata.title && { title: metadata.title }),
+            ...(metadata.description && { description: metadata.description }),
+            ...(metadata.image && { image: metadata.image }),
+            ...(metadata.images && { images: metadata.images }),
+            ...(metadata.favicon && { favicon: metadata.favicon }),
+            ...(metadata.domain && { domain: metadata.domain }),
+            status: 'READY',
+          });
+        }
+      } catch (error) {
+        console.warn('[GridCard] Metadata re-fetch failed:', card._id, error);
+      }
+    };
+
+    // Delay to avoid overwhelming the API during initial render
+    const timeoutId = setTimeout(fetchMetadata, 500 + Math.random() * 1000);
+    return () => clearTimeout(timeoutId);
+  }, [card._id, card.type, card.url, card.title, card.image, card.status, updateCard]);
 
   // Use cached dominantColor to determine background brightness
   useEffect(() => {
@@ -258,8 +308,13 @@ export function GridCard({
 
   // Calculate the aspect ratio to use for the thumbnail container
   // Prefer cached aspectRatio from DB, then measured, then default
+  // Special case: YouTube thumbnails (sddefault/hqdefault) are 4:3 with letterboxing
+  // Force 16:9 for YouTube so object-cover crops out the black bars
+  const isYouTubeThumbnail = card.image?.includes('ytimg.com') || card.image?.includes('youtube.com');
+  const YOUTUBE_ASPECT_RATIO = 16 / 9;
+
   const thumbnailAspectRatio = hasImage
-    ? (card.aspectRatio || imageAspectRatio || DEFAULT_ASPECT_RATIO)
+    ? (isYouTubeThumbnail ? YOUTUBE_ASPECT_RATIO : (card.aspectRatio || imageAspectRatio || DEFAULT_ASPECT_RATIO))
     : DEFAULT_ASPECT_RATIO;
 
   // Determine if we should show the metadata footer
@@ -283,6 +338,7 @@ export function GridCard({
     if (!isNoteCard(card.type)) return '';
     const content = card.content || '';
     if (!content) return '<p>Empty note</p>';
+    if (Array.isArray(content) && content.length === 0) return '<p>Empty note</p>';
 
     // Check if content is Plate JSON
     if (isPlateJson(content)) {
@@ -295,6 +351,7 @@ export function GridCard({
     }
 
     // Fallback to HTML sanitization for legacy content
+    if (typeof content !== 'string') return '<p>Empty note</p>';
     return DOMPurify.sanitize(content);
   }, [card.content, card.type]);
 
@@ -359,30 +416,13 @@ export function GridCard({
   // Cache system tags (memoized to avoid recomputation on every render)
   const systemTags = useMemo(
     () => getSystemTagsForCard(card),
-    [card.tags, card.scheduledDate, card.isRead, card.readProgress]
+    [card.tags, card.scheduledDates, card.isRead, card.readProgress]
   );
 
-  // Compute display tags with inherited privacy indicators
-  // Cards inherit privacy from their Pawkits but don't have the tag directly
+  // Display tags - just use the card's tags directly
   const displayTags = useMemo(() => {
-    const baseTags = card.tags || [];
-    const privacy = getCardPrivacy(card, collections);
-
-    // If privacy is inherited from Pawkit (not from direct tag), add virtual tags for display
-    if (privacy.source === 'pawkit') {
-      const extraTags: string[] = [];
-      if (privacy.isPrivate && !baseTags.includes(SYSTEM_TAGS.PRIVATE)) {
-        extraTags.push(SYSTEM_TAGS.PRIVATE);
-      }
-      if (privacy.isLocalOnly && !baseTags.includes(SYSTEM_TAGS.LOCAL_ONLY)) {
-        extraTags.push(SYSTEM_TAGS.LOCAL_ONLY);
-      }
-      if (extraTags.length > 0) {
-        return [...extraTags, ...baseTags];
-      }
-    }
-    return baseTags;
-  }, [card, collections]);
+    return card.tags || [];
+  }, [card.tags]);
 
 
   return (
@@ -646,12 +686,6 @@ export function GridCard({
             )}
           </div>
 
-          {/* Sync status indicator - top left (shows queued, syncing, or failed) */}
-          <SyncStatusIndicator
-            cardId={card.id}
-            isSynced={card._synced}
-            variant="pill"
-          />
 
           {/* Reading progress bar - shown for in-progress articles */}
           {!isNoteCard(card.type) && card.readProgress !== undefined && card.readProgress > 0 && !card.isRead && (

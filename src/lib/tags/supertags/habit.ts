@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import { stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -230,7 +230,7 @@ export function getHabitTemplateJson(type: string = 'simple', format: TemplateFo
   const templateType = HABIT_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['habit-info', 'streak', 'notes'];
   const nodes = buildHabitTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

@@ -1,7 +1,7 @@
 'use client';
 
 import { memo } from 'react';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { GridCard } from './grid-card';
 import { ListCard } from './list-card';
 import { type CardDisplaySettings, DEFAULT_CARD_DISPLAY } from './types';
@@ -22,7 +22,7 @@ function arraysShallowEqual(a?: string[], b?: string[]): boolean {
 }
 
 interface CardItemProps {
-  card: LocalCard;
+  card: Card;
   variant?: 'grid' | 'list';
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
@@ -80,7 +80,7 @@ export const CardItem = memo(function CardItem({
   const nextSettings = { ...DEFAULT_CARD_DISPLAY, ...nextProps.displaySettings };
 
   return (
-    prevProps.card.id === nextProps.card.id &&
+    prevProps.card._id === nextProps.card._id &&
     prevProps.card.title === nextProps.card.title &&
     prevProps.card.image === nextProps.card.image &&
     prevProps.card.favicon === nextProps.card.favicon &&
@@ -88,7 +88,7 @@ export const CardItem = memo(function CardItem({
     prevProps.card.url === nextProps.card.url &&
     prevProps.card.content === nextProps.card.content &&
     prevProps.card.pinned === nextProps.card.pinned &&
-    prevProps.card._synced === nextProps.card._synced &&
+    // _synced removed - with native Convex, cards are always synced
     prevProps.card.status === nextProps.card.status &&
     prevProps.card.type === nextProps.card.type &&
     prevProps.variant === nextProps.variant &&

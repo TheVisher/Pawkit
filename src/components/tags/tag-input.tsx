@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTagStore } from '@/lib/stores/tag-store';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { TagBadge } from './tag-badge';
 import { getTagStyle } from '@/lib/utils/tag-colors';
 import {
@@ -41,7 +41,6 @@ export interface TagInputProps {
  * - Enter to select or create new tag
  * - Show "Create [tag]" option when no exact match
  * - Selected tags as dismissible badges
- * - Recent tags section (last 5 used)
  * - Keyboard navigation (arrow keys, Enter, Escape)
  * - Auto-capitalize to match existing tags
  */
@@ -63,10 +62,12 @@ export function TagInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Get tags from store
-  const uniqueTags = useTagStore((s) => s.uniqueTags);
-  const recentTags = useTagStore((s) => s.recentTags);
-  const recordTagUse = useTagStore((s) => s.recordTagUse);
+  // Derive unique tags from cards
+  const cards = useCards();
+  const uniqueTags = useMemo(
+    () => [...new Set(cards.flatMap((c) => c.tags ?? []))].sort(),
+    [cards]
+  );
 
   // Filter available tags (exclude already selected)
   const availableTags = useMemo(() => {
@@ -77,13 +78,6 @@ export function TagInput({
   const filteredTags = useMemo(() => {
     return filterTagsByQuery(availableTags, inputValue, 8);
   }, [availableTags, inputValue]);
-
-  // Get recent tags (exclude selected and not in filtered)
-  const recentTagsFiltered = useMemo(() => {
-    return recentTags
-      .filter((tag) => !value.includes(tag) && uniqueTags.includes(tag))
-      .slice(0, 5);
-  }, [recentTags, value, uniqueTags]);
 
   // Check if we should show "Create" option
   const showCreateOption = useMemo(() => {
@@ -97,7 +91,7 @@ export function TagInput({
 
   // Build list of options
   const options = useMemo(() => {
-    const items: Array<{ type: 'tag' | 'create' | 'recent-header'; value: string }> = [];
+    const items: Array<{ type: 'tag' | 'create'; value: string }> = [];
 
     // Add filtered tags
     filteredTags.forEach((tag) => {
@@ -109,23 +103,11 @@ export function TagInput({
       items.push({ type: 'create', value: cleanTagInput(inputValue) });
     }
 
-    // Add recent tags header and items (only when no search query)
-    if (!inputValue.trim() && recentTagsFiltered.length > 0) {
-      items.push({ type: 'recent-header', value: 'Recent' });
-      recentTagsFiltered.forEach((tag) => {
-        if (!filteredTags.includes(tag)) {
-          items.push({ type: 'tag', value: tag });
-        }
-      });
-    }
-
     return items;
-  }, [filteredTags, showCreateOption, inputValue, recentTagsFiltered]);
+  }, [filteredTags, showCreateOption, inputValue]);
 
-  // Selectable options (exclude headers)
-  const selectableOptions = useMemo(() => {
-    return options.filter((o) => o.type !== 'recent-header');
-  }, [options]);
+  // Selectable options (all options are selectable now)
+  const selectableOptions = options;
 
   // Handle adding a tag
   const addTag = useCallback(
@@ -149,12 +131,11 @@ export function TagInput({
       }
 
       onChange([...value, canonical]);
-      recordTagUse(canonical);
       setInputValue('');
       setSelectedIndex(-1);
       setError(null);
     },
-    [value, onChange, uniqueTags, maxTags, recordTagUse]
+    [value, onChange, uniqueTags, maxTags]
   );
 
   // Handle removing a tag
@@ -167,7 +148,7 @@ export function TagInput({
 
   // Handle keyboard navigation
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (disabled) return;
 
       switch (e.key) {
@@ -331,21 +312,7 @@ export function TagInput({
           )}
         >
           {options.map((option, index) => {
-            if (option.type === 'recent-header') {
-              return (
-                <div
-                  key="recent-header"
-                  className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)]"
-                >
-                  Recent
-                </div>
-              );
-            }
-
-            const selectableIndex = selectableOptions.findIndex(
-              (o) => o.type === option.type && o.value === option.value
-            );
-            const isSelected = selectableIndex === selectedIndex;
+            const isSelected = index === selectedIndex;
 
             if (option.type === 'create') {
               return (
@@ -359,7 +326,7 @@ export function TagInput({
                       : 'hover:bg-[var(--color-bg-surface-3)]'
                   )}
                   onClick={() => addTag(option.value)}
-                  onMouseEnter={() => setSelectedIndex(selectableIndex)}
+                  onMouseEnter={() => setSelectedIndex(index)}
                 >
                   <Plus className="w-4 h-4 text-[var(--color-accent)]" />
                   <span className="text-sm text-[var(--color-text-secondary)]">
@@ -389,7 +356,7 @@ export function TagInput({
                     : 'hover:bg-[var(--color-bg-surface-3)]'
                 )}
                 onClick={() => addTag(option.value)}
-                onMouseEnter={() => setSelectedIndex(selectableIndex)}
+                onMouseEnter={() => setSelectedIndex(index)}
               >
                 <span
                   className="text-sm font-medium px-1.5 py-0.5 rounded"

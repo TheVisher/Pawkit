@@ -5,7 +5,7 @@
  */
 
 import type { Descendant, TElement, TText } from 'platejs';
-import type { LocalReference } from '@/lib/db';
+import type { Id, Reference } from '@/lib/types/convex';
 
 // Mention types matching Pawkit's mention system
 export type MentionType = 'card' | 'pawkit' | 'date';
@@ -91,15 +91,15 @@ export function getUniqueMentions(mentions: ParsedMention[]): ParsedMention[] {
  */
 export function diffReferences(
   currentMentions: ParsedMention[],
-  existingRefs: LocalReference[]
+  existingRefs: Reference[]
 ): {
   toCreate: ParsedMention[];
-  toDelete: LocalReference[];
+  toDelete: Reference[];
 } {
   const uniqueMentions = getUniqueMentions(currentMentions);
 
   // Create a map of existing refs by key
-  const existingMap = new Map<string, LocalReference>();
+  const existingMap = new Map<string, Reference>();
   for (const ref of existingRefs) {
     const key = `${ref.targetType}:${ref.targetId}`;
     existingMap.set(key, ref);
@@ -119,7 +119,7 @@ export function diffReferences(
   }
 
   // Find references that should be deleted (no longer in content)
-  const toDelete: LocalReference[] = [];
+  const toDelete: Reference[] = [];
   for (const ref of existingRefs) {
     const key = `${ref.targetType}:${ref.targetId}`;
     if (!seenKeys.has(key)) {
@@ -146,14 +146,20 @@ export function extractDateMentions(mentions: ParsedMention[]): string[] {
  * It parses the content, diffs against existing refs, and updates accordingly.
  */
 export async function syncReferencesFromPlateContent(
-  cardId: string,
-  workspaceId: string,
+  cardId: Id<'cards'>,
+  workspaceId: Id<'workspaces'>,
   content: Descendant[],
-  existingRefs: LocalReference[],
+  existingRefs: Reference[],
   actions: {
-    createReference: (ref: Omit<LocalReference, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalReference>;
-    deleteReference: (id: string) => Promise<void>;
-    updateCard: (id: string, updates: { scheduledDates?: string[] }) => Promise<void>;
+    createReference: (ref: {
+      workspaceId: Id<'workspaces'>;
+      sourceId: Id<'cards'>;
+      targetId: string;
+      targetType: MentionType;
+      linkText: string;
+    }) => Promise<Id<'references'>>;
+    deleteReference: (id: Id<'references'>) => Promise<void>;
+    updateCard: (id: Id<'cards'>, updates: { scheduledDates?: string[] }) => Promise<void>;
   }
 ): Promise<void> {
   // Parse mentions from content

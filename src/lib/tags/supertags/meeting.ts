@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -320,7 +320,7 @@ function extractMeetingInfoFromPlateJson(content: any[]): { meetingUrl?: string 
   return result;
 }
 
-export function extractMeetingInfo(content: string): {
+export function extractMeetingInfo(content: unknown): {
   meetingUrl?: string;
 } {
   // Check if content is Plate JSON
@@ -329,6 +329,10 @@ export function extractMeetingInfo(content: string): {
     if (parsed) {
       return extractMeetingInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -373,7 +377,7 @@ export function getMeetingTemplateJson(type: string = 'team', format: TemplateFo
   const templateType = MEETING_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['meeting-info', 'attendees', 'agenda', 'action-items', 'notes'];
   const nodes = buildMeetingTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

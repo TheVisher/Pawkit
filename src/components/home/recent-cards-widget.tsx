@@ -9,12 +9,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Layers } from 'lucide-react';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { Card as UICard, CardContent } from '@/components/ui/card';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { formatDistanceToNow } from 'date-fns';
 
 // Card sizing constants - CSS handles the responsive columns
@@ -22,7 +22,7 @@ const MIN_CARD_WIDTH = 280; // Minimum card width before wrapping to fewer colum
 const MAX_CARD_WIDTH = 400; // Maximum card width to prevent overly large cards
 
 interface RecentCardItemProps {
-  card: LocalCard;
+  card: Card;
   onClick: () => void;
 }
 
@@ -94,13 +94,13 @@ function RecentCardItem({ card, onClick }: RecentCardItemProps) {
 
 export function RecentCardsWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const recentCards = useMemo(() => {
     return cards
       .filter((c) => {
-        if (c._deleted) return false;
+        if (c.deleted) return false;
         if (c.isDailyNote) return false; // Exclude daily notes
         return true;
       })
@@ -111,7 +111,7 @@ export function RecentCardsWidget() {
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 py-0 h-full">
+    <UICard className="border-border-subtle bg-bg-surface-2 py-0 h-full">
       <CardContent className="p-3 h-full flex flex-col">
         <div className="flex items-center gap-2 mb-3 shrink-0">
           <div className="p-2 rounded-lg bg-purple-500/20">
@@ -134,9 +134,9 @@ export function RecentCardsWidget() {
             >
               {recentCards.map((card) => (
                 <RecentCardItem
-                  key={card.id}
+                  key={card._id}
                   card={card}
-                  onClick={() => openCardDetail(card.id)}
+                  onClick={() => openCardDetail(card._id)}
                 />
               ))}
             </div>
@@ -151,6 +151,6 @@ export function RecentCardsWidget() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </UICard>
   );
 }

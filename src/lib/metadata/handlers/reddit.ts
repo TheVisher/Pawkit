@@ -8,6 +8,9 @@
  */
 
 import { MetadataResult, DEFAULT_CONFIG } from '../types';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("RedditHandler");
 
 const REDDIT_FAVICON = 'https://www.reddit.com/favicon.ico';
 const TIMEOUT_MS = 10000;
@@ -182,7 +185,7 @@ async function fetchJsonApi(url: string): Promise<{
   try {
     // Construct JSON URL properly
     const jsonUrl = url.endsWith('/') ? `${url}.json` : `${url}/.json`;
-    console.log('[Reddit] Fetching JSON API:', jsonUrl);
+    log.debug('Fetching JSON API:', jsonUrl);
 
     const response = await fetch(jsonUrl, {
       headers: {
@@ -195,9 +198,9 @@ async function fetchJsonApi(url: string): Promise<{
     if (!response.ok) {
       // Handle rate limiting
       if (response.status === 429) {
-        console.warn('[Reddit] Rate limited on JSON API');
+        log.debug('Rate limited on JSON API');
       } else {
-        console.warn('[Reddit] JSON API returned:', response.status);
+        log.debug('JSON API returned:', response.status);
       }
       return null;
     }
@@ -208,12 +211,12 @@ async function fetchJsonApi(url: string): Promise<{
     const post = data?.[0]?.data?.children?.[0]?.data as RedditPost | undefined;
 
     if (!post) {
-      console.warn('[Reddit] No post data in JSON response');
+      log.debug('No post data in JSON response');
       return null;
     }
 
     const { image, images } = extractImageFromPost(post);
-    console.log('[Reddit] Extracted from JSON:', { title: post.title?.substring(0, 50), hasImage: !!image, imageCount: images?.length });
+    log.debug('Extracted from JSON:', { title: post.title?.substring(0, 50), hasImage: !!image, imageCount: images?.length });
 
     return {
       title: post.title || null,
@@ -224,9 +227,9 @@ async function fetchJsonApi(url: string): Promise<{
   } catch (error) {
     // Handle network errors and timeouts gracefully
     if (error instanceof Error && error.name === 'TimeoutError') {
-      console.warn('[Reddit] JSON API request timed out');
+      log.debug('JSON API request timed out');
     } else {
-      console.warn('[Reddit] JSON API error:', error instanceof Error ? error.message : String(error));
+      log.debug('JSON API error:', error instanceof Error ? error.message : String(error));
     }
     return null;
   }

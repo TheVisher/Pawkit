@@ -9,7 +9,7 @@
 >
 > See:
 > - `.claude/skills/pawkit-tanstack-convex/SKILL.md` - New stack overview
-> - `apps/start/docs/convex-guide.md` - Convex real-time patterns
+> - `docs/convex-guide.md` - Convex real-time patterns
 >
 > **Deprecated**: January 21, 2026
 

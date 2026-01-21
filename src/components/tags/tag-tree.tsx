@@ -1,13 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronRight, ChevronDown, Tag, Hash } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTagStore } from '@/lib/stores/tag-store';
-import { useWorkspaceStore } from '@/lib/stores/workspace-store';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useViewStore } from '@/lib/stores/view-store';
-import type { TagTreeNode } from '@/lib/utils/tag-hierarchy';
+import { buildTagStats, type TagTreeNode } from '@/lib/utils/tag-hierarchy';
 import { getTagColor } from '@/lib/utils/tag-colors';
 
 interface TagTreeItemProps {
@@ -118,11 +116,14 @@ interface TagTreeProps {
 }
 
 export function TagTree({ onTagsChange }: TagTreeProps) {
-  const router = useRouter();
-  const tree = useTagStore((s) => s.tagTree);
-  const isLoading = useTagStore((s) => s.isLoading);
-  const refreshTags = useTagStore((s) => s.refreshTags);
-  const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
+  // Derive tags from cards
+  const cards = useCards();
+  const { tree, uniqueTags } = useMemo(() => {
+    const allTags = cards.flatMap((c) => c.tags ?? []);
+    return buildTagStats(allTags);
+  }, [cards]);
+
+  const isLoading = false; // Cards are loaded via context
 
   // Get selected tags from view store
   const selectedTags = useViewStore((s) => s.selectedTags);
@@ -131,13 +132,6 @@ export function TagTree({ onTagsChange }: TagTreeProps) {
 
   // Track expanded nodes
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
-
-  // Refresh tags when workspace changes
-  useEffect(() => {
-    if (currentWorkspace?.id) {
-      refreshTags(currentWorkspace.id);
-    }
-  }, [currentWorkspace?.id, refreshTags]);
 
   const handleToggleExpand = (path: string) => {
     setExpandedPaths((prev) => {

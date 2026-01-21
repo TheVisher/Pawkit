@@ -12,8 +12,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCollections } from '@/lib/hooks/use-live-data';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import { useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { slugify } from '@/lib/utils';
@@ -24,9 +24,9 @@ interface CreatePawkitFormProps {
 }
 
 export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps) {
-    const createCollection = useDataStore((state) => state.createCollection);
+    const { createCollection } = useMutations();
     const workspace = useCurrentWorkspace();
-    const collections = useCollections(workspace?.id);
+    const collections = useCollections();
     const toast = useToastStore((s) => s.toast);
 
     const [name, setName] = useState('');
@@ -34,7 +34,7 @@ export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps)
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const availableParents = collections.filter(c => !c._deleted);
+    const availableParents = collections.filter(c => !c.deleted);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -49,7 +49,7 @@ export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps)
 
         try {
             const slug = slugify(name);
-            const exists = collections.find(c => c.slug === slug && c.workspaceId === workspace.id && !c._deleted);
+            const exists = collections.find(c => c.slug === slug && c.workspaceId === workspace._id && !c.deleted);
             if (exists) {
                 setError('A pawkit with this name already exists');
                 setIsSubmitting(false);
@@ -57,7 +57,7 @@ export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps)
             }
 
             await createCollection({
-                workspaceId: workspace.id,
+                workspaceId: workspace._id,
                 name: name.trim(),
                 slug,
                 parentId: parentId === 'none' ? undefined : parentId,
@@ -119,7 +119,7 @@ export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps)
                             <span className="text-text-muted italic">No parent (Root level)</span>
                         </SelectItem>
                         {availableParents.map((collection) => (
-                            <SelectItem key={collection.id} value={collection.id}>
+                            <SelectItem key={collection._id} value={collection._id}>
                                 {collection.name}
                             </SelectItem>
                         ))}

@@ -9,7 +9,7 @@
 
 import * as React from 'react';
 import { useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { parseISO, format } from 'date-fns';
 
 import type { TComboboxInputElement, TMentionElement } from 'platejs';

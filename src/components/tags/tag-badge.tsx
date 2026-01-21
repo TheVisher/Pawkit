@@ -6,7 +6,6 @@ import { getTagColor, getTagStyle } from '@/lib/utils/tag-colors';
 import { getTagName } from '@/lib/utils/tag-hierarchy';
 import { type SystemTag, isReadingTimeTag, READ_TAG, SCHEDULED_TAG, DUE_TODAY_TAG, OVERDUE_TAG, CONFLICT_TAG } from '@/lib/utils/system-tags';
 import { SystemTagBadge } from './system-tag-badge';
-import { useTagStore } from '@/lib/stores/tag-store';
 
 export interface TagBadgeProps {
   /** The full tag path (e.g., "dev/react") */
@@ -79,10 +78,8 @@ export function TagBadge({
   interactive = false,
 }: TagBadgeProps) {
   const displayName = showLeafOnly ? getTagName(tag) : tag;
-  // Get custom color from store if set
-  const tagColors = useTagStore((s) => s.tagColors);
-  const customHsl = tagColors[tag];
-  const colors = getTagColor(tag, customHsl);
+  // Custom tag colors removed - use deterministic colors based on tag name
+  const colors = getTagColor(tag);
   const Icon = getSystemTagIcon(tag);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -109,7 +106,7 @@ export function TagBadge({
 
   // Icon-only privacy tags get special styling
   const isPrivacy = isPrivacyTag(tag);
-  const tagStyle = isPrivacy ? PRIVACY_TAG_STYLE : getTagStyle(tag, customHsl);
+  const tagStyle = isPrivacy ? PRIVACY_TAG_STYLE : getTagStyle(tag);
 
   // Icon-only tags need square padding to look like badges
   const iconOnlySizeClasses = {

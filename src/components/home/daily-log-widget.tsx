@@ -7,21 +7,23 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { format, isSameDay, startOfDay } from 'date-fns';
-import { db } from '@/lib/db';
 import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { triggerSync } from '@/lib/services/sync-queue';
+import { useMutations, useDataContext } from '@/lib/contexts/convex-data-context';
+import type { Id } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
 import {
   isPlateJson,
   parseJsonContent,
   extractPlateText,
   serializePlateContent,
+  hasPlateContent,
+  htmlToPlateJson,
+  createEmptyPlateContent,
 } from '@/lib/plate/html-to-plate';
 import type { Descendant, Value } from 'platejs';
 
@@ -42,7 +44,7 @@ function createPlateEntry(timestamp: string, text: string): Descendant {
  * Parse timestamped entries from content (supports both Plate JSON and legacy HTML)
  */
 function parseTimestampedEntries(
-  content: string | null | undefined
+  content: string | Value | null | undefined
 ): { time: string; text: string }[] {
   if (!content) return [];
 
@@ -78,6 +80,8 @@ function parseTimestampedEntries(
   }
 
   // Fall back to legacy HTML parsing
+  if (typeof content !== 'string') return [];
+
   const regex = /<p><strong>(\d{1,2}:\d{2}(?:\s*[AP]M)?)<\/strong>\s*-\s*(.+?)<\/p>/gi;
   const found: { time: string; text: string }[] = [];
   let match;
@@ -90,7 +94,7 @@ function parseTimestampedEntries(
 /**
  * Get preview text from content (supports both Plate JSON and legacy HTML)
  */
-function getContentPreview(content: string | null | undefined): string | null {
+function getContentPreview(content: string | Value | null | undefined): string | null {
   if (!content) return null;
 
   // Try Plate JSON first
@@ -102,6 +106,7 @@ function getContentPreview(content: string | null | undefined): string | null {
   }
 
   // Fall back to legacy HTML - strip tags
+  if (typeof content !== 'string') return null;
   const text = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   return text || null;
 }
@@ -112,10 +117,10 @@ function getContentPreview(content: string | null | undefined): string | null {
  */
 function mergeEntryIntoContent(
   newEntry: Descendant,
-  existingContent: string | null | undefined
-): string {
+  existingContent: string | Value | null | undefined
+): Value {
   // If no existing content, just return the new entry
-  if (!existingContent || !existingContent.trim()) {
+  if (!hasPlateContent(existingContent)) {
     return serializePlateContent([newEntry] as Value);
   }
 
@@ -127,11 +132,12 @@ function mergeEntryIntoContent(
     }
   }
 
-  // If existing content is HTML, we need to convert it first
-  // For now, create the new entry and add a paragraph with the HTML notice
-  // The editor will convert the HTML when opened
-  // Actually, let's just prepend the JSON entry and keep the HTML
-  // The editor handles mixed content during conversion
+  // If existing content is HTML, convert to Plate JSON and prepend
+  if (typeof existingContent === 'string') {
+    const existingAsJson = htmlToPlateJson(existingContent);
+    return serializePlateContent([newEntry, ...existingAsJson] as Value);
+  }
+
   return serializePlateContent([newEntry] as Value);
 }
 
@@ -144,10 +150,9 @@ export function DailyLogWidget() {
   const [isViewingToday, setIsViewingToday] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
-  const isLoading = useDataStore((s) => s.isLoading);
-  const createCard = useDataStore((s) => s.createCard);
-  const updateCard = useDataStore((s) => s.updateCard);
+  const cards = useCards();
+  const { isLoading } = useDataContext();
+  const { createCard, updateCard, restoreCard } = useMutations();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Auto-update date at midnight if we're viewing "today"
@@ -203,11 +208,11 @@ export function DailyLogWidget() {
     if (!workspace) return null;
     const dailyNotes = cards.filter(
       (c) =>
-        c.workspaceId === workspace.id &&
+        c.workspaceId === workspace._id &&
         c.isDailyNote &&
-        c.scheduledDate &&
-        isSameDay(new Date(c.scheduledDate), date) &&
-        !c._deleted
+        c.scheduledDates?.[0] &&
+        isSameDay(new Date(c.scheduledDates[0]), date) &&
+        !c.deleted
     );
     if (dailyNotes.length === 0) return null;
     // Sort by updatedAt descending and return the most recent
@@ -219,69 +224,61 @@ export function DailyLogWidget() {
   const handleCreateNote = async () => {
     if (!workspace || isSubmitting) return;
 
-    // Always do a direct DB query to check for existing notes
-    // This prevents creating duplicates when reactive state is stale
-    const existingNotes = await db.cards
-      .where('workspaceId')
-      .equals(workspace.id)
-      .filter(
-        (c) =>
-          c.isDailyNote === true &&
-          c.scheduledDate != null &&
-          isSameDay(new Date(c.scheduledDate), date) &&
-          c._deleted !== true
-      )
-      .toArray();
+    // Find existing daily note for the selected date from the cards array
+    const existingNotes = cards.filter(
+      (c) =>
+        c.workspaceId === workspace._id &&
+        c.isDailyNote === true &&
+        c.scheduledDates?.[0] != null &&
+        isSameDay(new Date(c.scheduledDates[0]), date) &&
+        c.deleted !== true
+    );
 
     if (existingNotes.length > 0) {
       const sortedNotes = existingNotes.sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
-      openCardDetail(sortedNotes[0].id);
+      openCardDetail(sortedNotes[0]._id);
       return;
     }
 
     // Check for trashed daily note - restore instead of creating new
-    const trashedCards = await db.cards
-      .where('workspaceId')
-      .equals(workspace.id)
-      .filter(
-        (c) =>
-          c.isDailyNote === true &&
-          c.scheduledDate != null &&
-          isSameDay(new Date(c.scheduledDate), date) &&
-          c._deleted === true
-      )
-      .toArray();
+    const trashedCards = cards.filter(
+      (c) =>
+        c.workspaceId === workspace._id &&
+        c.isDailyNote === true &&
+        c.scheduledDates?.[0] != null &&
+        isSameDay(new Date(c.scheduledDates[0]), date) &&
+        c.deleted === true
+    );
 
     if (trashedCards.length > 0) {
       const sortedTrashed = trashedCards.sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
       const trashedNote = sortedTrashed[0];
-      await updateCard(trashedNote.id, { _deleted: false });
-      openCardDetail(trashedNote.id);
+      await restoreCard(trashedNote._id);
+      openCardDetail(trashedNote._id);
       return;
     }
 
     setIsSubmitting(true);
     try {
       const newNote = await createCard({
-        workspaceId: workspace.id,
+        workspaceId: workspace._id as Id<'workspaces'>,
         type: 'md-note',
         url: '',
         title: format(date, 'MMMM d, yyyy'),
-        content: '',
+        content: createEmptyPlateContent(),
         isDailyNote: true,
-        scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
+        scheduledDates: [startOfDay(date).toISOString()], // Normalize to midnight to avoid timezone drift
         tags: ['daily-note'],
         pinned: false,
-        status: 'READY',
         isFileCard: false,
       });
 
       if (newNote) {
-        openCardDetail(newNote.id);
+        openCardDetail(newNote);
       }
     } finally {
       setIsSubmitting(false);
@@ -301,59 +298,25 @@ export function DailyLogWidget() {
       // Create entry as Plate JSON instead of HTML
       const entryNode = createPlateEntry(timestamp, entryText);
 
-      // STRATEGY: Trust Zustand state first (survives sync overwrites), then fall back to DB
-      // This handles the case where sync wipes IndexedDB but Zustand still has the note
-
-      // 1. If we have a note in Zustand state, try to use it
-      if (note) {
-        console.log('[DailyLog] Found note in Zustand state:', note.id);
-
-        // Try to get fresh content from DB (in case it was updated elsewhere)
-        const freshNote = await db.cards.get(note.id);
-
-        if (freshNote && !freshNote._deleted) {
-          // Note exists in DB - prepend new entry at top
-          console.log('[DailyLog] Note exists in DB, prepending');
-          const newContent = mergeEntryIntoContent(entryNode, freshNote.content);
-          await updateCard(note.id, { content: newContent });
-          return;
-        } else {
-          // Note was deleted from DB (likely by sync) but we still have it in Zustand
-          // Re-create it with new entry + existing content (newest at top)
-          console.log('[DailyLog] Note missing from DB (sync issue), re-creating with existing content');
-          const newContent = mergeEntryIntoContent(entryNode, note.content);
-          await createCard({
-            workspaceId: workspace.id,
-            type: 'md-note',
-            url: '',
-            title: format(date, 'MMMM d, yyyy'),
-            content: newContent,
-            isDailyNote: true,
-            scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
-            tags: ['daily-note'],
-            pinned: false,
-            status: 'READY',
-            isFileCard: false,
-          });
-          return;
-        }
+      // Use the note from cards array (unified data context) if available
+      if (note && !note.deleted) {
+        console.log('[DailyLog] Found note in state:', note._id);
+        const newContent = mergeEntryIntoContent(entryNode, note.content);
+        await updateCard(note._id, { content: newContent });
+        return;
       }
 
-      // 2. No note in Zustand - query DB directly (fresh page load scenario)
-      console.log('[DailyLog] No note in Zustand, querying DB');
-      const existingNotes = await db.cards
-        .where('workspaceId')
-        .equals(workspace.id)
-        .filter(
-          (c) =>
-            c.isDailyNote === true &&
-            c.scheduledDate != null &&
-            isSameDay(new Date(c.scheduledDate), date) &&
-            c._deleted !== true
-        )
-        .toArray();
+      // Check for existing daily notes in the cards array
+      const existingNotes = cards.filter(
+        (c) =>
+          c.workspaceId === workspace._id &&
+          c.isDailyNote === true &&
+          c.scheduledDates?.[0] != null &&
+          isSameDay(new Date(c.scheduledDates[0]), date) &&
+          c.deleted !== true
+      );
 
-      console.log('[DailyLog] Found in DB:', existingNotes.length);
+      console.log('[DailyLog] Found in cards:', existingNotes.length);
 
       if (existingNotes.length > 0) {
         // Found existing active daily note - prepend new entry at top
@@ -362,22 +325,19 @@ export function DailyLogWidget() {
         );
         const existingNote = sortedNotes[0];
         const newContent = mergeEntryIntoContent(entryNode, existingNote.content);
-        await updateCard(existingNote.id, { content: newContent });
+        await updateCard(existingNote._id, { content: newContent });
         return;
       }
 
       // Check for trashed daily notes - restore instead of creating new
-      const trashedCards = await db.cards
-        .where('workspaceId')
-        .equals(workspace.id)
-        .filter(
-          (c) =>
-            c.isDailyNote === true &&
-            c.scheduledDate != null &&
-            isSameDay(new Date(c.scheduledDate), date) &&
-            c._deleted === true
-        )
-        .toArray();
+      const trashedCards = cards.filter(
+        (c) =>
+          c.workspaceId === workspace._id &&
+          c.isDailyNote === true &&
+          c.scheduledDates?.[0] != null &&
+          isSameDay(new Date(c.scheduledDates[0]), date) &&
+          c.deleted === true
+      );
 
       if (trashedCards.length > 0) {
         const sortedTrashed = trashedCards.sort(
@@ -385,33 +345,27 @@ export function DailyLogWidget() {
         );
         const trashedNote = sortedTrashed[0];
         const newContent = mergeEntryIntoContent(entryNode, trashedNote.content);
-        await updateCard(trashedNote.id, {
-          _deleted: false,
-          content: newContent,
-        });
+        await restoreCard(trashedNote._id);
+        await updateCard(trashedNote._id, { content: newContent });
         return;
       }
 
       // No existing note found - create new with Plate JSON
       const initialContent = serializePlateContent([entryNode] as Value);
       await createCard({
-        workspaceId: workspace.id,
+        workspaceId: workspace._id as Id<'workspaces'>,
         type: 'md-note',
         url: '',
         title: format(date, 'MMMM d, yyyy'),
         content: initialContent,
         isDailyNote: true,
-        scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
+        scheduledDates: [startOfDay(date).toISOString()], // Normalize to midnight to avoid timezone drift
         tags: ['daily-note'],
         pinned: false,
-        status: 'READY',
         isFileCard: false,
       });
     } finally {
       setIsSubmitting(false);
-      // Trigger sync immediately after entry is complete
-      // (Daily log entries are discrete actions, unlike typing in notes)
-      triggerSync();
     }
   };
 
@@ -528,7 +482,7 @@ export function DailyLogWidget() {
 
             {note ? (
               <button
-                onClick={() => openCardDetail(note.id)}
+                onClick={() => openCardDetail(note._id)}
                 className={cn(
                   'flex-1 w-full text-left p-2 rounded-lg transition-colors min-h-0',
                   'bg-bg-surface-3/50 hover:bg-bg-surface-3',

@@ -4,7 +4,7 @@
 
 **Created**: December 20, 2025
 
-**Status**: **MOSTLY APPLICABLE** - Component patterns and size limits still apply. File structure section is outdated (was Next.js App Router, now TanStack Start). Ignore Prisma/Dexie references - now using Convex.
+**Status**: **MOSTLY APPLICABLE** - Component patterns and size limits still apply. File structure section below is outdated (was Next.js App Router, now TanStack Start with routes in `src/routes/`). Ignore Prisma/Dexie references - now using Convex.
 
 ---
 
@@ -29,49 +29,51 @@ left-navigation-panel.tsx - 2,112 lines  ❌
 
 ## FILE STRUCTURE
 
+> **Note**: This section shows the **current TanStack Start structure**. Old Next.js paths are archived in `archive-next/`.
+
 ```
 src/
-├── app/                        # Next.js App Router
-│   ├── (auth)/                 # Auth routes (login, signup)
-│   ├── (dashboard)/            # Main app routes
-│   │   ├── w/[workspace]/      # Workspace-scoped routes
-│   │   │   ├── home/
-│   │   │   ├── library/
-│   │   │   ├── calendar/
-│   │   │   ├── rediscover/
-│   │   │   ├── pawkits/[slug]/
-│   │   │   └── settings/
-│   │   └── layout.tsx          # Dashboard layout
-│   └── api/                    # API routes
+├── routes/                     # TanStack Start file-based routing
+│   ├── __root.tsx             # Root layout
+│   ├── index.tsx              # Landing/redirect
+│   ├── home.tsx               # Home dashboard
+│   ├── library.tsx            # Library view
+│   ├── calendar.tsx           # Calendar view
+│   ├── pawkits.tsx            # Pawkits view
+│   ├── tags.tsx               # Tags view
+│   ├── trash.tsx              # Trash view
+│   ├── login.tsx              # Auth
+│   └── signup.tsx             # Auth
+│
+├── pages/                      # Page components (referenced by routes)
+│   ├── home.tsx
+│   ├── library.tsx
+│   └── ...
 │
 ├── components/
 │   ├── ui/                     # shadcn/ui components
 │   ├── layout/                 # Layout components
-│   ├── sidebar-sections/       # Modular sidebar sections
-│   ├── views/                  # View components (grid, list, masonry)
 │   ├── cards/                  # Card display components
 │   ├── modals/                 # Modal dialogs
 │   ├── calendar/               # Calendar components
-│   ├── kit/                    # Kit AI components
 │   ├── home/                   # Home dashboard widgets
-│   ├── rediscover/             # Rediscover components
-│   └── shared/                 # Shared components
+│   ├── editor/                 # Plate editor
+│   └── ...
 │
 ├── lib/
-│   ├── db/                     # Database layer (Dexie)
 │   ├── stores/                 # Zustand stores
-│   ├── services/               # Business logic
 │   ├── hooks/                  # Custom React hooks
 │   ├── utils/                  # Utility functions
-│   ├── auth/                   # Auth utilities
-│   └── types/                  # TypeScript types
+│   └── ...
 │
-├── styles/
-│   ├── globals.css             # Global styles, CSS variables
-│   └── themes.css              # Theme definitions
-│
-└── prisma/
-    └── schema.prisma
+├── styles.css                  # Global styles, CSS variables
+└── router.tsx                  # Router config
+
+convex/                         # Convex backend (at project root)
+├── schema.ts                   # Database schema
+├── cards.ts                    # Card queries/mutations
+├── collections.ts              # Collection queries/mutations
+└── ...
 ```
 
 ---

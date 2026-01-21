@@ -217,7 +217,7 @@ function getTurndownService(): TurndownService {
  * @param content - HTML string or Plate JSON string
  * @returns Markdown formatted string
  */
-export function htmlToMarkdown(content: string): string {
+export function htmlToMarkdown(content: unknown): string {
   const turndown = getTurndownService();
 
   // Check if content is Plate JSON and convert to HTML first
@@ -229,6 +229,10 @@ export function htmlToMarkdown(content: string): string {
     }
   }
 
+  if (typeof content !== 'string') {
+    return '';
+  }
+
   // Content is HTML, convert directly
   return turndown.turndown(content);
 }
@@ -238,7 +242,7 @@ export function htmlToMarkdown(content: string): string {
  * @param content - HTML string or Plate JSON string
  * @returns Promise that resolves when copy is complete
  */
-export async function copyHtmlAsMarkdown(content: string): Promise<void> {
+export async function copyHtmlAsMarkdown(content: unknown): Promise<void> {
   const markdown = htmlToMarkdown(content);
   await navigator.clipboard.writeText(markdown);
 }
@@ -248,7 +252,7 @@ export async function copyHtmlAsMarkdown(content: string): Promise<void> {
  * @param content - HTML string or Plate JSON string
  * @param filename - Filename without extension
  */
-export function downloadHtmlAsMarkdown(content: string, filename: string): void {
+export function downloadHtmlAsMarkdown(content: unknown, filename: string): void {
   const markdown = htmlToMarkdown(content);
   const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
   const url = URL.createObjectURL(blob);

@@ -4,7 +4,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { isPlateJson, parseJsonContent, serializePlateContent } from '@/lib/plate/html-to-plate';
+import { isPlateJson, parseJsonContent, stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -383,7 +383,7 @@ function extractSubscriptionInfoFromPlateJson(content: any[]): {
   return result;
 }
 
-export function extractSubscriptionInfo(content: string): {
+export function extractSubscriptionInfo(content: unknown): {
   websiteUrl?: string;
   accountEmail?: string;
   cancelUrl?: string;
@@ -394,6 +394,10 @@ export function extractSubscriptionInfo(content: string): {
     if (parsed) {
       return extractSubscriptionInfoFromPlateJson(parsed);
     }
+  }
+
+  if (typeof content !== 'string') {
+    return {};
   }
 
   // Fall back to HTML parsing
@@ -456,7 +460,7 @@ export function getSubscriptionTemplateJson(type: string = 'streaming', format: 
   const templateType = SUBSCRIPTION_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['billing', 'account', 'notes'];
   const nodes = buildSubscriptionTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**

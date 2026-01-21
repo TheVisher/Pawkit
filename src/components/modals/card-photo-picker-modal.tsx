@@ -7,11 +7,11 @@
  * - 'contact' mode: Edit contact photos with positioning and header color
  * - 'new-card' mode: Create a new image card from file upload or URL
  *
- * Images are compressed and uploaded to Supabase Storage (not stored as Base64).
+ * Images are compressed and uploaded to Convex Storage (not stored as Base64).
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Image from 'next/image';
+import Image from '@/components/ui/image';
 import imageCompression from 'browser-image-compression';
 import { ImagePlus, Link2, X, MoveVertical, Palette, Upload, Loader2, Trash2 } from 'lucide-react';
 import {
@@ -27,14 +27,14 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations, useCardById } from '@/lib/contexts/convex-data-context';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
-import { useCard } from '@/lib/hooks/use-live-data';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { cn } from '@/lib/utils';
 import { GRADIENT_PRESETS } from './card-detail/contact-photo-header';
-import { uploadToSupabase } from '@/lib/metadata/image-persistence';
+import { uploadToConvex } from '@/lib/metadata/image-persistence';
+import { createEmptyPlateContent } from '@/lib/plate/html-to-plate';
 
 // Image compression options
 const COMPRESSION_OPTIONS = {
@@ -44,7 +44,7 @@ const COMPRESSION_OPTIONS = {
 };
 
 /**
- * Compress and upload an image file to Supabase Storage
+ * Compress and upload an image file to Convex Storage
  * Returns the public URL of the uploaded image
  */
 async function compressAndUploadImage(
@@ -69,8 +69,8 @@ async function compressAndUploadImage(
 
     onProgress?.('Uploading to storage...');
 
-    // Upload to Supabase Storage
-    const url = await uploadToSupabase(cardId, compressedFile, compressedFile.type);
+    // Upload to Convex Storage
+    const url = await uploadToConvex(cardId, compressedFile, compressedFile.type);
 
     if (!url) {
       throw new Error('Failed to upload image');
@@ -101,9 +101,8 @@ export function CardPhotoPickerModal() {
     closeImagePicker
   } = useModalStore();
 
-  const card = useCard(imagePickerCardId || '');
-  const updateCard = useDataStore((state) => state.updateCard);
-  const createCard = useDataStore((state) => state.createCard);
+  const card = useCardById(imagePickerCardId as any);
+  const { updateCard, createCard } = useMutations();
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const triggerMuuriLayout = useUIStore((state) => state.triggerMuuriLayout);
   const toast = useToastStore((s) => s.toast);
@@ -378,11 +377,11 @@ export function CardPhotoPickerModal() {
       // Now create the card with the image URL already set
       // This ensures the card is created atomically with its image
       await createCard({
-        workspaceId: currentWorkspace.id,
+        workspaceId: currentWorkspace._id,
         type: 'file',
         url: '',
         title,
-        content: '',
+        content: createEmptyPlateContent(),
         tags: [],
         pinned: false,
         status: 'READY',

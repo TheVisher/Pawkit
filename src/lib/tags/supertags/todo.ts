@@ -7,7 +7,7 @@
  */
 
 import type { SupertagDefinition, TemplateSection, TemplateType, TemplateFormat } from './types';
-import { serializePlateContent } from '@/lib/plate/html-to-plate';
+import { stringifyPlateContent } from '@/lib/plate/html-to-plate';
 import {
   h2,
   fieldItem,
@@ -199,7 +199,7 @@ export function getTodoTemplateJson(type: string = 'daily', format: TemplateForm
   const templateType = TODO_TEMPLATE_TYPES[type];
   const sectionIds = templateType?.defaultSections || ['tasks', 'notes'];
   const nodes = buildTodoTemplateJson(sectionIds, format);
-  return serializePlateContent(nodes);
+  return stringifyPlateContent(nodes);
 }
 
 /**
