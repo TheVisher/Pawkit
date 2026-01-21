@@ -1,0 +1,691 @@
+'use client';
+
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  ReactNode,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
+import { useDebugGridValues } from '@/lib/hooks/use-debug-value';
+
+// Muuri type declarations (library doesn't include types)
+declare class MuuriGrid {
+  constructor(element: HTMLElement | string, options?: MuuriOptions);
+  add(elements: HTMLElement | HTMLElement[], options?: { index?: number; layout?: boolean }): MuuriItem[];
+  remove(items: MuuriItem | MuuriItem[], options?: { removeElements?: boolean; layout?: boolean }): MuuriItem[];
+  show(items: MuuriItem | MuuriItem[], options?: { instant?: boolean; onFinish?: () => void }): this;
+  hide(items: MuuriItem | MuuriItem[], options?: { instant?: boolean; onFinish?: () => void }): this;
+  filter(predicate: string | ((item: MuuriItem) => boolean), options?: { instant?: boolean }): this;
+  sort(comparer: string | ((a: MuuriItem, b: MuuriItem) => number) | MuuriItem[], options?: { layout?: boolean }): this;
+  move(item: MuuriItem | HTMLElement | number, position: MuuriItem | HTMLElement | number, options?: { action?: string; layout?: boolean }): this;
+  layout(instant?: boolean, callback?: () => void): this;
+  refreshItems(items?: MuuriItem[]): this;
+  refreshSortData(items?: MuuriItem[]): this;
+  synchronize(): this;
+  getItems(targets?: HTMLElement | HTMLElement[] | MuuriItem | MuuriItem[] | number | number[]): MuuriItem[];
+  getElement(): HTMLElement;
+  on(event: string, listener: (...args: unknown[]) => void): this;
+  off(event: string, listener: (...args: unknown[]) => void): this;
+  destroy(removeElements?: boolean): this;
+}
+
+interface MuuriItem {
+  getElement(): HTMLElement;
+  getGrid(): MuuriGrid;
+  isActive(): boolean;
+  isVisible(): boolean;
+  isShowing(): boolean;
+  isHiding(): boolean;
+  isPositioning(): boolean;
+  isDragging(): boolean;
+  isReleasing(): boolean;
+  isDestroyed(): boolean;
+}
+
+interface MuuriOptions {
+  items?: string | HTMLElement[];
+  showDuration?: number;
+  showEasing?: string;
+  hideDuration?: number;
+  hideEasing?: string;
+  visibleStyles?: Record<string, string | number>;
+  hiddenStyles?: Record<string, string | number>;
+  layout?: {
+    fillGaps?: boolean;
+    horizontal?: boolean;
+    alignRight?: boolean;
+    alignBottom?: boolean;
+    rounding?: boolean;
+  };
+  layoutOnResize?: boolean | number;
+  layoutOnInit?: boolean;
+  layoutDuration?: number;
+  layoutEasing?: string;
+  sortData?: Record<string, (item: MuuriItem, element: HTMLElement) => unknown>;
+  dragEnabled?: boolean;
+  dragContainer?: HTMLElement | null;
+  dragHandle?: string | null;
+  dragStartPredicate?: {
+    distance?: number;
+    delay?: number;
+  };
+  dragAxis?: 'x' | 'y' | 'xy';
+  dragSort?: boolean | (() => MuuriGrid[]);
+  dragSortHeuristics?: {
+    sortInterval?: number;
+    minDragDistance?: number;
+    minBounceBackAngle?: number;
+  };
+  dragSortPredicate?: {
+    threshold?: number;
+    action?: string;
+    migrateAction?: string;
+  };
+  dragRelease?: {
+    duration?: number;
+    easing?: string;
+    useDragContainer?: boolean;
+  };
+  dragCssProps?: {
+    touchAction?: string;
+    userSelect?: string;
+    userDrag?: string;
+    tapHighlightColor?: string;
+    touchCallout?: string;
+    contentZooming?: string;
+  };
+  dragPlaceholder?: {
+    enabled?: boolean;
+    createElement?: ((item: MuuriItem) => HTMLElement) | null;
+    onCreate?: ((item: MuuriItem, element: HTMLElement) => void) | null;
+    onRemove?: ((item: MuuriItem, element: HTMLElement) => void) | null;
+  };
+  dragAutoScroll?: {
+    targets?: Array<{ element: HTMLElement | Window; priority?: number; axis?: number }>;
+    handle?: ((item: MuuriItem, itemClientX: number, itemClientY: number, itemWidth: number, itemHeight: number, pointerClientX: number, pointerClientY: number) => { left: number; top: number; width: number; height: number }) | null;
+    threshold?: number;
+    safeZone?: number;
+    speed?: number | ((item: MuuriItem, scrollElement: HTMLElement | Window, scrollData: unknown) => number);
+    sortDuringScroll?: boolean;
+    smoothStop?: boolean;
+    onStart?: ((item: MuuriItem, scrollElement: HTMLElement | Window, direction: number) => void) | null;
+    onStop?: ((item: MuuriItem, scrollElement: HTMLElement | Window, direction: number) => void) | null;
+  };
+  containerClass?: string;
+  itemClass?: string;
+  itemVisibleClass?: string;
+  itemHiddenClass?: string;
+  itemPositioningClass?: string;
+  itemDraggingClass?: string;
+  itemReleasingClass?: string;
+  itemPlaceholderClass?: string;
+}
+
+// Import Muuri dynamically to avoid SSR issues
+let muuriModulePromise: Promise<typeof MuuriGrid | null> | null = null;
+
+const loadMuuri = async (): Promise<typeof MuuriGrid | null> => {
+  if (typeof window === 'undefined') return null;
+  if (!muuriModulePromise) {
+    muuriModulePromise = import('muuri')
+      .then((module) => (module.default || module) as typeof MuuriGrid)
+      .catch(() => null);
+  }
+  return muuriModulePromise;
+};
+
+export type { MuuriItem };
+
+export type MuuriGridProps = {
+  children: ReactNode | ((calculatedWidth: number) => ReactNode);
+  className?: string;
+  style?: React.CSSProperties;
+  // Pass item count explicitly to control when to reinitialize
+  itemCount: number;
+  // Pass card IDs to detect when IDs change (even if count stays same)
+  cardIds?: string;
+  // Minimum item width - cards will stretch to fill available space
+  minItemWidth?: number;
+  // Edge padding on left/right of grid
+  edgePadding?: number;
+  // Gap between items
+  itemSpacing?: number;
+  // Layout options
+  fillGaps?: boolean;
+  horizontal?: boolean;
+  alignRight?: boolean;
+  alignBottom?: boolean;
+  // Drag options
+  dragEnabled?: boolean;
+  dragHandle?: string;
+  // Animation
+  layoutDuration?: number;
+  layoutEasing?: string;
+  // Callbacks
+  onDragStart?: (item: MuuriItem) => void;
+  onDragEnd?: (item: MuuriItem) => void;
+  onDragMove?: (item: MuuriItem) => void;
+  onLayoutEnd?: () => void;
+  onOrderChange?: (newOrder: string[]) => void;
+  // Callback to notify parent of calculated item width
+  onItemWidthCalculated?: (width: number) => void;
+  // External trigger for relayout (increment to force refresh + layout)
+  layoutVersion?: number;
+};
+
+export type MuuriGridRef = {
+  layout: (instant?: boolean) => void;
+  refreshItems: () => void;
+  getItems: () => MuuriItem[];
+  filter: (predicate: (item: MuuriItem) => boolean) => void;
+  sort: (comparer: (a: MuuriItem, b: MuuriItem) => number) => void;
+};
+
+export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
+  function MuuriGridComponent(
+    {
+      children,
+      className = '',
+      style,
+      itemCount,
+      cardIds,
+      minItemWidth = 200,
+      edgePadding = 0,
+      itemSpacing = 16,
+      fillGaps = true,
+      horizontal = false,
+      alignRight = false,
+      alignBottom = false,
+      dragEnabled = false,
+      dragHandle,
+      layoutDuration = 300,
+      layoutEasing = 'ease-out',
+      onDragStart,
+      onDragEnd,
+      onDragMove,
+      onLayoutEnd,
+      onOrderChange,
+      onItemWidthCalculated,
+      layoutVersion,
+    },
+    ref
+  ) {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
+    const gridRef = useRef<MuuriGrid | null>(null);
+    const layoutRafRef = useRef<number | null>(null);
+    // Track both cardId AND element reference to detect when React recreates elements
+    const trackedElementsRef = useRef<Map<string, HTMLElement>>(new Map());
+    const isInitializedRef = useRef(false);
+    const [calculatedItemWidth, setCalculatedItemWidth] = useState<number>(minItemWidth);
+    const [isReady, setIsReady] = useState(false);
+
+    // Get debug values for live tuning
+    const debugValues = useDebugGridValues();
+
+    // Calculate stretched item width to fill available space with consistent edge padding
+    useEffect(() => {
+      if (!wrapperRef.current || itemCount === 0) {
+        setCalculatedItemWidth(minItemWidth);
+        return;
+      }
+
+      const calculateWidth = () => {
+        if (!wrapperRef.current) return;
+
+        const totalWidth = wrapperRef.current.offsetWidth;
+        // Available width after edge padding
+        const availableWidth = totalWidth - edgePadding * 2;
+
+        // Calculate how many columns fit at minimum width
+        const numColumns = Math.max(1, Math.floor(availableWidth / minItemWidth));
+
+        // Stretch items to fill available width evenly
+        // Gaps come from padding inside each item, not from width calculation
+        const stretchedWidth = Math.floor(availableWidth / numColumns);
+
+        setCalculatedItemWidth(stretchedWidth);
+        onItemWidthCalculated?.(stretchedWidth);
+      };
+
+      // Initial calculation
+      calculateWidth();
+
+      // Recalculate on resize with minimal debounce (just to batch rapid resize events)
+      let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+      let isFirstObservation = true;
+      const resizeObserver = new ResizeObserver(() => {
+        // Skip the first observation since we already calculated width
+        if (isFirstObservation) {
+          isFirstObservation = false;
+          return;
+        }
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(calculateWidth, debugValues.layoutOnResize);
+      });
+      resizeObserver.observe(wrapperRef.current);
+
+      return () => {
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeObserver.disconnect();
+      };
+    }, [minItemWidth, itemCount, edgePadding, itemSpacing, onItemWidthCalculated]);
+
+    // Initialize Muuri once on mount
+    useEffect(() => {
+      if (!containerRef.current || isInitializedRef.current) return;
+
+      let isActive = true;
+
+      // Hide grid until first layout completes
+      setIsReady(false);
+
+      // Small delay to ensure React has rendered children
+      const timeoutId = setTimeout(() => {
+        void loadMuuri().then((MuuriModule) => {
+          if (!isActive || !MuuriModule || !containerRef.current || isInitializedRef.current) return;
+
+          // Check if there are items
+          const items = containerRef.current.querySelectorAll('.muuri-item');
+          if (items.length === 0) return;
+
+          // Track initial card IDs and their element references
+          items.forEach((item) => {
+            const element = item as HTMLElement;
+            const cardId = element.dataset.cardId;
+            if (cardId) trackedElementsRef.current.set(cardId, element);
+          });
+
+          const grid = new MuuriModule(containerRef.current, {
+            items: '.muuri-item',
+            layout: {
+              fillGaps: debugValues.fillGaps,
+              horizontal,
+              alignRight,
+              alignBottom,
+              rounding: true,
+            },
+            // Debounce for window resize events (configurable via debug panel)
+            layoutOnResize: debugValues.layoutOnResize,
+            layoutOnInit: true,
+            layoutDuration: debugValues.layoutDuration,
+            layoutEasing: debugValues.layoutEasing,
+            dragEnabled,
+            dragContainer: document.body, // Move to body during drag to escape overflow clipping
+            dragHandle: dragHandle || null,
+            dragStartPredicate: {
+              distance: 10,
+              delay: 100,
+            },
+            dragSort: true,
+            dragSortHeuristics: {
+              sortInterval: 100,
+              minDragDistance: 10,
+              minBounceBackAngle: 1,
+            },
+            dragSortPredicate: {
+              threshold: 50,
+              action: 'move',
+            },
+            dragRelease: {
+              duration: 300,
+              easing: 'ease-out',
+              useDragContainer: false, // Re-parent to grid BEFORE release animation to fix positioning
+            },
+            dragPlaceholder: {
+              enabled: true,
+              createElement: (item) => {
+                const el = item.getElement();
+                const placeholder = document.createElement('div');
+                placeholder.style.width = el.offsetWidth + 'px';
+                placeholder.style.height = el.offsetHeight + 'px';
+                placeholder.style.background = 'var(--color-accent-muted, rgba(168, 85, 247, 0.2))';
+                placeholder.style.borderRadius = '16px';
+                placeholder.style.border = '2px dashed var(--color-accent, #a855f7)';
+                return placeholder;
+              },
+            },
+            showDuration: debugValues.showDuration,
+            hideDuration: debugValues.hideDuration,
+            visibleStyles: {
+              opacity: 1,
+              transform: 'scale(1)',
+            },
+            hiddenStyles: {
+              opacity: 0,
+              transform: 'scale(0.8)',
+            },
+          });
+
+          gridRef.current = grid;
+          isInitializedRef.current = true;
+
+          // Event listeners
+          if (onDragStart) {
+            grid.on('dragStart', ((item: MuuriItem) => onDragStart(item)) as (...args: unknown[]) => void);
+          }
+
+          if (onDragEnd) {
+            grid.on('dragEnd', ((item: MuuriItem) => {
+              onDragEnd(item);
+              if (onOrderChange) {
+                const items = grid.getItems();
+                const newOrder = items
+                  .map((i) => i.getElement().dataset.cardId || '')
+                  .filter(Boolean);
+                onOrderChange(newOrder);
+              }
+            }) as (...args: unknown[]) => void);
+          }
+
+          if (onDragMove) {
+            grid.on('dragMove', ((item: MuuriItem) => onDragMove(item)) as (...args: unknown[]) => void);
+          }
+
+          if (onLayoutEnd) {
+            grid.on('layoutEnd', (() => onLayoutEnd()) as (...args: unknown[]) => void);
+          }
+
+          // Mark grid as ready after first layout completes
+          const markReady = () => {
+            setIsReady(true);
+            grid.off('layoutEnd', markReady);
+          };
+          grid.on('layoutEnd', markReady);
+
+          // Trigger layout to position items and fire layoutEnd
+          grid.layout();
+        });
+      }, 100);
+
+      return () => {
+        isActive = false;
+        clearTimeout(timeoutId);
+      };
+      // Only run on mount - dependencies are intentionally limited
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const scheduleLayout = useCallback(() => {
+      if (!gridRef.current || !isInitializedRef.current) return;
+      if (layoutRafRef.current !== null) return;
+
+      layoutRafRef.current = requestAnimationFrame(() => {
+        layoutRafRef.current = null;
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
+      });
+    }, []);
+
+    // Re-layout when media loads (images/video) to handle dynamic heights
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      const handleMediaEvent = (event: Event) => {
+        const target = event.target as HTMLElement | null;
+        if (!target) return;
+        const tag = target.tagName;
+        if (tag === 'IMG' || tag === 'VIDEO') {
+          scheduleLayout();
+        }
+      };
+
+      container.addEventListener('load', handleMediaEvent, true);
+      container.addEventListener('error', handleMediaEvent, true);
+
+      return () => {
+        container.removeEventListener('load', handleMediaEvent, true);
+        container.removeEventListener('error', handleMediaEvent, true);
+      };
+    }, [scheduleLayout]);
+
+    // Sync Muuri with DOM when items change (add/remove cards)
+    useEffect(() => {
+      if (!gridRef.current || !containerRef.current || !isInitializedRef.current) return;
+
+      const syncTimeoutId = setTimeout(() => {
+        if (!gridRef.current || !containerRef.current) return;
+
+        const grid = gridRef.current;
+        const domItems = containerRef.current.querySelectorAll('.muuri-item');
+
+        // Get current DOM card IDs
+        const domCardIds = new Set<string>();
+        const domElementsByCardId = new Map<string, HTMLElement>();
+        domItems.forEach((item) => {
+          const cardId = (item as HTMLElement).dataset.cardId;
+          if (cardId) {
+            domCardIds.add(cardId);
+            domElementsByCardId.set(cardId, item as HTMLElement);
+          }
+        });
+
+        // Find items to remove (in Muuri but not in DOM, OR element reference changed)
+        const itemsToRemove: MuuriItem[] = [];
+        grid.getItems().forEach((muuriItem) => {
+          const muuriElement = muuriItem.getElement();
+          const cardId = muuriElement.dataset.cardId;
+
+          if (cardId) {
+            const domElement = domElementsByCardId.get(cardId);
+
+            // Remove if: cardId not in DOM, OR the element reference changed
+            // (React recreated the element with same cardId but different DOM node)
+            if (!domElement || domElement !== muuriElement) {
+              itemsToRemove.push(muuriItem);
+              trackedElementsRef.current.delete(cardId);
+            }
+          }
+        });
+
+        // Find elements to add (in DOM but not tracked, OR element reference changed)
+        const elementsToAdd: HTMLElement[] = [];
+        domCardIds.forEach((cardId) => {
+          const domElement = domElementsByCardId.get(cardId);
+          const trackedElement = trackedElementsRef.current.get(cardId);
+
+          // Add if: not tracked, OR element reference changed
+          if (!trackedElement || trackedElement !== domElement) {
+            if (domElement) {
+              elementsToAdd.push(domElement);
+              trackedElementsRef.current.set(cardId, domElement);
+            }
+          }
+        });
+
+        // Remove items that no longer exist
+        if (itemsToRemove.length > 0) {
+          grid.remove(itemsToRemove, { removeElements: false, layout: false });
+        }
+
+        // Add new items at the end (append, not prepend)
+        if (elementsToAdd.length > 0) {
+          grid.add(elementsToAdd, { layout: false }); // No index = append to end
+        }
+
+        // Sort Muuri items to match DOM order (React's render order)
+        // Always sort when cardIds changes - this handles reordering (e.g., sort by title)
+        // even when no items are added/removed
+        const domOrder = Array.from(domItems).map((el) => (el as HTMLElement).dataset.cardId);
+        grid.sort((a, b) => {
+          const aId = a.getElement().dataset.cardId;
+          const bId = b.getElement().dataset.cardId;
+          return domOrder.indexOf(aId) - domOrder.indexOf(bId);
+        }, { layout: false });
+
+        // Trigger layout to apply the new order
+        grid.refreshItems();
+        grid.layout();
+      }, 50);
+
+      return () => {
+        clearTimeout(syncTimeoutId);
+      };
+    }, [itemCount, cardIds]);
+
+    // NOTE: Removed ResizeObserver that watched all items for size changes
+    // This was causing scroll freezes because:
+    // 1. ResizeObserver fired on minor size changes during scroll
+    // 2. Triggered 50ms delayed grid.layout() which recalculates ALL positions
+    // 3. Layout calculation blocked main thread, causing scroll to queue up
+    // 4. When unblocked, scroll "fast forwarded" to catch up
+    //
+    // Images now get aspectRatio at creation time (metadata-service.ts),
+    // so layout-breaking size changes are rare. If needed, we can add
+    // targeted ResizeObserver for specific cases (e.g., note cards editing).
+
+    // Re-layout when item width changes (e.g., sidebar expand/collapse)
+    useEffect(() => {
+      if (!gridRef.current || !isInitializedRef.current) return;
+
+      // Use RAF to ensure React has applied the new widths to DOM
+      const rafId = requestAnimationFrame(() => {
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
+      });
+
+      return () => cancelAnimationFrame(rafId);
+    }, [calculatedItemWidth]);
+
+    // Re-layout when spacing changes (padding affects item size)
+    useEffect(() => {
+      scheduleLayout();
+    }, [itemSpacing, edgePadding, scheduleLayout]);
+
+    // Re-layout when layoutVersion changes (external trigger for content size changes)
+    // Used when card content changes affect dimensions (e.g., thumbnail add/remove)
+    useEffect(() => {
+      if (!gridRef.current || !isInitializedRef.current || layoutVersion === undefined) return;
+      // Skip initial render (version 0)
+      if (layoutVersion === 0) return;
+
+      // Use RAF to ensure React has applied the new dimensions to DOM
+      const rafId = requestAnimationFrame(() => {
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
+      });
+
+      return () => cancelAnimationFrame(rafId);
+    }, [layoutVersion]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (layoutRafRef.current !== null) {
+          cancelAnimationFrame(layoutRafRef.current);
+          layoutRafRef.current = null;
+        }
+        if (gridRef.current) {
+          try {
+            gridRef.current.destroy(false);
+          } catch {
+            // Ignore
+          }
+          gridRef.current = null;
+        }
+        isInitializedRef.current = false;
+        trackedElementsRef.current.clear();
+      };
+    }, []);
+
+    // Expose methods via ref
+    useImperativeHandle(ref, () => ({
+      layout: (instant = false) => {
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout(instant);
+        }
+      },
+      refreshItems: () => {
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
+      },
+      getItems: () => {
+        return gridRef.current?.getItems() || [];
+      },
+      filter: (predicate) => {
+        gridRef.current?.filter(predicate);
+      },
+      sort: (comparer) => {
+        gridRef.current?.sort(comparer);
+      },
+    }));
+
+    return (
+      <div
+        ref={wrapperRef}
+        className="w-full"
+        style={{ padding: `0 ${edgePadding}px` }}
+      >
+        <div
+          ref={containerRef}
+          className={`muuri-grid ${className}`}
+          style={{
+            position: 'relative',
+            width: '100%',
+            // Hide grid until Muuri has positioned items to prevent stacking flash
+            // Use visibility instead of opacity for instant show without affecting LCP
+            visibility: isReady ? 'visible' : 'hidden',
+            ...style,
+          }}
+        >
+          {typeof children === 'function'
+            ? (children as (width: number) => ReactNode)(calculatedItemWidth)
+            : children}
+        </div>
+      </div>
+    );
+  }
+);
+
+// Wrapper for individual items - uses CSS width, Muuri handles positioning
+export type MuuriItemWrapperProps = {
+  children: ReactNode;
+  cardId: string;
+  className?: string;
+  width: number; // Width in pixels (content width)
+  spacing: number; // Gap between items in pixels
+  height?: number; // Optional fixed height in pixels (for grid mode)
+};
+
+export function MuuriItemWrapper({
+  children,
+  cardId,
+  className = '',
+  width,
+  spacing,
+  height,
+}: MuuriItemWrapperProps) {
+  // Half spacing on each side creates the gap between items
+  const margin = spacing / 2;
+
+  return (
+    <div
+      className={`muuri-item ${className}`}
+      data-card-id={cardId}
+      style={{
+        width: `${width}px`,
+        height: height ? `${height}px` : 'auto',
+        position: 'absolute',
+        padding: `${margin}px`, // Padding creates the visual gap
+        boxSizing: 'border-box',
+      }}
+    >
+      <div className="muuri-item-content" style={{ width: '100%', height: '100%' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
