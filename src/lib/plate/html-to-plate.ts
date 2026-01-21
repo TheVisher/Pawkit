@@ -405,7 +405,41 @@ export function htmlToPlateJson(html: string): Value {
     return createEmptyPlateContent();
   }
 
-  return result as Value;
+  // Plate requires block elements at root level - wrap orphan text nodes in paragraphs
+  const normalizedResult: Descendant[] = [];
+  let currentTextNodes: Descendant[] = [];
+
+  for (const node of result) {
+    // Check if this is a text node (no 'type' property means it's a text node)
+    if (!('type' in node) && 'text' in node) {
+      currentTextNodes.push(node);
+    } else {
+      // If we have accumulated text nodes, wrap them in a paragraph first
+      if (currentTextNodes.length > 0) {
+        normalizedResult.push({
+          type: 'p',
+          children: currentTextNodes,
+        });
+        currentTextNodes = [];
+      }
+      normalizedResult.push(node);
+    }
+  }
+
+  // Don't forget any trailing text nodes
+  if (currentTextNodes.length > 0) {
+    normalizedResult.push({
+      type: 'p',
+      children: currentTextNodes,
+    });
+  }
+
+  // Final check - ensure we have at least one block
+  if (normalizedResult.length === 0) {
+    return createEmptyPlateContent();
+  }
+
+  return normalizedResult as Value;
 }
 
 /**

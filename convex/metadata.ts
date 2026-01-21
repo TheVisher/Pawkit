@@ -1,6 +1,7 @@
-import { internalAction } from "./_generated/server";
+import { internalAction, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import * as cheerio from "cheerio";
 
 // =================================================================
 // METADATA SCRAPING ACTIONS
@@ -46,6 +47,7 @@ export const scrape = internalAction({
 
 /**
  * Scrape article content from a URL (for reader mode).
+ * Internal action scheduled after card creation.
  */
 export const scrapeArticle = internalAction({
   args: { cardId: v.id("cards") },
@@ -67,6 +69,36 @@ export const scrapeArticle = internalAction({
     } catch (error) {
       console.error("Failed to scrape article for card:", cardId, error);
     }
+  },
+});
+
+/**
+ * Public action to extract article content from a URL.
+ * Called directly from the frontend for manual extraction/re-extraction.
+ */
+export const extractArticleAction = action({
+  args: { url: v.string() },
+  handler: async (ctx, { url }) => {
+    // Validate URL
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      throw new Error("Invalid URL format");
+    }
+
+    // Only allow HTTP(S)
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new Error("Only HTTP(S) URLs allowed");
+    }
+
+    // Extract article
+    const article = await extractArticle(url);
+
+    return {
+      success: !!article.content,
+      article,
+    };
   },
 });
 
@@ -390,84 +422,238 @@ function decodeHtmlEntities(text: string): string {
 
 interface ArticleContent {
   content: string | null;
+  textContent: string | null;
+  title: string | null;
+  byline: string | null;
+  siteName: string | null;
   wordCount: number;
   readingTime: number;
+  publishedTime: string | null;
 }
 
 /**
- * Extract article content from a URL.
- * This is a simplified implementation - in production, use @mozilla/readability
+ * Count words in text
  */
-async function extractArticle(url: string): Promise<ArticleContent> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch URL: " + response.status);
-  }
-
-  const html = await response.text();
-
-  // Simple extraction: get content from article or main tags
-  let content = extractMainContent(html);
-
-  if (!content) {
-    return { content: null, wordCount: 0, readingTime: 0 };
-  }
-
-  // Clean up the content
-  content = cleanHtml(content);
-
-  // Calculate word count and reading time
-  const text = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  const wordCount = text.split(/\s+/).length;
-  const readingTime = Math.ceil(wordCount / 200); // ~200 words per minute
-
-  return { content, wordCount, readingTime };
+function countWords(text: string): number {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).filter(w => w.length > 0).length;
 }
 
 /**
- * Extract main content from HTML.
+ * Calculate reading time from word count
  */
-function extractMainContent(html: string): string | null {
-  // Try article tag first
-  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-  if (articleMatch) return articleMatch[1];
+function calculateReadingTime(wordCount: number): number {
+  if (wordCount <= 0) return 0;
+  return Math.ceil(wordCount / 225); // ~225 words per minute
+}
 
-  // Try main tag
-  const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
-  if (mainMatch) return mainMatch[1];
+/**
+ * Extract published time from Cheerio document
+ */
+function extractPublishedTimeFromCheerio($: cheerio.CheerioAPI): string | null {
+  const selectors = [
+    'meta[property="article:published_time"]',
+    'meta[property="og:article:published_time"]',
+    'meta[name="pubdate"]',
+    'meta[name="publishdate"]',
+    'meta[name="date"]',
+    'meta[name="DC.date.issued"]',
+    'meta[itemprop="datePublished"]',
+    'time[datetime]',
+    'time[itemprop="datePublished"]',
+  ];
 
-  // Try content div
-  const contentMatch = html.match(
-    /<div[^>]*(?:class|id)=["'][^"']*(?:content|article|post)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
-  );
-  if (contentMatch) return contentMatch[1];
-
+  for (const selector of selectors) {
+    const elem = $(selector).first();
+    if (elem.length) {
+      const value = elem.attr('content') || elem.attr('datetime');
+      if (value) return value;
+    }
+  }
   return null;
 }
 
 /**
- * Clean HTML content.
+ * Preprocess HTML to remove heavy content before parsing.
+ * This prevents memory issues with large pages.
  */
-function cleanHtml(html: string): string {
-  return html
-    // Remove scripts
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    // Remove styles
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    // Remove comments
-    .replace(/<!--[\s\S]*?-->/g, "")
-    // Remove nav, footer, aside
-    .replace(/<nav[\s\S]*?<\/nav>/gi, "")
-    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
-    .replace(/<aside[\s\S]*?<\/aside>/gi, "")
-    // Clean up whitespace
-    .replace(/\s+/g, " ")
-    .trim();
+function preprocessHtml(html: string): string {
+  // Limit max size to 2MB to prevent memory issues
+  const MAX_SIZE = 2 * 1024 * 1024;
+  if (html.length > MAX_SIZE) {
+    html = html.substring(0, MAX_SIZE);
+  }
+
+  // Remove script tags and their contents
+  html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // Remove style tags and their contents
+  html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  // Remove noscript tags
+  html = html.replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '');
+  // Remove SVG elements (often huge)
+  html = html.replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '');
+  // Remove HTML comments
+  html = html.replace(/<!--[\s\S]*?-->/g, '');
+  // Remove inline event handlers and data attributes (reduce size)
+  html = html.replace(/\s+on\w+="[^"]*"/gi, '');
+  html = html.replace(/\s+data-[a-z-]+="[^"]*"/gi, '');
+
+  return html;
+}
+
+/**
+ * Extract article content from a URL using Cheerio-based extraction.
+ * Uses text density scoring to identify main content.
+ */
+async function extractArticle(url: string): Promise<ArticleContent> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch URL: " + response.status);
+    }
+
+    const rawHtml = await response.text();
+
+    // Preprocess to remove scripts, styles, etc. and limit size
+    const html = preprocessHtml(rawHtml);
+
+    // Parse with Cheerio
+    const $ = cheerio.load(html);
+
+    // Extract metadata
+    const publishedTime = extractPublishedTimeFromCheerio($);
+    const siteName = $('meta[property="og:site_name"]').attr('content') || null;
+
+    // Try to extract title
+    let title = $('meta[property="og:title"]').attr('content') ||
+                $('meta[name="twitter:title"]').attr('content') ||
+                $('title').text().trim() || null;
+
+    // Try to extract byline/author
+    let byline = $('meta[name="author"]').attr('content') ||
+                 $('meta[property="article:author"]').attr('content') ||
+                 $('[rel="author"]').first().text().trim() ||
+                 $('[class*="author"]').first().text().trim() ||
+                 $('[itemprop="author"]').first().text().trim() || null;
+
+    // Remove non-content elements
+    $('script, style, noscript, iframe, svg, nav, header, footer, aside, form, button, input, select, textarea').remove();
+    $('[role="navigation"], [role="banner"], [role="contentinfo"], [role="complementary"]').remove();
+    $('[class*="nav"], [class*="menu"], [class*="sidebar"], [class*="footer"], [class*="header"], [class*="comment"], [class*="share"], [class*="social"], [class*="advertisement"], [class*="ad-"], [id*="nav"], [id*="menu"], [id*="sidebar"], [id*="footer"], [id*="header"], [id*="comment"], [id*="share"], [id*="social"], [id*="advertisement"], [id*="ad-"]').remove();
+
+    // Score content containers
+    const contentSelectors = [
+      'article',
+      '[role="main"]',
+      'main',
+      '[itemprop="articleBody"]',
+      '[class*="article-body"]',
+      '[class*="article-content"]',
+      '[class*="post-content"]',
+      '[class*="entry-content"]',
+      '[class*="content-body"]',
+      '[class*="story-body"]',
+      '.post',
+      '.article',
+      '.content',
+      '#content',
+      '#main',
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let bestContent: any = null;
+    let bestScore = 0;
+
+    for (const selector of contentSelectors) {
+      const elem = $(selector).first();
+      if (elem.length) {
+        const text = elem.text().trim();
+        const wordCount = countWords(text);
+        const pCount = elem.find('p').length;
+        // Score based on word count and paragraph count
+        const score = wordCount + (pCount * 50);
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestContent = elem;
+        }
+      }
+    }
+
+    // Fallback: find the element with most text content
+    if (!bestContent || bestScore < 200) {
+      $('body *').each((_, el) => {
+        const elem = $(el);
+        const tagName = el.tagName?.toLowerCase();
+
+        // Skip inline elements and small containers
+        if (['span', 'a', 'b', 'i', 'em', 'strong', 'small', 'label'].includes(tagName)) {
+          return;
+        }
+
+        const text = elem.text().trim();
+        const wordCount = countWords(text);
+        const pCount = elem.find('p').length;
+        const score = wordCount + (pCount * 50);
+
+        if (score > bestScore && wordCount > 100) {
+          bestScore = score;
+          bestContent = elem;
+        }
+      });
+    }
+
+    if (!bestContent) {
+      return {
+        content: null,
+        textContent: null,
+        title,
+        byline,
+        siteName,
+        wordCount: 0,
+        readingTime: 0,
+        publishedTime,
+      };
+    }
+
+    // Clean up the content
+    bestContent.find('[class*="share"], [class*="social"], [class*="related"], [class*="recommend"]').remove();
+
+    // Extract clean HTML and text
+    const contentHtml = bestContent.html() || '';
+    const textContent = bestContent.text().trim().replace(/\s+/g, ' ');
+    const wordCount = countWords(textContent);
+
+    return {
+      content: contentHtml,
+      textContent,
+      title,
+      byline,
+      siteName,
+      wordCount,
+      readingTime: calculateReadingTime(wordCount),
+      publishedTime,
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('[ArticleExtractor] Timeout');
+      throw new Error('Request timed out');
+    }
+    console.error('[ArticleExtractor] Error:', error);
+    throw error;
+  }
 }

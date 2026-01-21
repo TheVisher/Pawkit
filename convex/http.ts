@@ -1,11 +1,61 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
+import * as cheerio from "cheerio";
 
 const http = httpRouter();
 
 // Add auth routes
 auth.addHttpRoutes(http);
+
+// =================================================================
+// CORS HELPERS
+// =================================================================
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+function jsonResponse(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...corsHeaders,
+    },
+  });
+}
+
+function errorResponse(error: string, status = 400): Response {
+  return jsonResponse({ error }, status);
+}
+
+// OPTIONS preflight handler for all API routes
+http.route({
+  path: "/api/metadata",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
+http.route({
+  path: "/api/article",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
+http.route({
+  path: "/api/link-check",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
 
 // =================================================================
 // METADATA SCRAPING HTTP ENDPOINT
@@ -20,36 +70,21 @@ http.route({
       const { url } = body as { url?: string };
 
       if (!url || typeof url !== "string") {
-        return new Response(JSON.stringify({ error: "URL is required" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return errorResponse("URL is required");
       }
 
       const validated = validateExternalUrl(url);
       if (!validated.ok) {
-        return new Response(JSON.stringify({ error: validated.error }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return errorResponse(validated.error);
       }
 
       // Scrape metadata
       const metadata = await scrapeUrl(validated.url);
 
-      return new Response(JSON.stringify(metadata), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return jsonResponse(metadata);
     } catch (error) {
       console.error("[Metadata API] Error:", error);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch metadata" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return errorResponse("Failed to fetch metadata", 500);
     }
   }),
 });
@@ -67,39 +102,21 @@ http.route({
       const { url } = body as { url?: string };
 
       if (!url || typeof url !== "string") {
-        return new Response(JSON.stringify({ error: "URL is required" }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return errorResponse("URL is required");
       }
 
       const validated = validateExternalUrl(url);
       if (!validated.ok) {
-        return new Response(JSON.stringify({ error: validated.error }), {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        });
+        return errorResponse(validated.error);
       }
 
       // Extract article
       const article = await extractArticle(validated.url);
 
-      return new Response(
-        JSON.stringify({ success: true, article }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return jsonResponse({ success: true, article });
     } catch (error) {
       console.error("[Article API] Error:", error);
-      return new Response(
-        JSON.stringify({ error: "Failed to extract article" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return errorResponse("Failed to extract article", 500);
     }
   }),
 });
@@ -120,17 +137,11 @@ http.route({
       if (url && typeof url === "string") {
         const validated = validateExternalUrl(url);
         if (!validated.ok) {
-          return new Response(JSON.stringify({ error: validated.error }), {
-            status: 400,
-            headers: { "Content-Type": "application/json" },
-          });
+          return errorResponse(validated.error);
         }
 
         const result = await checkLink(validated.url);
-        return new Response(JSON.stringify({ url, ...result }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+        return jsonResponse({ url, ...result });
       }
 
       // Batch URL check
@@ -146,13 +157,7 @@ http.route({
           .filter((u): u is string => Boolean(u));
 
         if (urlsToCheck.length === 0) {
-          return new Response(
-            JSON.stringify({ error: "No valid URLs provided" }),
-            {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            }
-          );
+          return errorResponse("No valid URLs provided");
         }
 
         const results: Record<string, unknown> = {};
@@ -160,35 +165,17 @@ http.route({
           results[checkUrl] = await checkLink(checkUrl);
         }
 
-        return new Response(
-          JSON.stringify({
-            results,
-            checked: urlsToCheck.length,
-            truncated: urls.length > MAX_BATCH,
-          }),
-          {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          }
-        );
+        return jsonResponse({
+          results,
+          checked: urlsToCheck.length,
+          truncated: urls.length > MAX_BATCH,
+        });
       }
 
-      return new Response(
-        JSON.stringify({ error: "Either url or urls parameter is required" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return errorResponse("Either url or urls parameter is required");
     } catch (error) {
       console.error("[Link Check API] Error:", error);
-      return new Response(
-        JSON.stringify({ error: "Internal server error" }),
-        {
-          status: 500,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return errorResponse("Internal server error", 500);
     }
   }),
 });
@@ -505,63 +492,237 @@ function decodeHtmlEntities(text: string): string {
 
 interface ArticleContent {
   content: string | null;
+  textContent: string | null;
+  title: string | null;
+  byline: string | null;
+  siteName: string | null;
   wordCount: number;
   readingTime: number;
+  publishedTime: string | null;
 }
 
-async function extractArticle(url: string): Promise<ArticleContent> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch URL: " + response.status);
+/**
+ * Preprocess HTML to remove heavy content before parsing.
+ * This prevents memory issues with large pages.
+ */
+function preprocessHtml(html: string): string {
+  // Limit max size to 2MB to prevent memory issues
+  const MAX_SIZE = 2 * 1024 * 1024;
+  if (html.length > MAX_SIZE) {
+    html = html.substring(0, MAX_SIZE);
   }
 
-  const html = await response.text();
-  let content = extractMainContent(html);
+  // Remove script tags and their contents
+  html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  // Remove style tags and their contents
+  html = html.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+  // Remove noscript tags
+  html = html.replace(/<noscript\b[^<]*(?:(?!<\/noscript>)<[^<]*)*<\/noscript>/gi, '');
+  // Remove SVG elements (often huge)
+  html = html.replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '');
+  // Remove HTML comments
+  html = html.replace(/<!--[\s\S]*?-->/g, '');
+  // Remove inline event handlers and data attributes (reduce size)
+  html = html.replace(/\s+on\w+="[^"]*"/gi, '');
+  html = html.replace(/\s+data-[a-z-]+="[^"]*"/gi, '');
 
-  if (!content) {
-    return { content: null, wordCount: 0, readingTime: 0 };
-  }
-
-  content = cleanHtml(content);
-
-  const text = content.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-  const wordCount = text.split(/\s+/).length;
-  const readingTime = Math.ceil(wordCount / 200);
-
-  return { content, wordCount, readingTime };
+  return html;
 }
 
-function extractMainContent(html: string): string | null {
-  const articleMatch = html.match(/<article[^>]*>([\s\S]*?)<\/article>/i);
-  if (articleMatch) return articleMatch[1];
+/**
+ * Count words in text
+ */
+function countWords(text: string): number {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+}
 
-  const mainMatch = html.match(/<main[^>]*>([\s\S]*?)<\/main>/i);
-  if (mainMatch) return mainMatch[1];
+/**
+ * Calculate reading time from word count
+ */
+function calculateReadingTime(wordCount: number): number {
+  if (wordCount <= 0) return 0;
+  return Math.ceil(wordCount / 225); // ~225 words per minute
+}
 
-  const contentMatch = html.match(
-    /<div[^>]*(?:class|id)=["'][^"']*(?:content|article|post)[^"']*["'][^>]*>([\s\S]*?)<\/div>/i
-  );
-  if (contentMatch) return contentMatch[1];
+/**
+ * Extract published time from Cheerio document
+ */
+function extractPublishedTimeFromCheerio($: cheerio.CheerioAPI): string | null {
+  const selectors = [
+    'meta[property="article:published_time"]',
+    'meta[property="og:article:published_time"]',
+    'meta[name="pubdate"]',
+    'meta[name="publishdate"]',
+    'meta[name="date"]',
+    'meta[name="DC.date.issued"]',
+    'meta[itemprop="datePublished"]',
+    'time[datetime]',
+    'time[itemprop="datePublished"]',
+  ];
 
+  for (const selector of selectors) {
+    const elem = $(selector).first();
+    if (elem.length) {
+      const value = elem.attr('content') || elem.attr('datetime');
+      if (value) return value;
+    }
+  }
   return null;
 }
 
-function cleanHtml(html: string): string {
-  return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/<nav[\s\S]*?<\/nav>/gi, "")
-    .replace(/<footer[\s\S]*?<\/footer>/gi, "")
-    .replace(/<aside[\s\S]*?<\/aside>/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+/**
+ * Extract article content using Cheerio with text density scoring.
+ */
+async function extractArticle(url: string): Promise<ArticleContent> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch URL: " + response.status);
+    }
+
+    const rawHtml = await response.text();
+
+    // Preprocess to remove scripts, styles, etc. and limit size
+    const html = preprocessHtml(rawHtml);
+
+    // Parse with Cheerio
+    const $ = cheerio.load(html);
+
+    // Extract metadata
+    const publishedTime = extractPublishedTimeFromCheerio($);
+    const siteName = $('meta[property="og:site_name"]').attr('content') || null;
+
+    // Try to extract title
+    let title = $('meta[property="og:title"]').attr('content') ||
+                $('meta[name="twitter:title"]').attr('content') ||
+                $('title').text().trim() || null;
+
+    // Try to extract byline/author
+    let byline = $('meta[name="author"]').attr('content') ||
+                 $('meta[property="article:author"]').attr('content') ||
+                 $('[rel="author"]').first().text().trim() ||
+                 $('[class*="author"]').first().text().trim() ||
+                 $('[itemprop="author"]').first().text().trim() || null;
+
+    // Remove non-content elements
+    $('script, style, noscript, iframe, svg, nav, header, footer, aside, form, button, input, select, textarea').remove();
+    $('[role="navigation"], [role="banner"], [role="contentinfo"], [role="complementary"]').remove();
+    $('[class*="nav"], [class*="menu"], [class*="sidebar"], [class*="footer"], [class*="header"], [class*="comment"], [class*="share"], [class*="social"], [class*="advertisement"], [class*="ad-"], [id*="nav"], [id*="menu"], [id*="sidebar"], [id*="footer"], [id*="header"], [id*="comment"], [id*="share"], [id*="social"], [id*="advertisement"], [id*="ad-"]').remove();
+
+    // Score content containers
+    const contentSelectors = [
+      'article',
+      '[role="main"]',
+      'main',
+      '[itemprop="articleBody"]',
+      '[class*="article-body"]',
+      '[class*="article-content"]',
+      '[class*="post-content"]',
+      '[class*="entry-content"]',
+      '[class*="content-body"]',
+      '[class*="story-body"]',
+      '.post',
+      '.article',
+      '.content',
+      '#content',
+      '#main',
+    ];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let bestContent: any = null;
+    let bestScore = 0;
+
+    for (const selector of contentSelectors) {
+      const elem = $(selector).first();
+      if (elem.length) {
+        const text = elem.text().trim();
+        const wordCount = countWords(text);
+        const pCount = elem.find('p').length;
+        // Score based on word count and paragraph count
+        const score = wordCount + (pCount * 50);
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestContent = elem;
+        }
+      }
+    }
+
+    // Fallback: find the element with most text content
+    if (!bestContent || bestScore < 200) {
+      $('body *').each((_, el) => {
+        const elem = $(el);
+        const tagName = el.tagName?.toLowerCase();
+
+        // Skip inline elements and small containers
+        if (['span', 'a', 'b', 'i', 'em', 'strong', 'small', 'label'].includes(tagName)) {
+          return;
+        }
+
+        const text = elem.text().trim();
+        const wordCount = countWords(text);
+        const pCount = elem.find('p').length;
+        const score = wordCount + (pCount * 50);
+
+        if (score > bestScore && wordCount > 100) {
+          bestScore = score;
+          bestContent = elem;
+        }
+      });
+    }
+
+    if (!bestContent) {
+      return {
+        content: null,
+        textContent: null,
+        title,
+        byline,
+        siteName,
+        wordCount: 0,
+        readingTime: 0,
+        publishedTime,
+      };
+    }
+
+    // Clean up the content
+    bestContent.find('[class*="share"], [class*="social"], [class*="related"], [class*="recommend"]').remove();
+
+    // Extract clean HTML and text
+    const contentHtml = bestContent.html() || '';
+    const textContent = bestContent.text().trim().replace(/\s+/g, ' ');
+    const wordCount = countWords(textContent);
+
+    return {
+      content: contentHtml,
+      textContent,
+      title,
+      byline,
+      siteName,
+      wordCount,
+      readingTime: calculateReadingTime(wordCount),
+      publishedTime,
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
+  }
 }
 
 interface LinkCheckResult {

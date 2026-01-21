@@ -6,6 +6,7 @@
  * Shows either "Extract Article" button or editable article text via Plate
  *
  * Updated to use Plate editor with JSON content storage.
+ * Uses native Convex action for article extraction.
  */
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
@@ -15,7 +16,8 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 type PlateContent = any[];
 import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { buildConvexHttpUrl } from '@/lib/convex-site-url';
+import { useAction } from 'convex/react';
+import { api } from 'convex/_generated/api';
 import { useMutations } from '@/lib/contexts/convex-data-context';
 import { Reader } from '@/components/reader';
 import { PawkitPlateEditor } from '@/components/editor';
@@ -73,6 +75,7 @@ export function ArticleContent({
   className,
 }: ArticleContentProps) {
   const { updateCard } = useMutations();
+  const extractArticleAction = useAction(api.metadata.extractArticleAction);
 
   // Extraction state
   const [isExtractingArticle, setIsExtractingArticle] = useState(false);
@@ -186,7 +189,7 @@ export function ArticleContent({
     performExtractArticle();
   }, [card.url, isExtractingArticle, hasEditedArticle]);
 
-  // Extract article from URL
+  // Extract article from URL using native Convex action
   const performExtractArticle = useCallback(async () => {
     if (!card.url || isExtractingArticle) return;
 
@@ -195,18 +198,8 @@ export function ArticleContent({
     setExtractionError(null);
 
     try {
-      const response = await fetch(buildConvexHttpUrl('/api/article'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: card.url }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.error || `Failed to extract article (${response.status})`);
-      }
-
-      const data = await response.json();
+      // Call the Convex action directly
+      const data = await extractArticleAction({ url: card.url });
 
       if (!data.success || !data.article) {
         throw new Error('Could not extract article content');
@@ -256,7 +249,7 @@ export function ArticleContent({
     } finally {
       setIsExtractingArticle(false);
     }
-  }, [card._id, card.url, isExtractingArticle, updateCard]);
+  }, [card._id, card.url, card.metadata, card.tags, isExtractingArticle, extractArticleAction, updateCard]);
 
   // Save scroll progress on close (not during scroll to avoid re-renders and scroll jumping)
   const saveScrollProgressOnClose = useCallback(() => {
