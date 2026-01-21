@@ -1,5 +1,18 @@
 # Pawkit V2 Data Model
 
+> ## ⚠️ DEPRECATED - DO NOT USE
+>
+> **This skill is for the OLD Next.js + Prisma + Supabase stack.**
+>
+> The app now uses **TanStack Start + Convex**. See:
+> - `.claude/skills/pawkit-tanstack-convex/SKILL.md` - New stack overview
+> - `apps/start/docs/convex-guide.md` - Convex schema and patterns
+> - `apps/start/convex/schema.ts` - Actual schema file
+>
+> **Deprecated**: January 21, 2026
+
+---
+
 **Purpose**: Card types, entity relationships, ID strategy, and Prisma/Dexie schemas
 
 **Created**: December 20, 2025

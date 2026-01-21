@@ -15,6 +15,9 @@
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("ImagePersistence");
 
 // =============================================================================
 // CONFIGURATION
@@ -44,7 +47,7 @@ function getConvexClient(): ConvexHttpClient | null {
 
   const url = import.meta.env.VITE_CONVEX_URL as string | undefined;
   if (!url) {
-    console.warn('[ImagePersistence] No Convex URL configured');
+    log.error('No Convex URL configured - image persistence disabled');
     return null;
   }
 
@@ -138,23 +141,23 @@ const processedCards = new Set<string>();
 export function queueImagePersistence(cardId: string, imageUrl: string): void {
   // Skip if already processed or queued
   if (processedCards.has(cardId)) {
-    console.log('[ImagePersistence] Skipping already processed card:', cardId);
+    log.debug('Skipping already processed card:', cardId);
     return;
   }
 
   // Skip if already in queue
   if (persistenceQueue.some(item => item.cardId === cardId)) {
-    console.log('[ImagePersistence] Skipping already queued card:', cardId);
+    log.debug('Skipping already queued card:', cardId);
     return;
   }
 
   // Skip if URL doesn't need persistence
   if (!needsPersistence(imageUrl)) {
-    console.log('[ImagePersistence] URL does not need persistence:', imageUrl.substring(0, 60));
+    log.debug('URL does not need persistence:', imageUrl.substring(0, 60));
     return;
   }
 
-  console.log('[ImagePersistence] Queuing image for persistence:', cardId, imageUrl.substring(0, 60));
+  log.debug('Queuing image for persistence:', cardId, imageUrl.substring(0, 60));
 
   persistenceQueue.push({
     cardId,
@@ -178,7 +181,7 @@ function processQueue(): void {
 
       processItem(item)
         .catch(error => {
-          console.error('[ImagePersistence] Error processing item:', error);
+          log.error('Error processing item:', error);
         })
         .finally(() => {
           activeUploads--;
@@ -199,11 +202,11 @@ function processQueue(): void {
 async function processItem(item: QueueItem): Promise<void> {
   const { cardId, imageUrl } = item;
 
-  console.log('[ImagePersistence] Processing:', cardId);
+  log.debug('Processing:', cardId);
 
   const client = getConvexClient();
   if (!client) {
-    console.warn('[ImagePersistence] No Convex client available');
+    log.error('No Convex client available - cannot persist image');
     return;
   }
 
@@ -216,12 +219,12 @@ async function processItem(item: QueueItem): Promise<void> {
     });
 
     if (result.success) {
-      console.log('[ImagePersistence] Successfully persisted image:', cardId);
+      log.debug('Successfully persisted image:', cardId);
     } else {
-      console.warn('[ImagePersistence] Failed to persist:', cardId, result.error);
+      log.error('Failed to persist:', cardId, result.error);
     }
   } catch (error) {
-    console.error('[ImagePersistence] Error calling Convex action:', cardId, error);
+    log.error('Error calling Convex action:', cardId, error);
   }
 }
 
@@ -245,7 +248,7 @@ export async function uploadToConvex(
 ): Promise<string | null> {
   const client = getConvexClient();
   if (!client) {
-    console.error('[ImagePersistence] No Convex client available');
+    log.error('No Convex client available');
     return null;
   }
 
@@ -261,7 +264,7 @@ export async function uploadToConvex(
     });
 
     if (!response.ok) {
-      console.error('[ImagePersistence] Upload failed:', response.status);
+      log.error('Upload failed:', response.status);
       return null;
     }
 
@@ -271,11 +274,11 @@ export async function uploadToConvex(
     // Get the permanent URL
     const permanentUrl = await client.query(api.storage.getUrl, { storageId });
 
-    console.log('[ImagePersistence] Uploaded to Convex:', cardId, permanentUrl?.substring(0, 60));
+    log.debug('Uploaded to Convex:', cardId, permanentUrl?.substring(0, 60));
 
     return permanentUrl;
   } catch (error) {
-    console.error('[ImagePersistence] Upload error:', error);
+    log.error('Upload error:', error);
     return null;
   }
 }

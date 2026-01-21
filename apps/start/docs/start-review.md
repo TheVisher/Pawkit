@@ -49,11 +49,11 @@ Status: **DONE** in this pass.
 - Unhandled async in bills widget (missed-payments loop). `src/components/home/bills-widget.tsx`
 - Chrono lazy-load has no error handling. `src/lib/hooks/use-mention-search.ts`
 
-Status: **PARTIALLY DONE** (everything above except block discussion).
+Status: **DONE**
 
 ### P2 — Tech debt / stability
-- ResizeObserver removal flagged as CRITICAL (scroll issues). `src/components/debug/sections/resize-observer-section.tsx`
-- Lots of console logging in production paths. `src/lib/metadata/*`, `src/lib/services/article-extractor.ts`, `convex/*`
+- ~~ResizeObserver removal flagged as CRITICAL (scroll issues).~~ **RESOLVED** - see notes below.
+- ~~Lots of console logging in production paths.~~ **DONE** - see item 4 below.
 - Many `any` types across Plate/supertag parsing and Convex config. `src/lib/tags/supertags/*`, `src/components/editor/*`, `convex/schema.ts`
 - Deprecated HTML template functions still present. `src/lib/tags/supertags/*`
 - Deep relative imports to `convex/_generated/*` (fragile). e.g. `src/lib/hooks/convex/use-convex-workspace.ts`
@@ -62,21 +62,48 @@ Status: **OPEN**
 
 ## What’s left to do (next actions)
 
-1) Fix block discussion TODO
-- `src/components/ui/block-discussion.tsx` has a TODO “fix throw error.” Investigate and resolve the edge case that triggers it.
+1) ~~Fix block discussion TODO~~ **DONE**
+- The TODO comment was misleading - the code is correct, it handles initializing the path map for comment IDs. Updated the comment to clarify this is expected behavior, not an error.
 
-2) Decide on error reporting
-- `src/components/error-boundary.tsx` is console-only. Add Sentry (or remove the TODO if intentionally deferred).
+2) ~~Decide on error reporting~~ **DEFERRED**
+- Sentry integration deferred until production launch with real users. Convex dashboard captures most errors (queries, mutations, actions). Console.error handles client-side for now.
 
-3) Resolve ResizeObserver/scroll issues
-- Debug UI flags CRITICAL removal and scroll freezes. Re-evaluate card sizing strategy or introduce throttled observer with hard limits.
+3) ~~Resolve ResizeObserver/scroll issues~~ **RESOLVED**
+- See "ResizeObserver Context" in notes below.
 
-4) Trim production console logs
-- Reduce or gate logs behind dev flag; many noisy logs in metadata/image persistence/article extractor.
+4) ~~Trim production console logs~~ **DONE**
+- Updated metadata handlers, image-persistence, and article-extractor to use `createModuleLogger()` from `src/lib/utils/logger.ts`
+- Debug/trace logs are dev-only (`log.debug/warn`), silenced in production
+- Actionable failures use `log.error` (visible in prod): missing Convex config, persistence failures
+- Article extraction timeouts remain `log.warn` (dev-only) since timeouts are expected behavior
 
 5) Type cleanup + deprecations
 - Gradually reduce `any` usage in Plate/supertags.
 - Remove or document deprecated HTML template functions.
 
 ## Notes
+
+### ResizeObserver Context
+
+**Status: RESOLVED** - No action needed.
+
+The per-item ResizeObserver was **already removed** from `muuri-grid.tsx` (see lines 532-541). It was causing scroll freezes because:
+1. ResizeObserver fired on minor size changes during scroll
+2. Triggered 50ms delayed `grid.layout()` which recalculates ALL positions
+3. Layout calculation blocked main thread, causing scroll to queue up
+4. When unblocked, scroll "fast forwarded" to catch up
+
+**What's still there:**
+- A ResizeObserver on the *container* (not individual items) to recalculate column widths on resize - this is fine.
+
+**Why we don't need per-item ResizeObserver:**
+- **Images**: Cards get `aspectRatio` at creation time via `metadata-service.ts`, so image loads don't cause layout shifts
+- **Media load events**: Grid re-layouts on `<img>`/`<video>` load/error events (lines 426-446)
+- **Content changes**: Handled via `layoutVersion` prop - parent increments it to trigger re-layout
+
+**The debug panel** (`src/components/debug/sections/resize-observer-section.tsx`) exists for testing if a "smarter" per-item observer could work in the future. It's OFF by default. The "CRITICAL" warning is just documenting why it was removed, not indicating a problem to fix.
+
+---
+
+### Other Notes
 - Local dev auth being imperfect does **not** eliminate the P0 risks. If any endpoints are exposed publicly, keep the protections in place.

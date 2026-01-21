@@ -4,6 +4,8 @@
 
 **Created**: December 20, 2025
 
+**Status**: **STILL APPLICABLE** - Layout patterns, icon conventions, and panel behavior apply to TanStack Start app. File paths may differ (TanStack Start routing vs Next.js App Router).
+
 ---
 
 ## 3-PANEL LAYOUT

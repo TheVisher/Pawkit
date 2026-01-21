@@ -6,6 +6,9 @@
 import * as cheerio from 'cheerio';
 import type { MetadataResult } from '../types';
 import { DEFAULT_CONFIG } from '../types';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("EcommerceHandler");
 
 // E-commerce domains
 const ECOMMERCE_DOMAINS = [
@@ -428,7 +431,7 @@ export async function fetchEcommerceMetadata(url: string): Promise<MetadataResul
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('[E-commerce Handler] Error:', error);
+    log.error('Error:', error);
 
     // Return partial result
     return {

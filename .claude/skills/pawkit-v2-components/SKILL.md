@@ -4,6 +4,8 @@
 
 **Created**: December 20, 2025
 
+**Status**: **MOSTLY APPLICABLE** - Component patterns and size limits still apply. File structure section is outdated (was Next.js App Router, now TanStack Start). Ignore Prisma/Dexie references - now using Convex.
+
 ---
 
 ## FILE SIZE LIMITS (ENFORCED)

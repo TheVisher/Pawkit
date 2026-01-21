@@ -4,6 +4,8 @@
 
 **Created**: December 20, 2025
 
+**Status**: **STILL APPLICABLE** - Masonry algorithm and dnd-kit patterns are pure frontend and apply to TanStack Start app.
+
 ---
 
 ## THE PROBLEM WITH V1 (MUURI)

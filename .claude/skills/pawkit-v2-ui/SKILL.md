@@ -4,6 +4,8 @@
 
 **Created**: December 20, 2025
 
+**Status**: **STILL APPLICABLE** - These design patterns apply to the TanStack Start + Convex app. File paths may differ slightly (e.g., `app/styles/` instead of `src/app/`).
+
 ---
 
 ## DESIGN PHILOSOPHY

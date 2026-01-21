@@ -1,5 +1,20 @@
 # Pawkit V2 Sync System
 
+> ## ⚠️ DEPRECATED - DO NOT USE
+>
+> **This skill is for the OLD Next.js + Dexie + Supabase sync system.**
+>
+> The app now uses **Convex**, which handles real-time sync automatically.
+> No manual sync queues, conflict resolution, or cross-tab coordination needed.
+>
+> See:
+> - `.claude/skills/pawkit-tanstack-convex/SKILL.md` - New stack overview
+> - `apps/start/docs/convex-guide.md` - Convex real-time patterns
+>
+> **Deprecated**: January 21, 2026
+
+---
+
 **Purpose**: Dexie patterns, sync queue, conflict resolution, cross-tab coordination
 
 **Created**: December 20, 2025

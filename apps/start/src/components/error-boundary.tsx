@@ -23,7 +23,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('Error caught by boundary:', error, errorInfo);
-    // TODO: Integrate Sentry error tracking - install @sentry/nextjs and call Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } })
+    // Note: Sentry integration deferred until production launch with real users.
+    // Convex dashboard captures most errors. Add @sentry/react when needed.
   }
 
   render() {

@@ -335,7 +335,8 @@ const useResolvedDiscussion = (
 
       return;
     }
-    // TODO: fix throw error
+    // Note: This handles the case where previousPath is not a valid path (e.g., undefined or invalid).
+    // This is expected behavior, not an error - we're initializing the path map for this comment ID.
     setOption('uniquePathMap', new Map(map).set(id, blockPath));
   });
 

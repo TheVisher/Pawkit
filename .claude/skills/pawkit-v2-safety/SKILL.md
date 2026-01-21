@@ -1,5 +1,19 @@
 # Pawkit V2 Safety Guardrails
 
+> ## ⚠️ SUPERSEDED - USE NEW SAFETY RULES
+>
+> **This skill was for the OLD Prisma + Supabase stack.**
+>
+> Safety guardrails for the new **Convex** backend are in:
+> - `.claude/skills/pawkit-tanstack-convex/SKILL.md` → "CONVEX SAFETY GUARDRAILS" section
+>
+> The core principles still apply (soft deletes, no mass deletions, ask before destructive ops),
+> but the specific commands have changed (no more Prisma migrate reset, etc.).
+>
+> **Superseded**: January 21, 2026
+
+---
+
 **Purpose**: CRITICAL rules for Claude Code to prevent catastrophic mistakes
 
 **Created**: December 20, 2025

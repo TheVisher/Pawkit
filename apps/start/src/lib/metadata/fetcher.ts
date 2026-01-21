@@ -7,6 +7,9 @@
 import { MetadataResult, SiteType, MetadataConfig } from './types';
 import { fetchGenericMetadata, extractDomain } from './generic';
 import { getHandler, hasHandler } from './handlers';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("MetadataFetcher");
 
 /**
  * Site detection patterns
@@ -91,7 +94,7 @@ export async function fetchMetadata(
       try {
         return await handler(url);
       } catch (error) {
-        console.error(`[Metadata Fetcher] ${siteType} handler failed, falling back to generic:`, error);
+        log.warn(`${siteType} handler failed, falling back to generic:`, error);
         // Fall through to generic handler
       }
     }

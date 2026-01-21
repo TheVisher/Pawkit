@@ -6,6 +6,9 @@
 import { Readability } from '@mozilla/readability';
 import { JSDOM } from 'jsdom';
 import * as cheerio from 'cheerio';
+import { createModuleLogger } from "@/lib/utils/logger";
+
+const log = createModuleLogger("ArticleExtractor");
 
 // Average reading speed (words per minute)
 const WORDS_PER_MINUTE = 225;
@@ -185,7 +188,7 @@ function cleanupExtractedContent(html: string): string {
   const cleanedHasMedia = $cleaned('img, video, iframe').length > 0;
 
   if (!cleanedText && !cleanedHasMedia) {
-    console.log('[ArticleExtractor] Cleanup removed all content, returning original');
+    log.debug('Cleanup removed all content, returning original');
     return html;
   }
 
@@ -261,7 +264,7 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-    console.log('[ArticleExtractor] Starting fetch for:', url);
+    log.debug('Starting fetch for:', url);
 
     const response = await fetch(url, {
       headers: {
@@ -275,7 +278,7 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
     });
 
     clearTimeout(timeoutId);
-    console.log('[ArticleExtractor] Fetch completed in', Date.now() - startTime, 'ms');
+    log.debug('Fetch completed in', Date.now() - startTime, 'ms');
 
     if (!response.ok) {
       return { success: false, article: null, error: `HTTP ${response.status}` };
@@ -283,17 +286,17 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
 
     const htmlStart = Date.now();
     const rawHtml = await response.text();
-    console.log('[ArticleExtractor] HTML received:', rawHtml.length, 'bytes in', Date.now() - htmlStart, 'ms');
+    log.debug('HTML received:', rawHtml.length, 'bytes in', Date.now() - htmlStart, 'ms');
 
     // Pre-process to remove scripts, styles, etc. before JSDOM
     const preprocessStart = Date.now();
     const html = preprocessHtml(rawHtml);
-    console.log('[ArticleExtractor] Preprocessed to:', html.length, 'bytes in', Date.now() - preprocessStart, 'ms');
+    log.debug('Preprocessed to:', html.length, 'bytes in', Date.now() - preprocessStart, 'ms');
 
     // Parse with JSDOM
     const jsdomStart = Date.now();
     const dom = new JSDOM(html, { url });
-    console.log('[ArticleExtractor] JSDOM parsed in', Date.now() - jsdomStart, 'ms');
+    log.debug('JSDOM parsed in', Date.now() - jsdomStart, 'ms');
 
     // Extract published time from meta tags before Readability processes the DOM
     const publishedTime = extractPublishedTime(dom.window.document);
@@ -301,7 +304,7 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
     const readerStart = Date.now();
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
-    console.log('[ArticleExtractor] Readability parsed in', Date.now() - readerStart, 'ms');
+    log.debug('Readability parsed in', Date.now() - readerStart, 'ms');
 
     if (!article) {
       return { success: false, article: null, error: 'Could not extract article content' };
@@ -311,12 +314,12 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
     if (article.content) {
       const cleanupStart = Date.now();
       article.content = cleanupExtractedContent(article.content);
-      console.log('[ArticleExtractor] Content cleaned in', Date.now() - cleanupStart, 'ms');
+      log.debug('Content cleaned in', Date.now() - cleanupStart, 'ms');
     }
 
     const wordCount = countWords(article.textContent || '');
 
-    console.log('[ArticleExtractor] Total time:', Date.now() - startTime, 'ms');
+    log.debug('Total time:', Date.now() - startTime, 'ms');
 
     return {
       success: true,
@@ -335,10 +338,10 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
   } catch (error) {
     const elapsed = Date.now() - startTime;
     if (error instanceof Error && error.name === 'AbortError') {
-      console.error('[ArticleExtractor] Timeout after', elapsed, 'ms');
+      log.warn('Timeout after', elapsed, 'ms');
       return { success: false, article: null, error: 'Request timed out' };
     }
-    console.error('[ArticleExtractor] Error after', elapsed, 'ms:', error);
+    log.error('Error after', elapsed, 'ms:', error);
     return { success: false, article: null, error: 'Failed to extract article' };
   }
 }
