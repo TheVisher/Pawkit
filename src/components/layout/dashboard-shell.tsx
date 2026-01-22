@@ -22,6 +22,7 @@ import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { ConvexDataProvider } from '@/lib/contexts/convex-data-context';
+import { TagColorsProvider } from '@/lib/contexts/tag-colors-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
 
@@ -317,6 +318,7 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
 
   return (
     <WorkspaceProvider>
+      <TagColorsProvider>
       <ConvexDataProvider>
         <div className="h-screen w-screen bg-bg-base text-text-primary">
         {/* Mobile bottom nav - only shows < 768px */}
@@ -493,6 +495,7 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
         <CardsDragHandler />
         </div>
       </ConvexDataProvider>
+      </TagColorsProvider>
     </WorkspaceProvider>
   );
 }

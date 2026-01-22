@@ -34,6 +34,10 @@ const FIELD_RECURRENCE: Record<string, 'yearly' | 'monthly' | 'none'> = {
   expirydate: 'none',
   expiry: 'none',
   date: 'none',
+  deadline: 'none',
+  due: 'none',
+  duedate: 'none',
+  warranty: 'none',
 };
 
 /**

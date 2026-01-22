@@ -35,10 +35,18 @@ export function SearchResultsPanel({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]" style={{ scrollbarWidth: 'none' }}>
+    <div
+      className={cn(
+        'mt-2 border-t border-[var(--glass-border)] pt-2',
+        showEmptyState
+          ? 'overflow-hidden'
+          : 'flex-1 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]'
+      )}
+      style={{ scrollbarWidth: 'none' }}
+    >
       {/* Cards Section */}
       {searchResults.cards.length > 0 && (
-        <div className="mb-2">
+        <div className={cn('mb-2', showEmptyState && 'mb-0')}>
           <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
             {showEmptyState ? 'Recent' : 'Cards'}
           </div>
@@ -61,9 +69,30 @@ export function SearchResultsPanel({
               )}
               <div className="flex-1 min-w-0">
                 <div className="truncate text-sm">{card.title || 'Untitled'}</div>
-                {card.domain && (
+                {card.omnibarSnippet ? (
+                  card.omnibarSnippet.hasMatch ? (
+                    <div className="text-xs text-text-muted truncate">
+                      {card.omnibarSnippet.hasPrefix ? '...' : ''}
+                      {card.omnibarSnippet.text.slice(0, card.omnibarSnippet.matchStart)}
+                      <span className="text-[var(--color-accent)]">
+                        {card.omnibarSnippet.text.slice(
+                          card.omnibarSnippet.matchStart,
+                          card.omnibarSnippet.matchStart + card.omnibarSnippet.matchLength
+                        )}
+                      </span>
+                      {card.omnibarSnippet.text.slice(
+                        card.omnibarSnippet.matchStart + card.omnibarSnippet.matchLength
+                      )}
+                      {card.omnibarSnippet.hasSuffix ? '...' : ''}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-text-muted truncate">
+                      {card.omnibarSnippet.text}
+                    </div>
+                  )
+                ) : card.domain ? (
                   <div className="text-xs text-text-muted truncate">{card.domain}</div>
-                )}
+                ) : null}
               </div>
             </button>
           ))}

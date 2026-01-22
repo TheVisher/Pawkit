@@ -28,7 +28,9 @@ import {
   htmlToPlateJson,
   getContentText,
   createEmptyPlateContent,
+  extractPlateText,
 } from '@/lib/plate/html-to-plate';
+import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 import type { Value, Descendant } from 'platejs';
 
 export interface SearchState {
@@ -77,6 +79,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const [textareaHeight, setTextareaHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isDiscardingRef = useRef(false);
+  const addDraftToClipboard = useOmnibarClipboardStore((s) => s.addDraft);
 
   // Tag creation state
   const [pendingTagCreation, setPendingTagCreation] = useState<string | null>(null);
@@ -257,7 +260,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       ? query.slice(1).toLowerCase()
       : lowerQuery;
 
-    let matchedCards: typeof cards = [];
+    let matchedCards: SearchResults['cards'] = [];
     let matchedCollections: typeof collections = [];
     let matchedActions: typeof SEARCHABLE_ACTIONS = [];
     let matchedTags: string[] = [];
@@ -281,18 +284,96 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         col.name.toLowerCase().includes(searchQuery)
       ).slice(0, 5);
     } else {
-      matchedCards = cards.filter(card => {
+      // Snippet helper functions
+      const normalizeSnippetText = (value: string) =>
+        value.replace(/\s+/g, ' ').trim();
+
+      const getPlainText = (content: unknown): string => {
+        if (!content) return '';
+        if (Array.isArray(content)) {
+          return extractPlateText(content as Value);
+        }
+        if (typeof content === 'string') {
+          if (isPlateJson(content)) {
+            const parsed = parseJsonContent(content);
+            if (parsed) return extractPlateText(parsed);
+          }
+          return stripHtml(content);
+        }
+        return '';
+      };
+
+      const buildSnippet = (text: string, queryValue: string) => {
+        const normalized = normalizeSnippetText(text);
+        if (!normalized) return null;
+        const lowerText = normalized.toLowerCase();
+        const lowerQ = queryValue.toLowerCase();
+        const matchIndex = lowerText.indexOf(lowerQ);
+        if (matchIndex === -1) return null;
+
+        const context = 36;
+        const start = Math.max(0, matchIndex - context);
+        const end = Math.min(normalized.length, matchIndex + lowerQ.length + context);
+        return {
+          text: normalized.slice(start, end),
+          matchStart: matchIndex - start,
+          matchLength: lowerQ.length,
+          hasMatch: true,
+          hasPrefix: start > 0,
+          hasSuffix: end < normalized.length,
+        };
+      };
+
+      const createCardSnippet = (card: (typeof cards)[number]) => {
+        if (card.type === 'md-note' || card.type === 'text-note') {
+          const plainText = getPlainText(card.content || '');
+          const snippet = buildSnippet(plainText, lowerQuery);
+          if (snippet) return snippet;
+        }
+
+        const description = card.description ?? '';
+        const descriptionSnippet = buildSnippet(description, lowerQuery);
+        if (descriptionSnippet) return descriptionSnippet;
+
+        const notes = card.notes ?? '';
+        const notesSnippet = buildSnippet(notes, lowerQuery);
+        if (notesSnippet) return notesSnippet;
+
+        const title = card.title ?? '';
+        const titleSnippet = buildSnippet(title, lowerQuery);
+        if (titleSnippet) return titleSnippet;
+
+        const domain = card.domain ?? '';
+        const domainSnippet = buildSnippet(domain, lowerQuery);
+        if (domainSnippet) return domainSnippet;
+
+        const tagMatch = card.tags?.find((tag) =>
+          tag.toLowerCase().includes(lowerQuery)
+        );
+        if (tagMatch) {
+          return buildSnippet(tagMatch, lowerQuery);
+        }
+
+        return null;
+      };
+
+      const filteredCards = cards.filter(card => {
         if (card.title?.toLowerCase().includes(lowerQuery)) return true;
         if (card.domain?.toLowerCase().includes(lowerQuery)) return true;
         if (card.tags?.some(t => t.toLowerCase().includes(lowerQuery))) return true;
 
         if (card.type === 'md-note' || card.type === 'text-note') {
-          const plainText = stripHtml(card.content || '');
+          const plainText = getPlainText(card.content || '');
           if (plainText.toLowerCase().includes(lowerQuery)) return true;
         }
 
         return false;
       }).slice(0, 5);
+
+      matchedCards = filteredCards.map((card) => ({
+        ...card,
+        omnibarSnippet: createCardSnippet(card) ?? undefined,
+      }));
 
       matchedCollections = collections.filter(col =>
         col.name.toLowerCase().includes(lowerQuery)
@@ -365,12 +446,28 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     setForceExpanded(false);
     setSelectedIndex(-1);
     setShowDiscardConfirm(false);
-    setTextareaHeight(0);
     setPendingTagCreation(null);
     setSimilarTagsWarning([]);
     textareaRef.current?.blur();
     setTimeout(() => { isDiscardingRef.current = false; }, 0);
   }, []);
+
+  const stashDraft = useCallback(() => {
+    const trimmed = quickNoteText.trim();
+    if (!trimmed) {
+      resetSearch();
+      return;
+    }
+
+    if (
+      !trimmed.startsWith('/') &&
+      !trimmed.startsWith('#') &&
+      !trimmed.startsWith('@')
+    ) {
+      addDraftToClipboard(trimmed);
+    }
+    resetSearch();
+  }, [quickNoteText, addDraftToClipboard, resetSearch]);
 
   const executeResult = useCallback((index: number) => {
     if (!searchResults || index < 0) return;
@@ -482,7 +579,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
 
       // Create Plate JSON entry - handle multi-line text
       const lines = trimmedText.split('\n').filter(line => line.trim());
-      const entryNodes: Descendant[] = lines.map((line, idx) => ({
+      const entryNodes: Descendant[] = lines.map((line) => ({
         type: 'p',
         children: [
           { text: timestamp, bold: true },
@@ -728,8 +825,8 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   }, [quickNoteText, isOnTagsPage, resetSearch]);
 
   const confirmDiscard = useCallback(() => {
-    resetSearch();
-  }, [resetSearch]);
+    stashDraft();
+  }, [stashDraft]);
 
   const cancelDiscard = useCallback(() => {
     setShowDiscardConfirm(false);

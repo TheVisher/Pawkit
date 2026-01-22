@@ -37,8 +37,21 @@ export interface SearchableAction {
   action: string;
 }
 
+export interface CardSearchSnippet {
+  text: string;
+  matchStart: number;
+  matchLength: number;
+  hasMatch: boolean;
+  hasPrefix: boolean;
+  hasSuffix: boolean;
+}
+
+export interface CardSearchResult extends Card {
+  omnibarSnippet?: CardSearchSnippet;
+}
+
 export interface SearchResults {
-  cards: Card[];
+  cards: CardSearchResult[];
   collections: Collection[];
   actions: SearchableAction[];
   tags?: string[];

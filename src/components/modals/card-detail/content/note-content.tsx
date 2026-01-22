@@ -8,19 +8,20 @@
  * Updated to use Plate editor with JSON content storage.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useMutations } from '@/lib/contexts/convex-data-context';
+import { useMutations, useCalendarEvents } from '@/lib/contexts/convex-data-context';
+import { useSupertagCalendarSync } from '@/lib/hooks/use-supertag-calendar-sync';
 import { PawkitPlateEditor } from '@/components/editor';
 import { ContactPhotoHeader } from '../contact-photo-header';
-import { isSupertag } from '@/lib/tags/supertags';
+import { isSupertag, getCalendarFieldsFromTags } from '@/lib/tags/supertags';
 import {
   serializePlateContent,
   getPlateContentStats,
   isPlateJson,
   parseJsonContent,
 } from '@/lib/plate/html-to-plate';
-import type { Card } from '@/lib/types/convex';
+import type { Card, Id } from '@/lib/types/convex';
 
 // Simple type for Plate content
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,6 +37,9 @@ interface NoteContentProps {
 
 export function NoteContent({ card, title, setTitle, onTitleBlur, className }: NoteContentProps) {
   const { updateCard } = useMutations();
+  const calendarEvents = useCalendarEvents();
+  const { syncCardToCalendar } = useSupertagCalendarSync();
+  const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Parse content - could be HTML (legacy) or JSON string (new format)
   const initialContent = useMemo(() => {
@@ -51,7 +55,37 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
   // Local state for Plate content
   const [plateContent, setPlateContent] = useState<PlateContent | string>(initialContent);
 
-  // Note: Calendar sync removed - handled by Convex or external services
+  // Check if this card has supertag calendar fields
+  const hasCalendarFields = useMemo(() => {
+    const fields = getCalendarFieldsFromTags(card.tags || []);
+    return fields.length > 0;
+  }, [card.tags]);
+
+  // Calendar sync for supertag date fields (birthday, renewal, expiry, etc.)
+  useEffect(() => {
+    if (!hasCalendarFields) return;
+
+    // Debounce sync to avoid hammering on every keystroke
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    syncTimeoutRef.current = setTimeout(() => {
+      syncCardToCalendar(
+        card,
+        card.workspaceId as Id<'workspaces'>,
+        calendarEvents
+      ).catch((err) => {
+        console.error('[NoteContent] Calendar sync failed:', err);
+      });
+    }, 2000); // 2 second debounce
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [card, hasCalendarFields, calendarEvents, syncCardToCalendar]);
 
   // Sync local state when card changes (including external updates like Quick Convert)
   useEffect(() => {
