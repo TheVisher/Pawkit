@@ -11,8 +11,20 @@
 
 import type { LucideIcon } from 'lucide-react';
 import { CalendarDays, AlertTriangle, AlertCircle } from 'lucide-react';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { getEarliestUncheckedTaskDate } from './parse-task-items';
+
+/**
+ * Minimal card interface for schedule tag functions
+ * Works with both Card (Convex) and LocalCard (Dexie)
+ */
+interface CardLike {
+  tags?: string[] | null;
+  content?: string | null;
+  /** Convex Card uses string, LocalCard uses Date */
+  scheduledDate?: string | Date | null;
+  scheduledDates?: string[];
+}
 
 // =============================================================================
 // CONSTANTS
@@ -347,7 +359,7 @@ export function isTodoCardOverdue(
  * This function now returns an empty array since all tags are stored.
  * It's kept for backward compatibility but may be removed in the future.
  */
-export function getSystemTagsForCard(_card: LocalCard): SystemTag[] {
+export function getSystemTagsForCard(_card: Card): SystemTag[] {
   // All system tags are now stored in card.tags, so we don't compute any here
   return [];
 }
@@ -356,8 +368,9 @@ export function getSystemTagsForCard(_card: LocalCard): SystemTag[] {
  * Get the effective scheduled date for a card
  * Handles both old scheduledDate (Date) and new scheduledDates (string[]) formats
  * For todo cards, derives the date from content date headers
+ * Works with both Card (Convex) and LocalCard (Dexie) types
  */
-function getEffectiveScheduledDate(card: LocalCard): Date | string | null {
+function getEffectiveScheduledDate(card: CardLike): Date | string | null {
   const tags = card.tags || [];
 
   // For todo cards, derive scheduled date from content date headers
@@ -387,8 +400,9 @@ function getEffectiveScheduledDate(card: LocalCard): Date | string | null {
  * - Daily notes (daily-note tag): NEVER get overdue tag
  * - Todos (todo tag): Only get overdue if they have unchecked tasks
  * - Regular cards: Standard overdue logic based on date
+ * Works with both Card (Convex) and LocalCard (Dexie) types
  */
-export function getScheduleTagForCard(card: LocalCard): string | null {
+export function getScheduleTagForCard(card: CardLike): string | null {
   const scheduledDate = getEffectiveScheduledDate(card);
   if (!scheduledDate) return null;
 
@@ -425,8 +439,9 @@ export function getScheduleTagForCard(card: LocalCard): string | null {
 /**
  * Check if a card's schedule tags need updating
  * Returns the new tags array if update needed, or null if no update needed
+ * Works with both Card (Convex) and LocalCard (Dexie) types
  */
-export function getUpdatedScheduleTagsIfNeeded(card: LocalCard): string[] | null {
+export function getUpdatedScheduleTagsIfNeeded(card: CardLike): string[] | null {
   const scheduledDate = getEffectiveScheduledDate(card);
 
   if (!scheduledDate) {

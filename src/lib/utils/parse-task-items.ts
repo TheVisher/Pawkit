@@ -3,7 +3,7 @@
  * Extract and manipulate task items from both Plate JSON and legacy HTML content
  */
 
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { format } from 'date-fns';
 import {
   isPlateJson,
@@ -138,19 +138,19 @@ function parseTaskItemsFromHtml(
 /**
  * Parse task items from a card's content (supports both Plate JSON and HTML)
  */
-export function parseTaskItemsFromCard(card: LocalCard): TaskItem[] {
+export function parseTaskItemsFromCard(card: Card): TaskItem[] {
   if (!card.content) return [];
 
   // Try Plate JSON first
   if (isPlateJson(card.content)) {
     const parsed = parseJsonContent(card.content);
     if (parsed) {
-      return parseTaskItemsFromPlateJson(parsed, card.id, card.title || 'Untitled Todo');
+      return parseTaskItemsFromPlateJson(parsed, card._id, card.title || 'Untitled Todo');
     }
   }
 
   // Fall back to HTML parsing
-  return parseTaskItemsFromHtml(card.content, card.id, card.title || 'Untitled Todo');
+  return parseTaskItemsFromHtml(card.content, card._id, card.title || 'Untitled Todo');
 }
 
 /**
@@ -647,11 +647,11 @@ export function addTaskToContent(content: string, taskText: string): string {
 /**
  * Get all incomplete tasks from multiple cards
  */
-export function getIncompleteTasksFromCards(cards: LocalCard[]): TaskItem[] {
+export function getIncompleteTasksFromCards(cards: Card[]): TaskItem[] {
   const allTasks: TaskItem[] = [];
 
   for (const card of cards) {
-    if (card._deleted) continue;
+    if (card.deleted) continue;
     if (!card.tags?.includes('todo')) continue;
 
     const tasks = parseTaskItemsFromCard(card);

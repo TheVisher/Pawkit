@@ -8,12 +8,12 @@ import {
   ContextMenuSeparator,
 } from '@/components/ui/context-menu';
 import { FolderPlus, Check, ChevronRight } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
-import { useCollections } from '@/lib/hooks/use-live-data';
+import { useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import type { LocalCollection } from '@/lib/db';
+import type { Collection } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
 
 interface AddToPawkitSubmenuProps {
@@ -21,16 +21,16 @@ interface AddToPawkitSubmenuProps {
   cardCollections: string[];
 }
 
-interface CollectionTreeItem extends LocalCollection {
+interface CollectionTreeItem extends Collection {
   children: CollectionTreeItem[];
 }
 
-function buildCollectionTree(collections: LocalCollection[]): CollectionTreeItem[] {
+function buildCollectionTree(collections: Collection[]): CollectionTreeItem[] {
   const map = new Map<string | null, CollectionTreeItem[]>();
 
   // Initialize with empty arrays
   map.set(null, []);
-  collections.forEach(c => map.set(c.id, []));
+  collections.forEach(c => map.set(c._id, []));
 
   // Build tree
   const items: CollectionTreeItem[] = collections.map(c => ({
@@ -38,7 +38,7 @@ function buildCollectionTree(collections: LocalCollection[]): CollectionTreeItem
     children: []
   }));
 
-  const itemMap = new Map(items.map(i => [i.id, i]));
+  const itemMap = new Map(items.map(i => [i._id, i]));
   const roots: CollectionTreeItem[] = [];
 
   items.forEach(item => {
@@ -96,7 +96,7 @@ function CollectionItem({
         <ContextMenuSubContent>
           {item.children.map((child) => (
             <CollectionItem
-              key={child.id}
+              key={child._id}
               item={child}
               cardId={cardId}
               cardCollections={cardCollections}
@@ -125,22 +125,26 @@ function CollectionItem({
 
 export function AddToPawkitSubmenu({ cardId, cardCollections }: AddToPawkitSubmenuProps) {
   const workspace = useCurrentWorkspace();
-  const collections = useCollections(workspace?.id);
-  const addCardToCollection = useDataStore((s) => s.addCardToCollection);
-  const removeCardFromCollection = useDataStore((s) => s.removeCardFromCollection);
+  const collections = useCollections();
+  const { updateCard } = useMutations();
   const toast = useToastStore((s) => s.toast);
   const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
 
-  const tree = buildCollectionTree(collections.filter(c => !c._deleted && !c.isSystem));
+  const tree = buildCollectionTree(collections.filter(c => !c.deleted && !c.isSystem));
 
   const handleToggleCollection = async (slug: string, name: string) => {
     const isInCollection = cardCollections.includes(slug);
 
+    // Card-to-collection association is via tags (tag = collection slug)
     if (isInCollection) {
-      await removeCardFromCollection(cardId, slug);
+      // Remove the slug from tags
+      const newTags = cardCollections.filter(t => t !== slug);
+      await updateCard(cardId as any, { tags: newTags });
       toast({ type: 'success', message: `Removed from ${name}` });
     } else {
-      await addCardToCollection(cardId, slug);
+      // Add the slug to tags
+      const newTags = [...cardCollections, slug];
+      await updateCard(cardId as any, { tags: newTags });
       toast({ type: 'success', message: `Added to ${name}` });
     }
 
@@ -173,7 +177,7 @@ export function AddToPawkitSubmenu({ cardId, cardCollections }: AddToPawkitSubme
       <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
         {tree.map((item) => (
           <CollectionItem
-            key={item.id}
+            key={item._id}
             item={item}
             cardId={cardId}
             cardCollections={cardCollections}

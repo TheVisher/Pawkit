@@ -15,7 +15,8 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 type PlateContent = any[];
 import { Loader2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDataStore } from '@/lib/stores/data-store';
+import { buildConvexHttpUrl } from '@/lib/convex-site-url';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { Reader } from '@/components/reader';
 import { PawkitPlateEditor } from '@/components/editor';
 import {
@@ -35,15 +36,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { calculateReadingTime } from '@/lib/db/schema';
 import { getDomain, getContentStats } from '../types';
 import { updateReadingTimeTag, updateReadTag } from '@/lib/utils/system-tags';
-import { queueArticleExtraction } from '@/lib/services/metadata-service';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
+
+// Inline calculateReadingTime function (from db/schema)
+function calculateReadingTime(wordCount: number): number {
+  const wordsPerMinute = 200;
+  return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+}
 
 interface ArticleContentProps {
-  card: LocalCard;
+  card: Card;
   title: string;
   setTitle?: (title: string) => void;
   onTitleBlur?: () => void;
@@ -67,7 +72,7 @@ export function ArticleContent({
   hasImage,
   className,
 }: ArticleContentProps) {
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { updateCard } = useMutations();
 
   // Extraction state
   const [isExtractingArticle, setIsExtractingArticle] = useState(false);
@@ -90,7 +95,7 @@ export function ArticleContent({
   // Reset auto-expand tracking when card changes (modal opened for different card)
   useEffect(() => {
     hasAutoExpandedRef.current = false;
-  }, [card.id]);
+  }, [card._id]);
 
   // Derived state
   const articleContent = card.articleContent || '';
@@ -106,19 +111,8 @@ export function ArticleContent({
   const mightBeExtracting = !hasArticleContent && isRecentCard && card.status === 'READY';
 
   // Auto-trigger article extraction if card needs it
-  // This handles cases where the portal created the card but didn't finish extraction
-  // (e.g., portal window was hidden, different JS context, timing issues)
-  useEffect(() => {
-    if (
-      !hasArticleContent &&
-      card.url &&
-      card.status === 'READY' &&
-      !isYouTubeUrl(card.url)
-    ) {
-      // Queue extraction - the service will skip if already processed
-      queueArticleExtraction(card.id);
-    }
-  }, [card.id, card.url, card.status, hasArticleContent]);
+  // Note: In the Convex model, extraction is handled server-side or via direct API calls
+  // This effect is removed as queueArticleExtraction is no longer available
 
   // Auto-expand image as fallback when article extraction has failed
   // This provides a nicer UX than showing "Article not available" error
@@ -163,21 +157,21 @@ export function ArticleContent({
     const text = extractPlateText(value);
     const wordCount = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
 
-    updateCard(card.id, {
+    updateCard(card._id, {
       articleContent: jsonString,
       // Recalculate word count and reading time when content changes
       wordCount,
       readingTime: calculateReadingTime(wordCount),
     });
-  }, [card.id, updateCard]);
+  }, [card._id, updateCard]);
 
   // Track when user makes any edit to the article content
   const handleArticleEdit = useCallback(() => {
     // Only update if not already marked as edited
     if (!card.articleContentEdited) {
-      updateCard(card.id, { articleContentEdited: true });
+      updateCard(card._id, { articleContentEdited: true });
     }
-  }, [card.id, card.articleContentEdited, updateCard]);
+  }, [card._id, card.articleContentEdited, updateCard]);
 
   // Handle click on extract/try again button
   const handleExtractClick = useCallback(() => {
@@ -201,7 +195,7 @@ export function ArticleContent({
     setExtractionError(null);
 
     try {
-      const response = await fetch('/api/article', {
+      const response = await fetch(buildConvexHttpUrl('/api/article'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: card.url }),
@@ -245,7 +239,7 @@ export function ArticleContent({
         }
       }
 
-      await updateCard(card.id, {
+      await updateCard(card._id, {
         articleContent: articleContentJson,
         wordCount: data.article.wordCount,
         readingTime: data.article.readingTime,
@@ -262,18 +256,18 @@ export function ArticleContent({
     } finally {
       setIsExtractingArticle(false);
     }
-  }, [card.id, card.url, isExtractingArticle, updateCard]);
+  }, [card._id, card.url, isExtractingArticle, updateCard]);
 
   // Save scroll progress on close (not during scroll to avoid re-renders and scroll jumping)
   const saveScrollProgressOnClose = useCallback(() => {
     // Only save if there's meaningful progress
     if (progressRef.current > 0 || scrollPositionRef.current > 0) {
-      updateCard(card.id, {
+      updateCard(card._id, {
         readProgress: progressRef.current,
         lastScrollPosition: scrollPositionRef.current,
       });
     }
-  }, [card.id, updateCard]);
+  }, [card._id, updateCard]);
 
   // Simple auto-read marking: 15 seconds with modal open = marked as read
   // Unless user has manually marked it as unread (sticky unread)
@@ -284,11 +278,11 @@ export function ArticleContent({
     const timer = setTimeout(() => {
       // Add 'read' tag to the card's tags
       const newTags = updateReadTag(card.tags || [], true);
-      updateCard(card.id, { isRead: true, tags: newTags });
+      updateCard(card._id, { isRead: true, tags: newTags });
     }, 15000); // 15 seconds
 
     return () => clearTimeout(timer);
-  }, [hasArticleContent, card.id, card.isRead, card.manuallyMarkedUnread, card.tags, updateCard]);
+  }, [hasArticleContent, card._id, card.isRead, card.manuallyMarkedUnread, card.tags, updateCard]);
 
   // Track scroll progress in modal view - use direct DOM manipulation to avoid re-renders
   // Progress is saved only on close, not during scroll (prevents scroll jumping and re-renders)
@@ -404,7 +398,7 @@ export function ArticleContent({
               onEdit={handleArticleEdit}
               placeholder="No content extracted. You can add your own notes here..."
               workspaceId={card.workspaceId}
-              cardId={card.id}
+              cardId={card._id}
               variant="minimal"
             />
           </article>

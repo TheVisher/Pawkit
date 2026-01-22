@@ -8,11 +8,10 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { CreditCard, Check, AlertCircle, Clock, ArrowUpRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { db } from '@/lib/db';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { cn } from '@/lib/utils';
 import {
   getSubscriptionsFromCards,
@@ -23,18 +22,63 @@ import {
   type SubscriptionInfo,
 } from '@/lib/utils/parse-subscription-info';
 import {
-  getPaidBills,
-  markBillPaid,
-  markBillUnpaid,
-  getCurrentMonthKey,
-} from '@/lib/utils/bills-payment-tracker';
-import {
   markMonthPaid,
   markMonthUnpaid,
   markMonthMissed,
   getMonthStatus,
-  ensurePaymentHistorySection,
 } from '@/lib/utils/update-payment-history';
+
+// Simple localStorage-based paid bills tracker
+const STORAGE_KEY = 'pawkit-bills-paid';
+
+function getCurrentMonthKey(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function getPaidBills(): Promise<string[]> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return [];
+    const data = JSON.parse(stored);
+    const currentMonth = getCurrentMonthKey();
+    return data[currentMonth] || [];
+  } catch {
+    return [];
+  }
+}
+
+async function markBillPaid(cardId: string): Promise<void> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const data = stored ? JSON.parse(stored) : {};
+    const currentMonth = getCurrentMonthKey();
+    if (!data[currentMonth]) {
+      data[currentMonth] = [];
+    }
+    if (!data[currentMonth].includes(cardId)) {
+      data[currentMonth].push(cardId);
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore errors
+  }
+}
+
+async function markBillUnpaid(cardId: string): Promise<void> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return;
+    const data = JSON.parse(stored);
+    const currentMonth = getCurrentMonthKey();
+    if (data[currentMonth]) {
+      data[currentMonth] = data[currentMonth].filter((id: string) => id !== cardId);
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Ignore errors
+  }
+}
 
 interface BillItemProps {
   subscription: SubscriptionInfo;
@@ -138,9 +182,9 @@ function BillSection({ title, bills, paidCardIds, onTogglePaid, onCardClick }: B
 
 export function BillsWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { updateCard } = useMutations();
 
   const [paidCardIds, setPaidCardIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -176,22 +220,22 @@ export function BillsWidget() {
     // Check each subscription for missed payments in previous month
     const checkMissedPayments = async () => {
       for (const sub of subscriptions) {
-        // Fetch fresh card from Dexie to avoid stale data
-        const freshCard = await db.cards.get(sub.cardId);
+        // Find the card from the cards array
+        const freshCard = cards.find((c) => c._id === sub.cardId);
         if (!freshCard || !freshCard.content) continue;
 
         // Check if previous month is empty (not paid, not missed)
-        const status = getMonthStatus(freshCard.content, currentYear, previousMonth);
+        const status = getMonthStatus(freshCard.content as string, currentYear, previousMonth);
         if (status === 'empty') {
           // Mark as missed
-          const updatedContent = markMonthMissed(freshCard.content, currentYear, previousMonth);
-          await updateCard(freshCard.id, { content: updatedContent });
+          const updatedContent = markMonthMissed(freshCard.content as string, currentYear, previousMonth);
+          await updateCard(freshCard._id, { content: updatedContent });
         }
       }
     };
 
     checkMissedPayments();
-  }, [subscriptions, updateCard]);
+  }, [subscriptions, updateCard, cards]);
 
   // Group subscriptions by status
   const grouped = useMemo(() => {
@@ -221,15 +265,15 @@ export function BillsWidget() {
       await markBillUnpaid(cardId);
     }
 
-    // Fetch the latest card directly from Dexie to avoid stale data conflicts
-    const freshCard = await db.cards.get(cardId);
+    // Find the card from the cards array
+    const freshCard = cards.find((c) => c._id === cardId);
     if (freshCard && freshCard.content) {
       const updatedContent = paid
-        ? markMonthPaid(freshCard.content, currentYear, currentMonth)
-        : markMonthUnpaid(freshCard.content, currentYear, currentMonth);
-      await updateCard(cardId, { content: updatedContent });
+        ? markMonthPaid(freshCard.content as string, currentYear, currentMonth)
+        : markMonthUnpaid(freshCard.content as string, currentYear, currentMonth);
+      await updateCard(freshCard._id, { content: updatedContent });
     }
-  }, [updateCard]);
+  }, [updateCard, cards]);
 
   return (
     <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">

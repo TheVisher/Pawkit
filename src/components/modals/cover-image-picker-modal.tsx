@@ -17,8 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { cn } from '@/lib/utils';
@@ -26,9 +26,9 @@ import { cn } from '@/lib/utils';
 export function CoverImagePickerModal() {
     const { isCoverImagePickerOpen, coverImageCollectionId, closeCoverImagePicker } = useModalStore();
     const workspace = useCurrentWorkspace();
-    const collections = useCollections(workspace?.id);
-    const cards = useCards(workspace?.id);
-    const updateCollection = useDataStore((state) => state.updateCollection);
+    const collections = useCollections();
+    const cards = useCards();
+    const { updateCollection } = useMutations();
     const toast = useToastStore((s) => s.toast);
 
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -54,14 +54,14 @@ export function CoverImagePickerModal() {
     // Get the collection being edited
     const collection = useMemo(() => {
         if (!coverImageCollectionId) return null;
-        return collections.find(c => c.id === coverImageCollectionId);
+        return collections.find(c => c._id === coverImageCollectionId);
     }, [collections, coverImageCollectionId]);
 
     // Get cards with images from this Pawkit (using tags)
     const collectionCards = useMemo(() => {
         if (!collection) return [];
         return cards.filter(
-            card => card.tags?.includes(collection.slug) && !card._deleted && card.image
+            card => card.tags?.includes(collection.slug) && !card.deleted && card.image
         );
     }, [cards, collection]);
 
@@ -282,7 +282,7 @@ export function CoverImagePickerModal() {
                             <div className="grid grid-cols-3 gap-2 max-h-[250px] overflow-y-auto">
                                 {collectionCards.map((card) => (
                                     <button
-                                        key={card.id}
+                                        key={card._id}
                                         onClick={() => setSelectedImage(card.image!)}
                                         className={cn(
                                             'relative aspect-video rounded-lg overflow-hidden border-2 transition-all',

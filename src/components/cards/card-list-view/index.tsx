@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CardItem } from '../card-item';
 import { CardContextMenu } from '@/components/context-menus';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { type ColumnId, type CardListViewProps, COLUMN_LABELS, getCardType } from './types';
 import { useListView } from './use-list-view';
 import { ResizableHeader, ColumnPicker } from './table-header';
@@ -61,12 +61,12 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
   } = useListView(cards, onReorder);
 
   // Render cell content
-  const renderCell = (card: LocalCard, column: ColumnId) => {
+  const renderCell = (card: Card, column: ColumnId) => {
     const displayTitle = card.title || card.url || 'Untitled';
     const cardType = getCardType(card);
     const createdDate = card.createdAt ? format(new Date(card.createdAt), 'MM/dd/yyyy') : '-';
     const modifiedDate = card.updatedAt ? format(new Date(card.updatedAt), 'MM/dd/yyyy') : '-';
-    const scheduledDateFormatted = card.scheduledDate ? format(new Date(card.scheduledDate), 'MM/dd/yyyy') : '-';
+    const scheduledDateFormatted = card.scheduledDates?.[0] ? format(new Date(card.scheduledDates[0]), 'MM/dd/yyyy') : '-';
     const tags = card.tags || [];
     // Pawkits are now tags - filter to only show Pawkit-related tags for the collections column
     // For now, just use tags (the column will show all tags which includes Pawkit slugs)
@@ -92,8 +92,8 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
             <EditableTagsCell
               card={card}
               onSave={handleSaveCell}
-              isEditing={isEditing(card.id, 'tags')}
-              onStartEdit={() => handleStartEdit(card.id, 'tags')}
+              isEditing={isEditing(card._id, 'tags')}
+              onStartEdit={() => handleStartEdit(card._id, 'tags')}
               onCancelEdit={handleCancelEdit}
               onTagClick={onTagClick}
               onSystemTagClick={onSystemTagClick}
@@ -129,11 +129,11 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
           <div onClick={(e) => e.stopPropagation()}>
             <EditableCell
               value={card.description || ''}
-              cardId={card.id}
+              cardId={card._id}
               field="description"
               onSave={handleSaveCell}
-              isEditing={isEditing(card.id, 'description')}
-              onStartEdit={() => handleStartEdit(card.id, 'description')}
+              isEditing={isEditing(card._id, 'description')}
+              onStartEdit={() => handleStartEdit(card._id, 'description')}
               onCancelEdit={handleCancelEdit}
             />
           </div>
@@ -193,11 +193,11 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
           <div onClick={(e) => e.stopPropagation()}>
             <EditableCell
               value={card.notes || ''}
-              cardId={card.id}
+              cardId={card._id}
               field="notes"
               onSave={handleSaveCell}
-              isEditing={isEditing(card.id, 'notes')}
-              onStartEdit={() => handleStartEdit(card.id, 'notes')}
+              isEditing={isEditing(card._id, 'notes')}
+              onStartEdit={() => handleStartEdit(card._id, 'notes')}
               onCancelEdit={handleCancelEdit}
               multiline
             />
@@ -208,13 +208,13 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
     }
   };
 
-  const renderRow = (card: LocalCard) => {
-    const isSelected = selectedIds.has(card.id);
-    const isDragging = activeRowId === card.id;
-    const isDropTarget = overRowId === card.id && activeRowId !== card.id;
+  const renderRow = (card: Card) => {
+    const isSelected = selectedIds.has(card._id);
+    const isDragging = activeRowId === card._id;
+    const isDropTarget = overRowId === card._id && activeRowId !== card._id;
 
     return (
-      <CardContextMenu key={card.id} card={card} currentCollection={currentCollection}>
+      <CardContextMenu key={card._id} card={card} currentCollection={currentCollection}>
         <SortableListRow
           card={card}
           isDragging={isDragging}
@@ -231,7 +231,7 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
           >
             <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
               <button
-                onClick={(e) => handleToggleSelect(card.id, e)}
+                onClick={(e) => handleToggleSelect(card._id, e)}
                 className={cn(
                   'w-4 h-4 rounded border flex items-center justify-center transition-colors',
                   isSelected
@@ -252,7 +252,7 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
               </div>
             ))}
             <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
-              <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+              <ListRowActions card={card} onEdit={() => openCardDetail(card._id)} />
             </div>
           </div>
         </SortableListRow>

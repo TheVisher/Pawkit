@@ -7,16 +7,24 @@
 
 import { useMemo } from 'react';
 import { BookOpen, ChevronRight, Clock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { Card as UICard, CardContent } from '@/components/ui/card';
+import { useCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
-import { calculateReadingTime } from '@/lib/db/schema';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
+
+/**
+ * Calculate estimated reading time in minutes from word count
+ * Assumes average reading speed of 200 words per minute
+ */
+function calculateReadingTime(wordCount: number): number {
+  const WORDS_PER_MINUTE = 200;
+  return Math.ceil(wordCount / WORDS_PER_MINUTE);
+}
 
 interface ReadingCardItemProps {
-  card: LocalCard;
+  card: Card;
   onClick: () => void;
 }
 
@@ -80,13 +88,13 @@ function ReadingCardItem({ card, onClick }: ReadingCardItemProps) {
 
 export function ContinueReadingWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const inProgressCards = useMemo(() => {
     return cards
       .filter((c) => {
-        if (c._deleted) return false;
+        if (c.deleted) return false;
         if (c.type !== 'url') return false;
         // Has reading progress between 1 and 99
         return c.readProgress && c.readProgress > 0 && c.readProgress < 100;
@@ -99,7 +107,7 @@ export function ContinueReadingWidget() {
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">
+    <UICard className="border-border-subtle bg-bg-surface-2 h-full py-0">
       <CardContent className="p-3 h-full flex flex-col">
         <div className="flex items-center gap-2 mb-2">
           <div className="p-2 rounded-lg bg-green-500/20">
@@ -117,9 +125,9 @@ export function ContinueReadingWidget() {
           <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
             {inProgressCards.map((card) => (
               <ReadingCardItem
-                key={card.id}
+                key={card._id}
                 card={card}
-                onClick={() => openCardDetail(card.id)}
+                onClick={() => openCardDetail(card._id)}
               />
             ))}
           </div>
@@ -133,6 +141,6 @@ export function ContinueReadingWidget() {
           </div>
         )}
       </CardContent>
-    </Card>
+    </UICard>
   );
 }

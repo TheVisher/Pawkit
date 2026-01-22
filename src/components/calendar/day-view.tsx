@@ -2,18 +2,17 @@
 
 import { useMemo } from 'react';
 import { format, isToday, isSameDay, startOfDay } from 'date-fns';
-import { db } from '@/lib/db';
 import { FileText, Plus } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import { useCards, useCalendarEvents } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
 import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import { isPlateJson, parseJsonContent, extractPlateText } from '@/lib/plate/html-to-plate';
-import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
+import type { Card, CalendarEvent } from '@/lib/types/convex';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // px
@@ -36,9 +35,9 @@ interface CalendarItem {
 export function DayView() {
   const { currentDate } = useCalendarStore();
   const workspace = useCurrentWorkspace();
-  const events = useCalendarEvents(workspace?.id);
-  const cards = useCards(workspace?.id);
-  const createCard = useDataStore((state) => state.createCard);
+  const events = useCalendarEvents();
+  const cards = useCards();
+  const { createCard, updateCard, restoreCard } = useMutations();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const dateKey = format(currentDate, 'yyyy-MM-dd');
@@ -49,37 +48,32 @@ export function DayView() {
     if (!workspace) return null;
     return cards.find(
       (c) =>
-        c.workspaceId === workspace.id &&
+        c.workspaceId === workspace._id &&
         c.isDailyNote &&
-        c.scheduledDate &&
-        isSameDay(new Date(c.scheduledDate), currentDate) &&
-        !c._deleted
+        c.scheduledDates?.[0] &&
+        isSameDay(new Date(c.scheduledDates[0]), currentDate) &&
+        !c.deleted
     ) || null;
   }, [cards, workspace, currentDate]);
-
-  const updateCard = useDataStore((state) => state.updateCard);
 
   const handleCreateDailyNote = async () => {
     if (!workspace) return;
 
     // Check if a note already exists (prevent duplicates from race conditions)
     if (dailyNote) {
-      openCardDetail(dailyNote.id);
+      openCardDetail(dailyNote._id);
       return;
     }
 
     // Check for trashed daily note for this date - restore instead of creating new
-    const trashedCards = await db.cards
-      .where('workspaceId')
-      .equals(workspace.id)
-      .filter(
-        (c) =>
-          c.isDailyNote === true &&
-          c.scheduledDate != null &&
-          isSameDay(new Date(c.scheduledDate), currentDate) &&
-          c._deleted === true
-      )
-      .toArray();
+    const trashedCards = cards.filter(
+      (c) =>
+        c.workspaceId === workspace._id &&
+        c.isDailyNote === true &&
+        c.scheduledDates?.[0] != null &&
+        isSameDay(new Date(c.scheduledDates[0]), currentDate) &&
+        c.deleted === true
+    );
 
     if (trashedCards.length > 0) {
       // Restore only the most recent trashed daily note (preserve all existing content)
@@ -87,35 +81,32 @@ export function DayView() {
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
       const trashedNote = sortedTrashed[0];
-      await updateCard(trashedNote.id, {
-        _deleted: false,
-      });
-      openCardDetail(trashedNote.id);
+      await restoreCard(trashedNote._id);
+      openCardDetail(trashedNote._id);
       return;
     }
 
     const newNote = await createCard({
-      workspaceId: workspace.id,
+      workspaceId: workspace._id as any,
       type: 'md-note',
       url: '',
       title: format(currentDate, 'MMMM d, yyyy'),
       content: '',
       isDailyNote: true,
-      scheduledDate: startOfDay(currentDate), // Normalize to midnight to avoid timezone drift
+      scheduledDates: [startOfDay(currentDate).toISOString()], // Normalize to midnight to avoid timezone drift
       tags: ['daily-note'],
       pinned: false,
-      status: 'READY',
       isFileCard: false,
     });
 
     if (newNote) {
-      openCardDetail(newNote.id);
+      openCardDetail(newNote);
     }
   };
 
   const handleOpenDailyNote = () => {
     if (dailyNote) {
-      openCardDetail(dailyNote.id);
+      openCardDetail(dailyNote._id);
     }
   };
 
@@ -149,7 +140,7 @@ export function DayView() {
       .filter((event) => event.occurrenceDate === dateKey)
       .forEach((event) => {
         items.push({
-          id: event.isOccurrence ? `${event.id}-${dateKey}` : event.id,
+          id: event.isOccurrence ? `${event._id}-${dateKey}` : event._id,
           title: event.title,
           date: dateKey,
           color: event.color,
@@ -161,30 +152,21 @@ export function DayView() {
         });
       });
 
-    // Add scheduled cards - support both legacy scheduledDate and new scheduledDates array
-    cards.forEach((card: LocalCard) => {
-      // Get all scheduled dates for this card
-      let isScheduledForThisDate = false;
-
-      // Check new scheduledDates array
-      if (card.scheduledDates && card.scheduledDates.includes(dateKey)) {
-        isScheduledForThisDate = true;
-      }
-      // Fallback to legacy scheduledDate (for migration period)
-      else if (card.scheduledDate && format(new Date(card.scheduledDate), 'yyyy-MM-dd') === dateKey) {
-        isScheduledForThisDate = true;
-      }
+    // Add scheduled cards (using scheduledDates array)
+    cards.forEach((card: Card) => {
+      // Check if card is scheduled for this date
+      const isScheduledForThisDate = card.scheduledDates && card.scheduledDates.includes(dateKey);
 
       if (isScheduledForThisDate) {
         items.push({
-          id: `${card.id}-${dateKey}`, // Unique ID for each date occurrence
+          id: `${card._id}-${dateKey}`, // Unique ID for each date occurrence
           title: card.title || card.url || 'Untitled',
           date: dateKey,
           type: 'card',
           isAllDay: !card.scheduledStartTime,
           startTime: card.scheduledStartTime,
           endTime: card.scheduledEndTime,
-          source: { type: 'card', cardId: card.id },
+          source: { type: 'card', cardId: card._id },
         });
       }
     });

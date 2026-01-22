@@ -3,7 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { Coffee, Sun, Sunset, Moon } from 'lucide-react';
 import { GridLayout, Layout, verticalCompactor } from 'react-grid-layout';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { useConvexUser } from '@/lib/hooks/convex/use-convex-user';
 import { useGreeting } from '@/lib/hooks/use-greeting';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { ContentAreaContextMenu, WidgetContextMenu } from '@/components/context-menus';
@@ -49,7 +49,7 @@ const WIDGET_COMPONENTS: Record<WidgetType, React.ComponentType> = {
 };
 
 export default function HomePage() {
-  const user = useAuthStore((s) => s.user);
+  const { user } = useConvexUser();
   const { message, displayName, formattedDate, timeIcon, mounted } = useGreeting(user?.email);
   const enabledWidgets = useEnabledWidgets();
   const layout = useEnabledLayout();

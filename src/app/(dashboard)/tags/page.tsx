@@ -3,7 +3,8 @@
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MoreVertical, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
-import { useTagStore } from '@/lib/stores/tag-store';
+import { useCards } from '@/lib/contexts/convex-data-context';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { TagBadge } from '@/components/tags/tag-badge';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useTagSidebar } from '@/lib/stores/ui-store';
@@ -48,12 +49,28 @@ function TagsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const workspace = useCurrentWorkspace();
-  const uniqueTags = useTagStore((s) => s.uniqueTags);
-  const tagCounts = useTagStore((s) => s.tagCounts);
-  const isLoading = useTagStore((s) => s.isLoading);
-  const refreshTags = useTagStore((s) => s.refreshTags);
-  const renameTag = useTagStore((s) => s.renameTag);
-  const deleteTag = useTagStore((s) => s.deleteTag);
+  const cards = useCards();
+  const { bulkUpdateTags } = useMutations();
+
+  // Derive unique tags and counts from cards
+  const { uniqueTags, tagCounts } = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const card of cards) {
+      if (card.deleted) continue;
+      for (const tag of card.tags || []) {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
+    }
+    return {
+      uniqueTags: Object.keys(counts),
+      tagCounts: counts,
+    };
+  }, [cards]);
+
+  // Get custom tag colors from workspace preferences
+  const tagColors = useMemo(() => {
+    return (workspace?.preferences?.tagColors as Record<string, string>) || {};
+  }, [workspace?.preferences?.tagColors]);
 
   // Collision detection for omnibar
   const headerRef = useRef<HTMLDivElement>(null);
@@ -75,13 +92,6 @@ function TagsPageContent() {
   const [tagToEdit, setTagToEdit] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState('');
 
-  // Refresh tags on mount
-  useEffect(() => {
-    if (workspace?.id) {
-      refreshTags(workspace.id);
-    }
-  }, [workspace?.id, refreshTags]);
-
   // Check for create=true query param - redirect to omnibar approach
   useEffect(() => {
     if (searchParams.get('create') === 'true') {
@@ -94,7 +104,7 @@ function TagsPageContent() {
     if (selectedTag && !uniqueTags.includes(selectedTag)) {
       setSelectedTag(null);
     }
-  }, [selectedTag, uniqueTags]);
+  }, [selectedTag, uniqueTags, setSelectedTag]);
 
   // Filter and sort tags
   const filteredTags = useMemo(() => {
@@ -162,11 +172,19 @@ function TagsPageContent() {
   };
 
   const handleRename = async () => {
-    if (!tagToEdit || !newTagName.trim() || !workspace?.id) return;
+    if (!tagToEdit || !newTagName.trim() || !workspace?._id) return;
 
     setIsProcessing(true);
     try {
-      await renameTag(workspace.id, tagToEdit, newTagName.trim());
+      // Find all cards with this tag
+      const cardsWithTag = cards.filter(c => !c.deleted && c.tags?.includes(tagToEdit));
+      const cardIds = cardsWithTag.map(c => c._id);
+
+      if (cardIds.length > 0) {
+        // Use bulk update - remove old tag, add new tag
+        await bulkUpdateTags(cardIds, [newTagName.trim()], [tagToEdit]);
+      }
+
       setRenameDialogOpen(false);
       setTagToEdit(null);
       setNewTagName('');
@@ -178,11 +196,19 @@ function TagsPageContent() {
   };
 
   const handleDelete = async () => {
-    if (!tagToEdit || !workspace?.id) return;
+    if (!tagToEdit || !workspace?._id) return;
 
     setIsProcessing(true);
     try {
-      await deleteTag(workspace.id, tagToEdit);
+      // Find all cards with this tag
+      const cardsWithTag = cards.filter(c => !c.deleted && c.tags?.includes(tagToEdit));
+      const cardIds = cardsWithTag.map(c => c._id);
+
+      if (cardIds.length > 0) {
+        // Use bulk update - remove the tag
+        await bulkUpdateTags(cardIds, [], [tagToEdit]);
+      }
+
       setDeleteDialogOpen(false);
       setTagToEdit(null);
     } catch (error) {
@@ -245,11 +271,7 @@ function TagsPageContent() {
         </div>
 
         <div className="px-4 md:px-6 pt-4 pb-6">
-          {isLoading ? (
-            <div className="text-center py-12 text-text-muted">
-              Loading tags...
-            </div>
-          ) : filteredTags.length === 0 ? (
+          {filteredTags.length === 0 ? (
             <div className="text-center py-12 text-text-muted">
               {searchQuery ? 'No tags match your search' : 'No tags yet. Use + in the omnibar to create your first tag.'}
             </div>
@@ -280,7 +302,7 @@ function TagsPageContent() {
                           )}
                         >
                           {/* Tag badge - same as displayed on cards */}
-                          <TagBadge tag={tag} size="sm" />
+                          <TagBadge tag={tag} size="sm" customColor={tagColors[tag]} />
                           <span className="text-text-muted text-xs tabular-nums shrink-0">
                             {tagCounts[tag] || 0}
                           </span>

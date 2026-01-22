@@ -27,8 +27,8 @@ async function loadChrono(): Promise<typeof import('chrono-node')> {
   return chronoLoadPromise;
 }
 
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
-import type { LocalCard, LocalCollection } from '@/lib/db';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
+import type { Card, Collection } from '@/lib/types/convex';
 import type { MentionType } from '@/lib/plate/mention-parser';
 
 export interface MentionItem {
@@ -126,11 +126,11 @@ function parseDateFromQuery(query: string): MentionItem | null {
 /**
  * Convert card to mention item
  */
-function cardToMentionItem(card: LocalCard): MentionItem {
+function cardToMentionItem(card: Card): MentionItem {
   const isNote = ['md-note', 'text-note'].includes(card.type);
 
   return {
-    id: card.id,
+    id: card._id,
     label: card.title || card.url || 'Untitled',
     type: 'card',
     icon: isNote ? '📄' : '🔗',
@@ -141,7 +141,7 @@ function cardToMentionItem(card: LocalCard): MentionItem {
 /**
  * Convert collection (Pawkit) to mention item
  */
-function collectionToMentionItem(collection: LocalCollection): MentionItem {
+function collectionToMentionItem(collection: Collection): MentionItem {
   return {
     id: collection.slug,
     label: collection.name,
@@ -153,7 +153,7 @@ function collectionToMentionItem(collection: LocalCollection): MentionItem {
 /**
  * Match card against normalized query
  */
-function matchesCard(card: LocalCard, query: string): boolean {
+function matchesCard(card: Card, query: string): boolean {
   const title = (card.title || '').toLowerCase();
   const domain = (card.domain || '').toLowerCase();
   const url = (card.url || '').toLowerCase();
@@ -168,7 +168,7 @@ function matchesCard(card: LocalCard, query: string): boolean {
 /**
  * Match collection against normalized query
  */
-function matchesCollection(collection: LocalCollection, query: string): boolean {
+function matchesCollection(collection: Collection, query: string): boolean {
   return collection.name.toLowerCase().includes(query);
 }
 
@@ -185,8 +185,8 @@ export function useMentionSearch(
   maxResults = 5
 ): MentionSearchResult {
   // Get all cards and collections via live query
-  const cards = useCards(workspaceId);
-  const collections = useCollections(workspaceId);
+  const cards = useCards();
+  const collections = useCollections();
 
   // Track if chrono is loaded (for re-render trigger)
   const [chronoLoaded, setChronoLoaded] = useState(!!chronoModule);

@@ -11,10 +11,10 @@ import Image from 'next/image';
 import { User, ImagePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useModalStore } from '@/lib/stores/modal-store';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 interface ContactPhotoHeaderProps {
-  card: LocalCard;
+  card: Card;
   title: string;
   setTitle: (title: string) => void;
   onTitleBlur: () => void;
@@ -60,7 +60,7 @@ export function ContactPhotoHeader({ card, title, setTitle, onTitleBlur, classNa
   const imagePosition = card.headerImagePosition ?? 50;
 
   const handlePhotoClick = () => {
-    openCardPhotoPicker(card.id);
+    openCardPhotoPicker(card._id);
   };
 
   return (

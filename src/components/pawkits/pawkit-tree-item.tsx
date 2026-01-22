@@ -7,13 +7,12 @@ import { motion } from "framer-motion";
 import { ChevronRight, ChevronDown, Folder, FolderOpen, EyeOff, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PawkitContextMenu } from "@/components/context-menus";
-import { getEffectivePawkitPrivacy } from "@/lib/services/privacy";
-import type { LocalCollection } from "@/lib/db";
+import type { Collection } from "@/lib/types/convex";
 
 interface PawkitTreeItemProps {
-  collection: LocalCollection;
-  childCollections?: LocalCollection[];
-  allCollections?: LocalCollection[];
+  collection: Collection;
+  childCollections?: Collection[];
+  allCollections?: Collection[];
   level?: number;
   isExpanded?: boolean;
   onToggleExpand?: (id: string) => void;
@@ -30,9 +29,12 @@ export function PawkitTreeItem({
   cardCount = 0,
 }: PawkitTreeItemProps) {
   const pathname = usePathname();
-  const privacy = allCollections
-    ? getEffectivePawkitPrivacy(collection, allCollections)
-    : { isPrivate: collection.isPrivate, isLocalOnly: collection.isLocalOnly ?? false, inherited: false };
+  // Simplified privacy check - use direct collection properties
+  const privacy = {
+    isPrivate: collection.isPrivate ?? false,
+    isLocalOnly: collection.isLocalOnly ?? false,
+    inherited: false
+  };
   const isActive = pathname === `/pawkits/${collection.slug}`;
   const hasChildren = childCollections.length > 0;
 
@@ -110,7 +112,7 @@ export function PawkitTreeItem({
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
-                  onToggleExpand?.(collection.id);
+                  onToggleExpand?.(collection._id);
                 }}
                 className="h-5 w-5 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
               >

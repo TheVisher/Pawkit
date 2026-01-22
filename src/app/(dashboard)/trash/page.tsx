@@ -5,113 +5,103 @@
  * Shows soft-deleted cards with options to restore or permanently delete
  */
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Trash2, RotateCcw, AlertTriangle, Clock } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useDeletedCards } from '@/lib/hooks/use-deleted-cards';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/cards/empty-state';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import type { LocalCard } from '@/lib/db';
+import type { Card, Id } from '@/lib/types/convex';
 import { useToastStore } from '@/lib/stores/toast-store';
 
 export default function TrashPage() {
-  const [trashedCards, setTrashedCards] = useState<LocalCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<Id<'cards'>>>(new Set());
   const headerRef = useRef<HTMLDivElement>(null);
   const needsOffset = useOmnibarCollision(headerRef);
 
-  const workspace = useCurrentWorkspace();
-  const loadTrashedCards = useDataStore((s) => s.loadTrashedCards);
-  const restoreCard = useDataStore((s) => s.restoreCard);
-  const permanentDeleteCard = useDataStore((s) => s.permanentDeleteCard);
-  const emptyTrash = useDataStore((s) => s.emptyTrash);
+  const { deletedCards: rawDeletedCards, isLoading } = useDeletedCards();
+  const { restoreCard, permanentDeleteCard } = useMutations();
   const toast = useToastStore((s) => s.toast);
 
-  // Load trashed cards on mount
-  useEffect(() => {
-    if (!workspace) return;
-
-    const load = async () => {
-      setIsLoading(true);
-      const cards = await loadTrashedCards(workspace.id);
-      // Sort by deletion time (most recent first)
-      cards.sort((a, b) => {
-        const aTime = a._deletedAt || a._lastModified;
-        const bTime = b._deletedAt || b._lastModified;
-        return new Date(bTime).getTime() - new Date(aTime).getTime();
-      });
-      setTrashedCards(cards);
-      setIsLoading(false);
-    };
-
-    load();
-  }, [workspace, loadTrashedCards]);
-
-  const handleRestore = async (id: string) => {
-    await restoreCard(id);
-    setTrashedCards((prev) => prev.filter((c) => c.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
+  // Sort by deletion time (most recent first)
+  const trashedCards = useMemo(() => {
+    return [...rawDeletedCards].sort((a, b) => {
+      const aTime = a.deletedAt || a.updatedAt;
+      const bTime = b.deletedAt || b.updatedAt;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
     });
-    toast({ type: 'success', message: 'Card restored' });
+  }, [rawDeletedCards]);
+
+  const handleRestore = async (id: Id<'cards'>) => {
+    try {
+      await restoreCard(id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast({ type: 'success', message: 'Card restored' });
+    } catch (error) {
+      toast({ type: 'error', message: 'Failed to restore card' });
+    }
   };
 
-  const handlePermanentDelete = async (id: string) => {
+  const handlePermanentDelete = async (id: Id<'cards'>) => {
     if (!confirm('Permanently delete this item? This cannot be undone.')) return;
-    await permanentDeleteCard(id);
-    setTrashedCards((prev) => prev.filter((c) => c.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    toast({ type: 'success', message: 'Permanently deleted' });
+    try {
+      await permanentDeleteCard(id);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      toast({ type: 'success', message: 'Permanently deleted' });
+    } catch (error) {
+      toast({ type: 'error', message: 'Failed to delete card' });
+    }
   };
 
   const handleEmptyTrash = async () => {
-    if (!workspace) return;
+    if (trashedCards.length === 0) return;
     if (!confirm(`Permanently delete all ${trashedCards.length} items in trash? This cannot be undone.`)) return;
 
-    await emptyTrash(workspace.id);
-    setTrashedCards([]);
+    // Delete all cards one by one (Convex doesn't have emptyTrash in unified mutations yet)
+    const results = await Promise.allSettled(
+      trashedCards.map((card) => permanentDeleteCard(card._id))
+    );
+
+    const failedCount = results.filter((r) => r.status === 'rejected').length;
+    const succeededCount = results.filter((r) => r.status === 'fulfilled').length;
+
     setSelectedIds(new Set());
-    toast({ type: 'success', message: 'Trash emptied' });
+
+    if (failedCount > 0) {
+      toast({ type: 'error', message: `${failedCount} items failed to delete` });
+    }
+    if (succeededCount > 0) {
+      toast({ type: 'success', message: 'Trash emptied' });
+    }
   };
 
   const handleRestoreSelected = async () => {
     const ids = Array.from(selectedIds);
 
-    // Track which cards were successfully restored
-    const results = await Promise.allSettled(ids.map((id) => restoreCard(id).then(() => id)));
+    const results = await Promise.allSettled(ids.map((id) => restoreCard(id)));
 
-    const succeededIds = new Set(
-      results
-        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
-        .map((r) => r.value)
-    );
     const failedCount = results.filter((r) => r.status === 'rejected').length;
+    const succeededCount = results.filter((r) => r.status === 'fulfilled').length;
 
-    // Only remove successfully restored cards from UI
-    if (succeededIds.size > 0) {
-      setTrashedCards((prev) => prev.filter((c) => !succeededIds.has(c.id)));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        succeededIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    }
+    // Clear selection for succeeded items
+    setSelectedIds(new Set());
 
     if (failedCount > 0) {
       toast({ type: 'error', message: `${failedCount} items failed to restore` });
     }
-    if (succeededIds.size > 0) {
-      toast({ type: 'success', message: `${succeededIds.size} items restored` });
+    if (succeededCount > 0) {
+      toast({ type: 'success', message: `${succeededCount} items restored` });
     }
   };
 
@@ -119,35 +109,23 @@ export default function TrashPage() {
     const ids = Array.from(selectedIds);
     if (!confirm(`Permanently delete ${ids.length} items? This cannot be undone.`)) return;
 
-    // Track which cards were successfully deleted
-    const results = await Promise.allSettled(ids.map((id) => permanentDeleteCard(id).then(() => id)));
+    const results = await Promise.allSettled(ids.map((id) => permanentDeleteCard(id)));
 
-    const succeededIds = new Set(
-      results
-        .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
-        .map((r) => r.value)
-    );
     const failedCount = results.filter((r) => r.status === 'rejected').length;
+    const succeededCount = results.filter((r) => r.status === 'fulfilled').length;
 
-    // Only remove successfully deleted cards from UI
-    if (succeededIds.size > 0) {
-      setTrashedCards((prev) => prev.filter((c) => !succeededIds.has(c.id)));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        succeededIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    }
+    // Clear selection
+    setSelectedIds(new Set());
 
     if (failedCount > 0) {
       toast({ type: 'error', message: `${failedCount} items failed to delete` });
     }
-    if (succeededIds.size > 0) {
-      toast({ type: 'success', message: `${succeededIds.size} items deleted` });
+    if (succeededCount > 0) {
+      toast({ type: 'success', message: `${succeededCount} items deleted` });
     }
   };
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: Id<'cards'>) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -163,13 +141,13 @@ export default function TrashPage() {
     if (selectedIds.size === trashedCards.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(trashedCards.map((c) => c.id)));
+      setSelectedIds(new Set(trashedCards.map((c) => c._id)));
     }
   };
 
   // Calculate days until permanent deletion (30 day max)
-  const getDaysRemaining = (card: LocalCard) => {
-    const deletedAt = card._deletedAt || card._lastModified;
+  const getDaysRemaining = (card: Card) => {
+    const deletedAt = card.deletedAt || card.updatedAt;
     if (!deletedAt) return 30;
     const deletedDate = new Date(deletedAt);
     const expiryDate = new Date(deletedDate);
@@ -269,23 +247,23 @@ export default function TrashPage() {
             {/* Trashed items list */}
             {trashedCards.map((card) => {
               const daysRemaining = getDaysRemaining(card);
-              const deletedAt = card._deletedAt || card._lastModified;
+              const deletedAt = card.deletedAt || card.updatedAt;
 
               return (
                 <div
-                  key={card.id}
+                  key={card._id}
                   className={cn(
                     'flex items-center gap-3 p-3 rounded-lg transition-colors',
                     'bg-bg-surface-2 border border-border-subtle',
                     'hover:border-border-subtle/80',
-                    selectedIds.has(card.id) && 'ring-2 ring-[var(--color-accent)]/50'
+                    selectedIds.has(card._id) && 'ring-2 ring-[var(--color-accent)]/50'
                   )}
                 >
                   {/* Checkbox */}
                   <input
                     type="checkbox"
-                    checked={selectedIds.has(card.id)}
-                    onChange={() => toggleSelect(card.id)}
+                    checked={selectedIds.has(card._id)}
+                    onChange={() => toggleSelect(card._id)}
                     className="h-4 w-4 rounded border-border-subtle shrink-0"
                   />
 
@@ -335,7 +313,7 @@ export default function TrashPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRestore(card.id)}
+                      onClick={() => handleRestore(card._id)}
                       className="h-8 px-2 text-text-muted hover:text-text-primary"
                     >
                       <RotateCcw className="h-4 w-4" />
@@ -343,7 +321,7 @@ export default function TrashPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handlePermanentDelete(card.id)}
+                      onClick={() => handlePermanentDelete(card._id)}
                       className="h-8 px-2 text-text-muted hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />

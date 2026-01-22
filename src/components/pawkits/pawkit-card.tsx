@@ -8,14 +8,14 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Folder, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { PawkitContextMenu } from '@/components/context-menus';
-import type { LocalCollection } from '@/lib/db';
+import type { Collection } from '@/lib/types/convex';
 import type { SubPawkitSize, PawkitOverviewSize } from '@/lib/stores/view-store';
 
 interface PawkitCardProps {
-  collection: LocalCollection;
+  collection: Collection;
   isActive?: boolean;
   isDragging?: boolean;
   size?: SubPawkitSize | PawkitOverviewSize;
@@ -40,8 +40,8 @@ export function PawkitCard({
 }: PawkitCardProps) {
   const normalizedSize = normalizeSize(size);
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
-  const collections = useCollections(workspace?.id);
+  const cards = useCards();
+  const collections = useCollections();
 
   // Size-based styling
   const sizeClasses = {
@@ -85,7 +85,7 @@ export function PawkitCard({
     transition,
     isOver: isSortOver,
   } = useSortable({
-    id: collection.id,
+    id: collection._id,
     data: {
       type: 'pawkit',
       collection,
@@ -119,16 +119,16 @@ export function PawkitCard({
   // A card is in a Pawkit if it has the Pawkit's slug as a tag
   const collectionCards = useMemo(() => {
     return cards.filter(
-      (card) => card.tags?.includes(collection.slug) && !card._deleted
+      (card) => card.tags?.includes(collection.slug) && !card.deleted
     );
   }, [cards, collection.slug]);
 
   // Get child collections count
   const childCount = useMemo(() => {
     return collections.filter(
-      (c) => c.parentId === collection.id && !c._deleted
+      (c) => c.parentId === collection._id && !c.deleted
     ).length;
-  }, [collections, collection.id]);
+  }, [collections, collection._id]);
 
   // Get up to 4 thumbnail images from cards
   const thumbnails = useMemo(() => {

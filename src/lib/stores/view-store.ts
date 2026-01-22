@@ -1,12 +1,11 @@
 /**
  * View Store
- * Manages view settings that are persisted to Dexie
+ * Manages view settings that are persisted to localStorage
  */
 
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
-import { db, createSyncMetadata, markModified } from '@/lib/db';
-import type { LocalViewSettings } from '@/lib/db';
+// View settings are persisted in localStorage (no Dexie/IndexedDB)
 
 export type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
 export type SortOrder = 'asc' | 'desc';
@@ -37,7 +36,7 @@ const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma
 /**
  * Get the content type category for a card
  */
-function getCardContentType(card: { type: string; url: string; domain?: string }): ContentType {
+function getCardContentType(card: { type: string; url?: string; domain?: string }): ContentType {
   const url = card.url?.toLowerCase() || '';
 
   // Notes
@@ -70,7 +69,7 @@ function getCardContentType(card: { type: string; url: string; domain?: string }
  * Check if a card matches any of the selected content type filters
  */
 export function cardMatchesContentTypes(
-  card: { type: string; url: string; domain?: string },
+  card: { type: string; url?: string; domain?: string },
   filters: ContentType[]
 ): boolean {
   // No filters selected = show all
@@ -163,7 +162,7 @@ export function cardMatchesLinkStatusFilter(
  * Returns a Set of card IDs that have at least one duplicate
  */
 export function findDuplicateCardIds(
-  cards: Array<{ id: string; url: string; type: string; _deleted?: boolean }>
+  cards: Array<{ _id: string; url?: string; type: string; deleted?: boolean }>
 ): Set<string> {
   // Import dynamically to avoid circular deps - we'll use inline normalization
   const normalizeUrl = (url: string): string => {
@@ -184,11 +183,11 @@ export function findDuplicateCardIds(
 
   // Group cards by normalized URL
   for (const card of cards) {
-    if (card._deleted || card.type !== 'url' || !card.url) continue;
+    if (card.deleted || card.type !== 'url' || !card.url) continue;
 
     const normalizedUrl = normalizeUrl(card.url);
     const existing = urlToCards.get(normalizedUrl) || [];
-    existing.push(card.id);
+    existing.push(card._id);
     urlToCards.set(normalizedUrl, existing);
   }
 
@@ -208,7 +207,7 @@ interface ViewState {
   // Current view context
   currentView: string; // "library", "library:notes", "pawkit:{slug}", etc.
 
-  // View settings (synced to Dexie)
+  // View settings (client-local)
   layout: Layout;
   sortBy: string; // 'updatedAt', 'createdAt', 'title', 'manual'
   sortOrder: SortOrder;
@@ -303,7 +302,7 @@ interface ViewState {
   setListColumnWidth: (columnId: string, width: number) => void;
   setListColumnVisibility: (columnId: string, visible: boolean) => void;
 
-  // Dexie operations
+  // Storage operations
   loadViewSettings: (workspaceId: string, viewKey: string) => Promise<void>;
   saveViewSettings: (workspaceId: string) => Promise<void>;
   resetToDefaults: () => void;
@@ -357,7 +356,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   // View context
   setCurrentView: (view) => set({ currentView: view }),
 
-  // View setting actions (update local state immediately, save to Dexie)
+  // View setting actions (update local state immediately, save to localStorage)
   setLayout: (layout) => set({ layout }),
 
   setSortBy: (sortBy) => set({ sortBy }),
@@ -458,59 +457,40 @@ export const useViewStore = create<ViewState>((set, get) => ({
       listColumnVisibility: { ...state.listColumnVisibility, [columnId]: visible },
     })),
 
-  // Load view settings from Dexie
+  // Load view settings from localStorage
   loadViewSettings: async (workspaceId, viewKey) => {
     set({ isLoading: true, currentView: viewKey });
 
     try {
-      const settings = await db.viewSettings
-        .where('[workspaceId+viewKey]')
-        .equals([workspaceId, viewKey])
-        .first();
+      const storageKey = `pawkit:view-settings:${workspaceId}:${viewKey}`;
+      const raw = localStorage.getItem(storageKey);
+      const settings = raw ? JSON.parse(raw) as Partial<typeof DEFAULT_VIEW_SETTINGS> : null;
 
       if (settings) {
-        // Cast to access optional new fields that may not exist in old data
-        const s = settings as LocalViewSettings & {
-          cardOrder?: string[];
-          cardSize?: CardSize;
-          showMetadataFooter?: boolean;
-          listColumnOrder?: string[];
-          listColumnWidths?: Record<string, number>;
-          listColumnVisibility?: Record<string, boolean>;
-          groupBy?: GroupBy;
-          dateGrouping?: DateGrouping;
-          subPawkitSize?: SubPawkitSize;
-          subPawkitColumns?: number;
-          pawkitOverviewSize?: PawkitOverviewSize;
-          pawkitOverviewColumns?: number;
-          pawkitOverviewShowThumbnails?: boolean;
-          pawkitOverviewShowItemCount?: boolean;
-          pawkitOverviewSortBy?: PawkitOverviewSortBy;
-        };
         set({
-          layout: s.layout as Layout,
-          sortBy: s.sortBy,
-          sortOrder: s.sortOrder as SortOrder,
-          showTitles: s.showTitles,
-          showUrls: s.showUrls,
-          showTags: s.showTags,
-          cardPadding: s.cardPadding,
-          cardSpacing: s.cardSpacing ?? DEFAULT_VIEW_SETTINGS.cardSpacing,
-          cardSize: s.cardSize || DEFAULT_VIEW_SETTINGS.cardSize,
-          showMetadataFooter: s.showMetadataFooter ?? DEFAULT_VIEW_SETTINGS.showMetadataFooter,
-          cardOrder: s.cardOrder || [],
-          listColumnOrder: s.listColumnOrder || [],
-          listColumnWidths: s.listColumnWidths || {},
-          listColumnVisibility: s.listColumnVisibility || {},
-          groupBy: s.groupBy || DEFAULT_VIEW_SETTINGS.groupBy,
-          dateGrouping: s.dateGrouping || DEFAULT_VIEW_SETTINGS.dateGrouping,
-          subPawkitSize: s.subPawkitSize || DEFAULT_VIEW_SETTINGS.subPawkitSize,
-          subPawkitColumns: s.subPawkitColumns ?? DEFAULT_VIEW_SETTINGS.subPawkitColumns,
-          pawkitOverviewSize: s.pawkitOverviewSize || DEFAULT_VIEW_SETTINGS.pawkitOverviewSize,
-          pawkitOverviewColumns: s.pawkitOverviewColumns ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewColumns,
-          pawkitOverviewShowThumbnails: s.pawkitOverviewShowThumbnails ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewShowThumbnails,
-          pawkitOverviewShowItemCount: s.pawkitOverviewShowItemCount ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewShowItemCount,
-          pawkitOverviewSortBy: s.pawkitOverviewSortBy || DEFAULT_VIEW_SETTINGS.pawkitOverviewSortBy,
+          layout: (settings.layout as Layout) ?? DEFAULT_VIEW_SETTINGS.layout,
+          sortBy: settings.sortBy ?? DEFAULT_VIEW_SETTINGS.sortBy,
+          sortOrder: (settings.sortOrder as SortOrder) ?? DEFAULT_VIEW_SETTINGS.sortOrder,
+          showTitles: settings.showTitles ?? DEFAULT_VIEW_SETTINGS.showTitles,
+          showUrls: settings.showUrls ?? DEFAULT_VIEW_SETTINGS.showUrls,
+          showTags: settings.showTags ?? DEFAULT_VIEW_SETTINGS.showTags,
+          cardPadding: settings.cardPadding ?? DEFAULT_VIEW_SETTINGS.cardPadding,
+          cardSpacing: settings.cardSpacing ?? DEFAULT_VIEW_SETTINGS.cardSpacing,
+          cardSize: (settings.cardSize as CardSize) ?? DEFAULT_VIEW_SETTINGS.cardSize,
+          showMetadataFooter: settings.showMetadataFooter ?? DEFAULT_VIEW_SETTINGS.showMetadataFooter,
+          cardOrder: settings.cardOrder ?? [],
+          listColumnOrder: settings.listColumnOrder ?? [],
+          listColumnWidths: settings.listColumnWidths ?? {},
+          listColumnVisibility: settings.listColumnVisibility ?? {},
+          groupBy: (settings.groupBy as GroupBy) ?? DEFAULT_VIEW_SETTINGS.groupBy,
+          dateGrouping: (settings.dateGrouping as DateGrouping) ?? DEFAULT_VIEW_SETTINGS.dateGrouping,
+          subPawkitSize: (settings.subPawkitSize as SubPawkitSize) ?? DEFAULT_VIEW_SETTINGS.subPawkitSize,
+          subPawkitColumns: settings.subPawkitColumns ?? DEFAULT_VIEW_SETTINGS.subPawkitColumns,
+          pawkitOverviewSize: (settings.pawkitOverviewSize as PawkitOverviewSize) ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewSize,
+          pawkitOverviewColumns: settings.pawkitOverviewColumns ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewColumns,
+          pawkitOverviewShowThumbnails: settings.pawkitOverviewShowThumbnails ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewShowThumbnails,
+          pawkitOverviewShowItemCount: settings.pawkitOverviewShowItemCount ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewShowItemCount,
+          pawkitOverviewSortBy: (settings.pawkitOverviewSortBy as PawkitOverviewSortBy) ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewSortBy,
           isLoading: false,
         });
       } else {
@@ -523,7 +503,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
     }
   },
 
-  // Save current view settings to Dexie
+  // Save current view settings to localStorage
   saveViewSettings: async (workspaceId) => {
     const {
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
@@ -535,90 +515,33 @@ export const useViewStore = create<ViewState>((set, get) => ({
     } = get();
 
     try {
-      const existing = await db.viewSettings
-        .where('[workspaceId+viewKey]')
-        .equals([workspaceId, currentView])
-        .first();
-
-      if (existing) {
-        // Update existing
-        const updated = markModified({
-          ...existing,
-          layout,
-          sortBy,
-          sortOrder,
-          showTitles,
-          showUrls,
-          showTags,
-          cardPadding,
-          cardSpacing,
-          cardSize,
-          showMetadataFooter,
-          cardOrder,
-          listColumnOrder,
-          listColumnWidths,
-          listColumnVisibility,
-          groupBy,
-          dateGrouping,
-          subPawkitSize,
-          subPawkitColumns,
-          pawkitOverviewSize,
-          pawkitOverviewColumns,
-          pawkitOverviewShowThumbnails,
-          pawkitOverviewShowItemCount,
-          pawkitOverviewSortBy,
-          updatedAt: new Date(),
-        });
-        await db.viewSettings.put(updated);
-      } else {
-        // Create new
-        const newSettings = {
-          id: crypto.randomUUID(),
-          workspaceId,
-          viewKey: currentView,
-          layout,
-          sortBy,
-          sortOrder,
-          showTitles,
-          showUrls,
-          showTags,
-          cardPadding,
-          cardSpacing,
-          cardSize,
-          showMetadataFooter,
-          cardOrder,
-          listColumnOrder,
-          listColumnWidths,
-          listColumnVisibility,
-          groupBy,
-          dateGrouping,
-          subPawkitSize,
-          subPawkitColumns,
-          pawkitOverviewSize,
-          pawkitOverviewColumns,
-          pawkitOverviewShowThumbnails,
-          pawkitOverviewShowItemCount,
-          pawkitOverviewSortBy,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ...createSyncMetadata(),
-        } as LocalViewSettings & {
-          cardOrder: string[];
-          listColumnOrder: string[];
-          listColumnWidths: Record<string, number>;
-          listColumnVisibility: Record<string, boolean>;
-          groupBy: GroupBy;
-          dateGrouping: DateGrouping;
-          subPawkitSize: SubPawkitSize;
-          subPawkitColumns: number;
-          pawkitOverviewSize: PawkitOverviewSize;
-          pawkitOverviewColumns: number;
-          pawkitOverviewShowThumbnails: boolean;
-          pawkitOverviewShowItemCount: boolean;
-          pawkitOverviewSortBy: PawkitOverviewSortBy;
-        };
-        await db.viewSettings.add(newSettings);
-      }
+      const storageKey = `pawkit:view-settings:${workspaceId}:${currentView}`;
+      const payload = {
+        layout,
+        sortBy,
+        sortOrder,
+        showTitles,
+        showUrls,
+        showTags,
+        cardPadding,
+        cardSpacing,
+        cardSize,
+        showMetadataFooter,
+        cardOrder,
+        listColumnOrder,
+        listColumnWidths,
+        listColumnVisibility,
+        groupBy,
+        dateGrouping,
+        subPawkitSize,
+        subPawkitColumns,
+        pawkitOverviewSize,
+        pawkitOverviewColumns,
+        pawkitOverviewShowThumbnails,
+        pawkitOverviewShowItemCount,
+        pawkitOverviewSortBy,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
     } catch (error) {
       console.error('Failed to save view settings:', error);
     }
@@ -803,4 +726,3 @@ export function useFilterSettings() {
     }))
   );
 }
-

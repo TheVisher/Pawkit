@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Folder, CalendarDays, Tag, Type, Globe } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards, useCollections, useCollection, useCardsInCollection } from '@/lib/hooks/use-live-data';
+import { useCollections, useCollectionBySlug, useCardsInCollection } from '@/lib/contexts/convex-data-context';
+import { useDataContext } from '@/lib/contexts/data-context';
 import {
     useViewStore,
     useViewActions,
@@ -26,7 +26,7 @@ import { PawkitHeader } from '@/components/pawkits/pawkit-header';
 import { PawkitCard } from '@/components/pawkits/pawkit-card';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { cn } from '@/lib/utils';
-import type { LocalCard } from '@/lib/db';
+import type { Card, Collection } from '@/lib/types/convex';
 
 // Helper to get smart date label (Today, Yesterday, This Week, etc.)
 function getSmartDateLabel(date: Date): string {
@@ -69,7 +69,7 @@ function getDateLabel(date: Date, dateGrouping: DateGrouping): string {
 }
 
 // Helper to get content type label
-function getContentTypeLabel(card: LocalCard): string {
+function getContentTypeLabel(card: Card): string {
     if (['md-note', 'text-note'].includes(card.type)) return 'Notes';
     if (card.type === 'file') return 'Files';
     if (card.type === 'url') return 'Bookmarks';
@@ -79,7 +79,7 @@ function getContentTypeLabel(card: LocalCard): string {
 interface CardGroup {
     key: string;
     label: string;
-    cards: LocalCard[];
+    cards: Card[];
 }
 
 export default function PawkitPage() {
@@ -88,10 +88,10 @@ export default function PawkitPage() {
     const slug = params?.slug as string;
     const workspace = useCurrentWorkspace();
 
-    const collection = useCollection(workspace?.id, slug);
-    const collections = useCollections(workspace?.id);
-    const cards = useCardsInCollection(workspace?.id, slug);
-    const isLoading = useDataStore((state) => state.isLoading);
+    const collection = useCollectionBySlug(slug);
+    const collections = useCollections();
+    const cards = useCardsInCollection(collection?._id);
+    const { isLoading } = useDataContext();
 
     // State for sub-pawkits section collapse
     const [subPawkitsExpanded, setSubPawkitsExpanded] = useState(true);
@@ -134,7 +134,7 @@ export default function PawkitPage() {
     // Filter cards based on all filter settings
     const activeCards = useMemo(() => {
         return cards.filter((card) => {
-            if (card._deleted) return false;
+            if (card.deleted) return false;
             if (!cardMatchesContentTypes(card, contentTypeFilters)) return false;
             // Tag filter - card must have ALL selected tags
             if (selectedTags.length > 0) {
@@ -148,7 +148,7 @@ export default function PawkitPage() {
             // Link status filter
             if (!cardMatchesLinkStatusFilter(card, linkStatusFilter)) return false;
             // Duplicates filter
-            if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
+            if (showDuplicatesOnly && !duplicateCardIds.has(card._id)) return false;
             return true;
         });
     }, [cards, contentTypeFilters, selectedTags, unsortedFilter, readingFilter, linkStatusFilter, showDuplicatesOnly, duplicateCardIds]);
@@ -159,8 +159,8 @@ export default function PawkitPage() {
         if (sortBy === 'manual' && cardOrder && cardOrder.length > 0) {
             const orderMap = new Map(cardOrder.map((id, index) => [id, index]));
             return [...activeCards].sort((a, b) => {
-                const indexA = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-                const indexB = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+                const indexA = orderMap.get(a._id) ?? Number.MAX_SAFE_INTEGER;
+                const indexB = orderMap.get(b._id) ?? Number.MAX_SAFE_INTEGER;
                 return indexA - indexB;
             });
         }
@@ -195,7 +195,7 @@ export default function PawkitPage() {
             return [{ key: 'all', label: '', cards: sortedCards }];
         }
 
-        const groups = new Map<string, LocalCard[]>();
+        const groups = new Map<string, Card[]>();
 
         for (const card of sortedCards) {
             let key: string;
@@ -295,7 +295,7 @@ export default function PawkitPage() {
     const childCollections = useMemo(() => {
         if (!collection) return [];
         return collections
-            .filter((c) => c.parentId === collection.id && !c._deleted)
+            .filter((c) => c.parentId === collection._id && !c.deleted)
             .sort((a, b) => a.position - b.position);
     }, [collections, collection]);
 
@@ -304,7 +304,7 @@ export default function PawkitPage() {
     // Load view settings for this pawkit
     useEffect(() => {
         if (workspace && slug) {
-            loadViewSettings(workspace.id, `pawkit:${slug}`);
+            loadViewSettings(workspace._id, `pawkit:${slug}`);
         }
     }, [workspace, slug, loadViewSettings]);
 
@@ -356,7 +356,7 @@ export default function PawkitPage() {
                             {subPawkitsExpanded && (
                                 <div className={cn('grid gap-4', getSubPawkitGridCols())}>
                                     {childCollections.map((child) => (
-                                        <PawkitCard key={child.id} collection={child} size={subPawkitSize} />
+                                        <PawkitCard key={child._id} collection={child} size={subPawkitSize} />
                                     ))}
                                 </div>
                             )}

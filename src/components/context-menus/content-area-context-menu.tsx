@@ -14,7 +14,7 @@ import {
   ClipboardPaste,
 } from 'lucide-react';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { serializePlateContent } from '@/lib/plate/html-to-plate';
@@ -25,7 +25,7 @@ interface ContentAreaContextMenuProps {
 
 export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps) {
   const openAddCard = useModalStore((s) => s.openAddCard);
-  const createCard = useDataStore((s) => s.createCard);
+  const { createCard } = useMutations();
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const toast = useToastStore((s) => s.toast);
 
@@ -48,11 +48,10 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
       if (trimmed.match(/^https?:\/\//i) || trimmed.match(/^www\./i)) {
         const url = trimmed.startsWith('www.') ? `https://${trimmed}` : trimmed;
         await createCard({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentWorkspace._id,
           type: 'url',
           url,
           title: url,
-          status: 'PENDING',
           pinned: false,
           isFileCard: false,
           tags: [],
@@ -64,12 +63,11 @@ export function ContentAreaContextMenu({ children }: ContentAreaContextMenuProps
           { type: 'p', children: [{ text: trimmed }] },
         ]);
         await createCard({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentWorkspace._id,
           type: 'md-note',
           title: '',
           url: '',
           content: plateContent,
-          status: 'READY',
           pinned: false,
           isFileCard: false,
           tags: [],

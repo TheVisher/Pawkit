@@ -1,14 +1,11 @@
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 
-export default async function Home() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // Redirect based on auth status
-  if (user) {
-    redirect('/home');
-  } else {
-    redirect('/login');
-  }
+/**
+ * Root page - redirects to home
+ *
+ * Authentication is handled by Convex. The home page and dashboard
+ * layout handle showing login if not authenticated.
+ */
+export default function Home() {
+  redirect('/home');
 }

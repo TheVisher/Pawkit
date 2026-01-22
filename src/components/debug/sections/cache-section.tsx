@@ -8,8 +8,6 @@ export function CacheSection() {
     cacheEnabled,
     widthTolerance,
     persistDebounceMs,
-    enableDexieCache,
-    dexieWriteDebounce,
     set,
   } = useDebugStore();
 
@@ -49,28 +47,6 @@ export function CacheSection() {
         />
       </div>
 
-      {/* IndexedDB/Dexie */}
-      <div className="space-y-2 pt-2 border-t border-border-default">
-        <p className="text-[10px] text-text-muted mb-1">IndexedDB / Dexie</p>
-
-        <CheckboxControl
-          label="Enable Dexie Cache"
-          value={enableDexieCache}
-          onChange={(v) => set('enableDexieCache', v)}
-          description="Use IndexedDB for persistent storage"
-        />
-
-        <SliderControl
-          label="Write Debounce"
-          value={dexieWriteDebounce}
-          onChange={(v) => set('dexieWriteDebounce', v)}
-          min={100}
-          max={5000}
-          step={100}
-          unit="ms"
-          disabled={!enableDexieCache}
-        />
-      </div>
     </div>
   );
 }

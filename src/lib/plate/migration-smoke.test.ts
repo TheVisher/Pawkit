@@ -12,7 +12,7 @@ import {
 import { parseTaskItemsFromCard } from '@/lib/utils/parse-task-items';
 import { parseSubscriptionInfo } from '@/lib/utils/parse-subscription-info';
 import { htmlToMarkdown } from '@/lib/utils/markdown-export';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 describe('Plate JSON migration smoke checks', () => {
   it('serializes Plate JSON and detects it correctly', () => {
@@ -57,11 +57,11 @@ describe('Plate JSON migration smoke checks', () => {
     ] as Value);
 
     const card = {
-      id: 'card-1',
+      _id: 'card-1',
       title: 'Todos',
       tags: ['todo'],
       content,
-    } as LocalCard;
+    } as unknown as Card;
 
     const tasks = parseTaskItemsFromCard(card);
     expect(tasks).toHaveLength(1);
@@ -77,11 +77,11 @@ describe('Plate JSON migration smoke checks', () => {
     ] as Value);
 
     const card = {
-      id: 'card-2',
+      _id: 'card-2',
       title: 'Netflix',
       tags: ['subscription'],
       content,
-    } as LocalCard;
+    } as unknown as Card;
 
     const info = parseSubscriptionInfo(card);
     expect(info).not.toBeNull();

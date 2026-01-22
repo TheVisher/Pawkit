@@ -23,10 +23,13 @@ import {
   createEmptyPlateContent,
   htmlToPlateJson,
 } from '@/lib/plate/html-to-plate';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useReferences } from '@/lib/hooks/use-live-data';
+import { findMentionNodesInPlateJSON, getUniqueMentions } from '@/lib/plate/mention-parser';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
+import { useMutation } from 'convex/react';
+import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
 
 // Simple type for editor content - matches Plate's node structure
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -213,43 +216,64 @@ function PawkitEditorInner({
   const router = useRouter();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const setCalendarDate = useCalendarStore((s) => s.setDate);
+  const { updateCard } = useMutations();
 
-  // Reference sync dependencies
-  const createReference = useDataStore((s) => s.createReference);
-  const deleteReference = useDataStore((s) => s.deleteReference);
-  const updateCard = useDataStore((s) => s.updateCard);
-  const existingRefs = useReferences(cardId);
+  // Reference sync mutation
+  const syncReferences = useMutation(api.references.syncForSource);
 
-  const existingRefsRef = useRef(existingRefs);
   const hasEditedRef = useRef(false);
 
-  // Keep existingRefs ref in sync
-  useEffect(() => {
-    existingRefsRef.current = existingRefs;
-  }, [existingRefs]);
+  // Track the cardId at focus time - prevents race condition when clicking @mentions
+  // causes navigation before blur fires
+  const focusedCardIdRef = useRef<string | null>(cardId ?? null);
 
-  // Sync references on blur
+  // Initialize ref on mount and update only when NOT focused
+  useEffect(() => {
+    // Only update if we don't have a value yet (fresh mount)
+    // This avoids overwriting during the race condition
+    if (focusedCardIdRef.current === null) {
+      focusedCardIdRef.current = cardId ?? null;
+    }
+  }, [cardId]);
+
+  // Capture cardId when editor gains focus
+  const handleFocus = useCallback(() => {
+    focusedCardIdRef.current = cardId ?? null;
+  }, [cardId]);
+
+  // Blur handler - sync references from mentions in content
+  // Uses the cardId from when focus started, not the current prop value
   const handleBlur = useCallback(async () => {
-    if (!cardId || !workspaceId) return;
+    // Use the cardId from when we focused, not the current prop
+    // This prevents syncing to the wrong card when clicking @mentions causes navigation
+    const sourceCardId = focusedCardIdRef.current;
+    if (!workspaceId || !sourceCardId) return;
 
     try {
+      // Get current editor content
       const content = editor.children;
-      const { syncReferencesFromPlateContent } = await import('@/lib/plate/mention-parser');
-      await syncReferencesFromPlateContent(
-        cardId,
-        workspaceId,
-        content,
-        existingRefsRef.current,
-        {
-          createReference,
-          deleteReference,
-          updateCard,
-        }
-      );
-    } catch (err) {
-      console.error('[PawkitPlateEditor] Failed to sync references:', err);
+
+      // Extract mentions from content
+      const mentions = findMentionNodesInPlateJSON(content);
+      const uniqueMentions = getUniqueMentions(mentions);
+
+      // Convert to reference format for syncForSource
+      const references = uniqueMentions.map((mention) => ({
+        targetId: mention.id,
+        targetType: mention.type,
+        linkText: mention.label,
+      }));
+
+      // Sync references to Convex
+      await syncReferences({
+        workspaceId: workspaceId as Id<'workspaces'>,
+        sourceId: sourceCardId,
+        references,
+      });
+    } catch (error) {
+      console.error('[PawkitEditor] Failed to sync references:', error);
     }
-  }, [cardId, workspaceId, editor, createReference, deleteReference, updateCard]);
+  }, [workspaceId, editor, syncReferences]);
 
   return (
     <PlateContainer
@@ -268,6 +292,7 @@ function PawkitEditorInner({
         )}
         disabled={!editable}
         placeholder={placeholder}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         disableDefaultStyles
         autoFocus={false}

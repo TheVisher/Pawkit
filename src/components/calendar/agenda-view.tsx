@@ -11,11 +11,11 @@ import {
   compareAsc,
 } from 'date-fns';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
-import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
+import { useCards, useCalendarEvents } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
-import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
+import type { CalendarEvent, Card } from '@/lib/types/convex';
 
 const DAYS_TO_SHOW = 30; // Show next 30 days
 
@@ -42,8 +42,8 @@ interface DayGroup {
 export function AgendaView() {
   const { currentDate } = useCalendarStore();
   const workspace = useCurrentWorkspace();
-  const events = useCalendarEvents(workspace?.id);
-  const cards = useCards(workspace?.id);
+  const events = useCalendarEvents();
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Group items by day for the next 30 days
@@ -59,14 +59,13 @@ export function AgendaView() {
     }
 
     // Add calendar events
-    events.forEach((event: LocalCalendarEvent) => {
-      const eventDate = parseISO(event.date);
+    events.forEach((event: CalendarEvent) => {
       const dateKey = event.date;
 
       // Only include if within our range
       if (itemsByDate.has(dateKey)) {
         itemsByDate.get(dateKey)!.push({
-          id: event.id,
+          id: event._id,
           title: event.title,
           date: event.date,
           color: event.color,
@@ -79,22 +78,23 @@ export function AgendaView() {
       }
     });
 
-    // Add scheduled cards
+    // Add scheduled cards (using scheduledDates array)
     cards
-      .filter((card: LocalCard) => card.scheduledDate)
-      .forEach((card: LocalCard) => {
-        const dateKey = format(new Date(card.scheduledDate!), 'yyyy-MM-dd');
+      .filter((card: Card) => card.scheduledDates && card.scheduledDates.length > 0)
+      .forEach((card: Card) => {
+        const firstScheduledDate = card.scheduledDates![0];
+        const dateKey = format(new Date(firstScheduledDate), 'yyyy-MM-dd');
 
         if (itemsByDate.has(dateKey)) {
           itemsByDate.get(dateKey)!.push({
-            id: card.id,
+            id: card._id,
             title: card.title || card.url || 'Untitled',
             date: dateKey,
             type: 'card',
             isAllDay: !card.scheduledStartTime,
             startTime: card.scheduledStartTime,
             endTime: card.scheduledEndTime,
-            source: { type: 'card', cardId: card.id },
+            source: { type: 'card', cardId: card._id },
           });
         }
       });

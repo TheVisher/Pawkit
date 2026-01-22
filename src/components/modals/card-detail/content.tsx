@@ -8,8 +8,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCard } from '@/lib/hooks/use-live-data';
+import { useMutations, useCardById } from '@/lib/contexts/convex-data-context';
 import { cn } from '@/lib/utils';
 import { CardDetailHeader } from './header';
 import { ContentRouter } from './content/index';
@@ -17,8 +16,8 @@ import { isSupertag } from '@/lib/tags/supertags';
 import type { CardDetailContentProps } from './types';
 
 export function CardDetailContent({ cardId, onClose, className }: CardDetailContentProps) {
-  const card = useCard(cardId);
-  const updateCard = useDataStore((s) => s.updateCard);
+  const card = useCardById(cardId as any);
+  const { updateCard } = useMutations();
 
   // Title state (shared across all card types)
   const [title, setTitle] = useState(card?.title || '');
@@ -38,7 +37,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
       return card.images;
     }
     return card.image ? [card.image] : [];
-  }, [card?.images, card?.image]);
+  }, [card]);
 
   const hasMultipleImages = galleryImages.length > 1;
   const currentImage = galleryImages[currentImageIndex] || card?.image;
@@ -57,7 +56,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     if (card) {
       setTitle(card.title || '');
     }
-  }, [card?.id, card?.title]);
+  }, [card?._id, card?.title]);
 
   // Reset image state when switching cards
   useEffect(() => {
@@ -65,7 +64,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
       setImageError(false);
       setCurrentImageIndex(0); // Reset gallery to first image
     }
-  }, [card?.id]);
+  }, [card?._id]);
 
   // Gallery navigation
   const nextImage = useCallback((e: React.MouseEvent) => {
@@ -81,7 +80,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   // Save title on blur
   const handleTitleBlur = useCallback(() => {
     if (card && title !== card.title) {
-      updateCard(card.id, { title });
+      updateCard(card._id, { title });
     }
   }, [card, title, updateCard]);
 

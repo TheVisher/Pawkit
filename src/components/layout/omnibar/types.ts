@@ -22,7 +22,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import type { ToastType } from '@/lib/stores/toast-store';
-import type { LocalCard, LocalCollection } from '@/lib/db';
+import type { Card, Collection } from '@/lib/types/convex';
 
 // =============================================================================
 // TYPES
@@ -37,9 +37,22 @@ export interface SearchableAction {
   action: string;
 }
 
+export interface CardSearchSnippet {
+  text: string;
+  matchStart: number;
+  matchLength: number;
+  hasMatch: boolean;
+  hasPrefix: boolean;
+  hasSuffix: boolean;
+}
+
+export interface CardSearchResult extends Card {
+  omnibarSnippet?: CardSearchSnippet;
+}
+
 export interface SearchResults {
-  cards: LocalCard[];
-  collections: LocalCollection[];
+  cards: CardSearchResult[];
+  collections: Collection[];
   actions: SearchableAction[];
   tags?: string[];
 }

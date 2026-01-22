@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useCollections } from '@/lib/hooks/use-live-data';
+import { useCollections } from '@/lib/contexts/convex-data-context';
 import { useDataContext } from '@/lib/contexts/data-context';
 import {
   useLayout,
@@ -21,7 +21,6 @@ import {
 import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter, ScheduledFilter } from '@/lib/stores/view-store';
 import { isOverdue } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
-import { getCardPrivacy } from '@/lib/services/privacy';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
@@ -30,7 +29,7 @@ import { EmptyState } from '@/components/cards/empty-state';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX } from 'lucide-react';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
 
 // Helper to get smart date label (Today, Yesterday, This Week, etc.)
@@ -74,7 +73,7 @@ function getDateLabel(date: Date, dateGrouping: DateGrouping): string {
 }
 
 // Helper to get content type label
-function getContentTypeLabel(card: LocalCard): string {
+function getContentTypeLabel(card: Card): string {
   if (['md-note', 'text-note'].includes(card.type)) return 'Notes';
   if (card.type === 'file') return 'Files';
   if (card.type === 'url') return 'Bookmarks';
@@ -84,7 +83,7 @@ function getContentTypeLabel(card: LocalCard): string {
 interface CardGroup {
   key: string;
   label: string;
-  cards: LocalCard[];
+  cards: Card[];
 }
 
 // Wrapper with Suspense for useSearchParams (Next.js 15+ requirement)
@@ -112,7 +111,7 @@ function LibraryPageLoading() {
 function LibraryPageContent() {
   const searchParams = useSearchParams();
   const workspace = useCurrentWorkspace();
-  const collections = useCollections(workspace?.id);
+  const collections = useCollections();
   // Get cards AND isLoading from the same source to ensure consistency
   // This prevents the "No bookmarks" flash caused by useDeferredValue lag
   // isFullyLoaded indicates whether all cards are loaded (not just initial batch)
@@ -157,7 +156,7 @@ function LibraryPageContent() {
   // Load library-specific view settings on mount
   useEffect(() => {
     if (workspace) {
-      loadViewSettings(workspace.id, 'library');
+      loadViewSettings(workspace._id, 'library');
     }
   }, [workspace, loadViewSettings]);
 
@@ -198,10 +197,6 @@ function LibraryPageContent() {
   // Note: cards are already filtered for _deleted in DataContext
   const activeCards = useMemo(() => {
     return cards.filter((card) => {
-      // Privacy filter - exclude private cards from Library view
-      const privacy = getCardPrivacy(card, collections);
-      if (privacy.isPrivate) return false;
-
       if (!cardMatchesContentTypes(card, contentTypeFilters)) return false;
       // Tag filter - card must have ALL selected tags
       if (selectedTags.length > 0) {
@@ -228,14 +223,15 @@ function LibraryPageContent() {
       if (!cardMatchesLinkStatusFilter(card, linkStatusFilter)) return false;
       // Scheduled status filter
       if (scheduledFilter !== 'all') {
-        const hasSchedule = !!card.scheduledDate;
-        const cardIsOverdue = hasSchedule && isOverdue(card.scheduledDate);
+        const firstScheduledDate = card.scheduledDates?.[0];
+        const hasSchedule = !!firstScheduledDate;
+        const cardIsOverdue = hasSchedule && isOverdue(firstScheduledDate);
         if (scheduledFilter === 'scheduled' && (!hasSchedule || cardIsOverdue)) return false;
         if (scheduledFilter === 'overdue' && !cardIsOverdue) return false;
         if (scheduledFilter === 'not-scheduled' && hasSchedule) return false;
       }
       // Duplicates filter
-      if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
+      if (showDuplicatesOnly && !duplicateCardIds.has(card._id)) return false;
       return true;
     });
   }, [cards, collections, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, pawkitSlugs, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
@@ -246,8 +242,8 @@ function LibraryPageContent() {
     if (sortBy === 'manual' && cardOrder.length > 0) {
       const orderMap = new Map(cardOrder.map((id, index) => [id, index]));
       return [...activeCards].sort((a, b) => {
-        const indexA = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
-        const indexB = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+        const indexA = orderMap.get(a._id) ?? Number.MAX_SAFE_INTEGER;
+        const indexB = orderMap.get(b._id) ?? Number.MAX_SAFE_INTEGER;
         return indexA - indexB;
       });
     }
@@ -320,7 +316,7 @@ function LibraryPageContent() {
       return [{ key: 'all', label: '', cards: paginatedCards }];
     }
 
-    const groups = new Map<string, LocalCard[]>();
+    const groups = new Map<string, Card[]>();
 
     for (const card of paginatedCards) {
       let key: string;

@@ -13,20 +13,20 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
-import { useCollections } from '@/lib/hooks/use-live-data';
+import { useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { cn } from '@/lib/utils';
-import type { LocalCollection } from '@/lib/db';
+import type { Collection } from '@/lib/types/convex';
 
 interface PawkitHeaderProps {
-    collection: LocalCollection;
+    collection: Collection;
 }
 
 export function PawkitHeader({ collection }: PawkitHeaderProps) {
     const workspace = useCurrentWorkspace();
-    const collections = useCollections(workspace?.id);
+    const collections = useCollections();
     const openCoverImagePicker = useModalStore((s) => s.openCoverImagePicker);
 
     // Collision detection for omnibar
@@ -34,11 +34,11 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
     const needsOffset = useOmnibarCollision(headerRef, [collection.name]);
 
     // Build breadcrumb trail
-    const breadcrumbs: LocalCollection[] = [];
-    let current: LocalCollection | undefined = collection;
+    const breadcrumbs: Collection[] = [];
+    let current: Collection | undefined = collection;
 
     while (current && current.parentId) {
-        const parent = collections.find((c) => c.id === current?.parentId);
+        const parent = collections.find((c) => c._id === current?.parentId);
         if (parent) {
             breadcrumbs.unshift(parent);
             current = parent;
@@ -54,7 +54,7 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                 Pawkits
             </Link>
             {breadcrumbs.map((crumb) => (
-                <div key={crumb.id} className="flex items-center gap-1.5">
+                <div key={crumb._id} className="flex items-center gap-1.5">
                     <ChevronRight className="h-3 w-3" />
                     <Link
                         href={`/pawkits/${crumb.slug}`}
@@ -83,7 +83,7 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => openCoverImagePicker(collection.id)}>
+                    <DropdownMenuItem onClick={() => openCoverImagePicker(collection._id)}>
                         <ImagePlus className="h-4 w-4 mr-2" />
                         {hasCoverImage ? 'Change cover' : 'Add cover'}
                     </DropdownMenuItem>
@@ -128,7 +128,7 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                         <div className="absolute top-3 right-3 opacity-0 group-hover/cover:opacity-100 transition-opacity z-20">
                             <button
                                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors border border-border-subtle"
-                                onClick={() => openCoverImagePicker(collection.id)}
+                                onClick={() => openCoverImagePicker(collection._id)}
                             >
                                 <ImagePlus className="h-3.5 w-3.5" />
                                 Change cover

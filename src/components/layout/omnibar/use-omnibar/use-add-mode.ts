@@ -8,7 +8,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import type { Id } from '@/lib/types/convex';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { getSupertagTemplate } from '@/lib/tags/supertags';
 import { htmlToPlateJson, serializePlateContent } from '@/lib/plate/html-to-plate';
@@ -38,9 +39,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
   const router = useRouter();
   const openAddCard = useModalStore((s) => s.openAddCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
-  const createCard = useDataStore((s) => s.createCard);
+  const { createCard } = useMutations();
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
-  const workspaceId = currentWorkspace?.id;
+  const workspaceId = currentWorkspace?._id as Id<'workspaces'> | undefined;
 
   const [isAddMode, setIsAddMode] = useState(false);
   const [addModeSelectedIndex, setAddModeSelectedIndex] = useState(-1);
@@ -135,10 +136,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: jsonContent,
             tags: ['contact'],
             pinned: false,
-            status: 'READY',
             isFileCard: false,
           });
-          openCardDetail(card.id);
+          openCardDetail(card);
         }
         break;
       case 'todo':
@@ -154,10 +154,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: jsonContent,
             tags: ['todo'],
             pinned: false,
-            status: 'READY',
             isFileCard: false,
           });
-          openCardDetail(card.id);
+          openCardDetail(card);
         }
         break;
       case 'subscription':
@@ -173,10 +172,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: jsonContent,
             tags: ['subscription'],
             pinned: false,
-            status: 'READY',
             isFileCard: false,
           });
-          openCardDetail(card.id);
+          openCardDetail(card);
         }
         break;
       case 'recipe':
@@ -192,10 +190,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: jsonContent,
             tags: ['recipe'],
             pinned: false,
-            status: 'READY',
             isFileCard: false,
           });
-          openCardDetail(card.id);
+          openCardDetail(card);
         }
         break;
       case 'reading':
@@ -211,10 +208,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: jsonContent,
             tags: ['reading'],
             pinned: false,
-            status: 'READY',
             isFileCard: false,
           });
-          openCardDetail(card.id);
+          openCardDetail(card);
         }
         break;
       case 'project':
@@ -230,10 +226,9 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
             content: jsonContent,
             tags: ['project'],
             pinned: false,
-            status: 'READY',
             isFileCard: false,
           });
-          openCardDetail(card.id);
+          openCardDetail(card);
         }
         break;
       case 'upload':

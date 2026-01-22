@@ -48,7 +48,6 @@ import {
   type DateGrouping,
   type LinkStatusFilter,
 } from "./config";
-import { forceRecheckAllLinks } from "@/lib/services/link-check-service";
 import { CardDetailsPanel } from "./CardDetailsPanel";
 import { CardDisplaySettings } from "./CardDisplaySettings";
 import {
@@ -64,7 +63,8 @@ import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { SettingsPanel } from "./SettingsPanel";
 import { TagsSidebar } from "@/components/tags/tags-sidebar";
 import { useTagSidebar } from "@/lib/stores/ui-store";
-import { useTagStore } from "@/lib/stores/tag-store";
+import { useMutation } from "convex/react";
+import { api } from "../../../../convex/_generated/api";
 
 export function RightSidebar() {
   const pathname = usePathname();
@@ -83,22 +83,35 @@ export function RightSidebar() {
   const { theme, setTheme } = useTheme();
   const workspace = useCurrentWorkspace();
 
-  // Tag store data for tags sidebar
-  const tagStoreUniqueTags = useTagStore((s) => s.uniqueTags);
-  const tagStoreTagCounts = useTagStore((s) => s.tagCounts);
-  const tagStoreTagColors = useTagStore((s) => s.tagColors);
-  const renameTagAction = useTagStore((s) => s.renameTag);
-  const deleteTagAction = useTagStore((s) => s.deleteTag);
-  const setTagColorAction = useTagStore((s) => s.setTagColor);
-  const getTagColorAction = useTagStore((s) => s.getTagColor);
-  const [isTagProcessing, setIsTagProcessing] = useState(false);
-
   // Get active card from modal store
   const activeCardId = useModalStore((s) => s.activeCardId);
   // Use DataContext for cards/collections - benefits from two-phase loading optimization
   const { cards: allCards, collections: allCollections } = useDataContext();
+
+  // Derive tag data from cards instead of tag-store
+  const tagStoreData = useMemo(() => {
+    const tagCounts: Record<string, number> = {};
+    const tagSet = new Set<string>();
+    for (const card of allCards) {
+      if (card.deleted) continue;
+      for (const tag of card.tags || []) {
+        tagSet.add(tag);
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      }
+    }
+    return {
+      uniqueTags: Array.from(tagSet).sort(),
+      tagCounts,
+      tagColors: {} as Record<string, string>, // Colors handled elsewhere
+    };
+  }, [allCards]);
+  const tagStoreUniqueTags = tagStoreData.uniqueTags;
+  const tagStoreTagCounts = tagStoreData.tagCounts;
+  const tagStoreTagColors = tagStoreData.tagColors;
+  const [isTagProcessing, setIsTagProcessing] = useState(false);
+
   const activeCard = useMemo(
-    () => (activeCardId ? allCards.find((c) => c.id === activeCardId) : null),
+    () => (activeCardId ? allCards.find((c) => c._id === activeCardId) : null),
     [activeCardId, allCards],
   );
 
@@ -229,18 +242,18 @@ export function RightSidebar() {
 
     const slug = pawkitMatch[1];
     const collection = allCollections.find(
-      (c) => c.slug === slug && !c._deleted,
+      (c) => c.slug === slug && !c.deleted,
     );
     if (!collection) return { scopedCards: cards, hasSubPawkits: false };
 
     // Check if this collection has any child collections
     const childCollections = allCollections.filter(
-      (c) => c.parentId === collection.id && !c._deleted,
+      (c) => c.parentId === collection._id && !c.deleted,
     );
 
     // Return only cards in this Pawkit (using tags - Pawkit slug is a tag)
     const filtered = cards.filter(
-      (card) => card.tags?.includes(slug) && !card._deleted,
+      (card) => card.tags?.includes(slug) && !card.deleted,
     );
 
     return {
@@ -265,7 +278,7 @@ export function RightSidebar() {
     let noTags = 0;
     let noPawkits = 0;
     for (const card of scopedCards) {
-      if (card._deleted) continue;
+      if (card.deleted) continue;
       const tags = card.tags || [];
       // A card is "in a Pawkit" if any of its tags match a Pawkit slug
       const hasAnyPawkitTag = tags.some((tag) => pawkitSlugs.has(tag));
@@ -325,7 +338,7 @@ export function RightSidebar() {
   const handleSettingChange = useCallback(() => {
     if (workspace) {
       const timer = setTimeout(() => {
-        saveViewSettings(workspace.id);
+        saveViewSettings(workspace._id);
       }, 500);
       return () => clearTimeout(timer);
     }
@@ -333,43 +346,56 @@ export function RightSidebar() {
 
   const handleToggleOpen = () => setOpen(!isOpen);
 
-  // Tag sidebar handlers
-  const handleTagSidebarRename = useCallback(async (oldTag: string, newTag: string) => {
-    if (!workspace?.id) return;
-    setIsTagProcessing(true);
-    try {
-      await renameTagAction(workspace.id, oldTag, newTag);
-    } finally {
-      setIsTagProcessing(false);
-    }
-  }, [workspace?.id, renameTagAction]);
+  // Tag sidebar handlers - simplified since tags are derived from cards
+  const handleTagSidebarRename = useCallback(async (_oldTag: string, _newTag: string) => {
+    // Tag renaming would require updating all cards with this tag
+    // This is handled through the cards mutation layer
+    console.warn('[RightSidebar] Tag rename not yet implemented for Convex');
+  }, []);
 
-  const handleTagSidebarDelete = useCallback(async (tag: string) => {
-    if (!workspace?.id) return;
-    setIsTagProcessing(true);
-    try {
-      await deleteTagAction(workspace.id, tag);
-      setSelectedTagForSidebar(null);
-    } finally {
-      setIsTagProcessing(false);
-    }
-  }, [workspace?.id, deleteTagAction, setSelectedTagForSidebar]);
+  const handleTagSidebarDelete = useCallback(async (_tag: string) => {
+    // Tag deletion would require removing the tag from all cards
+    // This is handled through the cards mutation layer
+    setSelectedTagForSidebar(null);
+    console.warn('[RightSidebar] Tag delete not yet implemented for Convex');
+  }, [setSelectedTagForSidebar]);
 
   const handleDeleteUnusedTags = useCallback(async () => {
-    // Unused tags are pending tags with count 0
-    // We just clear them from the store by refreshing
-    if (!workspace?.id) return;
-    setIsTagProcessing(true);
-    try {
-      // Delete all tags with count 0
-      const unusedTags = tagStoreUniqueTags.filter((tag) => (tagStoreTagCounts[tag] || 0) === 0);
-      for (const tag of unusedTags) {
-        await deleteTagAction(workspace.id, tag);
-      }
-    } finally {
-      setIsTagProcessing(false);
+    // In the new model, tags only exist on cards, so unused tags don't exist
+    console.warn('[RightSidebar] Unused tags cleanup not needed - tags are derived from cards');
+  }, []);
+
+  // Tag color handlers
+  const updateWorkspacePreferences = useMutation(api.workspaces.updatePreferences);
+
+  const handleSetTagColor = useCallback(async (tag: string, hsl: string | null) => {
+    if (!workspace) return;
+
+    const currentColors = (workspace.preferences?.tagColors as Record<string, string>) || {};
+    const newColors = { ...currentColors };
+
+    if (hsl === null) {
+      // Remove custom color (reset to auto)
+      delete newColors[tag];
+    } else {
+      newColors[tag] = hsl;
     }
-  }, [workspace?.id, tagStoreUniqueTags, tagStoreTagCounts, deleteTagAction]);
+
+    try {
+      await updateWorkspacePreferences({
+        id: workspace._id,
+        tagColors: newColors,
+      });
+    } catch (error) {
+      console.error('[RightSidebar] Failed to update tag color:', error);
+    }
+  }, [workspace, updateWorkspacePreferences]);
+
+  const getTagColor = useCallback((tag: string): string | undefined => {
+    if (!workspace) return undefined;
+    const tagColors = (workspace.preferences?.tagColors as Record<string, string>) || {};
+    return tagColors[tag];
+  }, [workspace]);
 
   // Cycle through themes
   const cycleTheme = () => {
@@ -612,11 +638,7 @@ export function RightSidebar() {
                 <AdvancedFilterSection
                   linkStatusFilter={linkStatusFilter}
                   onLinkStatusChange={setLinkStatusFilter}
-                  onRecheckLinks={
-                    workspace
-                      ? () => forceRecheckAllLinks(workspace.id)
-                      : undefined
-                  }
+                  onRecheckLinks={undefined}
                   showDuplicatesOnly={showDuplicatesOnly}
                   duplicateCount={duplicateCount}
                   onToggleDuplicates={setShowDuplicatesOnly}
@@ -659,13 +681,13 @@ export function RightSidebar() {
                 selectedTag={selectedTagForSidebar}
                 tagCounts={tagStoreTagCounts}
                 uniqueTags={tagStoreUniqueTags}
-                tagColors={tagStoreTagColors}
+                tagColors={(workspace?.preferences?.tagColors as Record<string, string>) || {}}
                 onClose={() => setSelectedTagForSidebar(null)}
                 onRenameTag={handleTagSidebarRename}
                 onDeleteTag={handleTagSidebarDelete}
                 onDeleteUnusedTags={handleDeleteUnusedTags}
-                onSetTagColor={setTagColorAction}
-                getTagColor={getTagColorAction}
+                onSetTagColor={handleSetTagColor}
+                getTagColor={getTagColor}
                 isProcessing={isTagProcessing}
               />
             )}

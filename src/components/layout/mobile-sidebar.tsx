@@ -20,15 +20,15 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
 import { TagTree } from '@/components/tags/tag-tree';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { useAuthStore } from '@/lib/stores/auth-store';
+import { useConvexUser } from '@/lib/hooks/convex/use-convex-user';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useRightSidebarSettings } from '@/lib/stores/ui-store';
-import { getClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface MobileSidebarProps {
@@ -46,9 +46,10 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const user = useAuthStore((s) => s.user);
+  const { user } = useConvexUser();
   const workspace = useCurrentWorkspace();
   const { toggleSettings } = useRightSidebarSettings();
+  const { signOut } = useAuthActions();
   const [pawkitsExpanded, setPawkitsExpanded] = useState(true);
   const [tagsExpanded, setTagsExpanded] = useState(false);
 
@@ -61,8 +62,7 @@ export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : SunMoon;
 
   const handleSignOut = async () => {
-    const supabase = getClient();
-    await supabase.auth.signOut();
+    await signOut();
     router.push('/login');
     router.refresh();
   };

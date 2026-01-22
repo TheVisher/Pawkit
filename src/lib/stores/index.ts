@@ -3,21 +3,6 @@
  * Re-exports all Zustand stores and hooks
  */
 
-// Auth
-export {
-  useAuthStore,
-  useUser,
-  useSession,
-  useIsAuthenticated,
-  useUserId,
-  useAuthLoading,
-  selectUser,
-  selectSession,
-  selectIsAuthenticated,
-  selectIsLoading,
-  selectUserId,
-} from './auth-store';
-
 // Workspace
 export {
   useWorkspaceStore,
@@ -29,12 +14,8 @@ export {
   selectCurrentWorkspaceId,
 } from './workspace-store';
 
-// Data (cards, collections)
-// Note: useCards and useCollections are now in @/lib/hooks/use-live-data
-export {
-  useDataStore,
-  useDataLoading,
-} from './data-store';
+// Data (cards, collections) - now provided by ConvexDataProvider
+// Use: import { useCards, useCollections, useMutations } from '@/lib/contexts/convex-data-context';
 
 // UI
 export {
@@ -71,29 +52,7 @@ export {
   selectDisplaySettings,
 } from './view-store';
 
-// Sync
-export {
-  useSyncStore,
-  selectSyncStatus,
-  selectLastSyncTime,
-  selectPendingCount,
-  selectLastError,
-  selectIsSyncing,
-  selectIsOffline,
-} from './sync-store';
-export type { SyncStatus } from './sync-store';
-
-// Tags
-export {
-  useTagStore,
-  useTagInput,
-  useTagTree,
-  useTagManagement,
-  selectUniqueTags,
-  selectTagCounts,
-  selectTagTree,
-  selectRecentTags,
-} from './tag-store';
+// Tags - computed from cards, use useCards() and derive tags from card.tags
 
 // Layout Cache
 export {

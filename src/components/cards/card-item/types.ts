@@ -1,5 +1,5 @@
 import { Globe, FileText } from 'lucide-react';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import type { SystemTag } from '@/lib/utils/system-tags';
 
 // =============================================================================
@@ -33,7 +33,7 @@ export const DEFAULT_CARD_DISPLAY: CardDisplaySettings = {
 };
 
 export interface CardItemProps {
-  card: LocalCard;
+  card: Card;
   variant?: 'grid' | 'list';
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;

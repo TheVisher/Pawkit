@@ -10,8 +10,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCardCalendarSync } from '@/lib/hooks/use-card-calendar-sync';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { PawkitPlateEditor } from '@/components/editor';
 import { ContactPhotoHeader } from '../contact-photo-header';
 import { isSupertag } from '@/lib/tags/supertags';
@@ -21,14 +20,14 @@ import {
   isPlateJson,
   parseJsonContent,
 } from '@/lib/plate/html-to-plate';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 // Simple type for Plate content
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type PlateContent = any[];
 
 interface NoteContentProps {
-  card: LocalCard;
+  card: Card;
   title: string;
   setTitle?: (title: string) => void;
   onTitleBlur?: () => void;
@@ -36,7 +35,7 @@ interface NoteContentProps {
 }
 
 export function NoteContent({ card, title, setTitle, onTitleBlur, className }: NoteContentProps) {
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { updateCard } = useMutations();
 
   // Parse content - could be HTML (legacy) or JSON string (new format)
   const initialContent = useMemo(() => {
@@ -52,8 +51,7 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
   // Local state for Plate content
   const [plateContent, setPlateContent] = useState<PlateContent | string>(initialContent);
 
-  // Sync dates to calendar when card content changes
-  useCardCalendarSync(card);
+  // Note: Calendar sync removed - handled by Convex or external services
 
   // Sync local state when card changes (including external updates like Quick Convert)
   useEffect(() => {
@@ -64,14 +62,14 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
     } else {
       setPlateContent(raw);
     }
-  }, [card.id, card.content]);
+  }, [card._id, card.content]);
 
   // Save content when editor changes - serialize to JSON string
   const handleContentChange = useCallback((value: PlateContent) => {
     setPlateContent(value);
     const jsonString = serializePlateContent(value);
-    updateCard(card.id, { content: jsonString });
-  }, [card.id, updateCard]);
+    updateCard(card._id, { content: jsonString });
+  }, [card._id, updateCard]);
 
   // Calculate stats from Plate content
   const stats = useMemo(() => {
@@ -112,7 +110,7 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
           onChange={handleContentChange}
           placeholder="Type '/' for commands or just start writing..."
           workspaceId={card.workspaceId}
-          cardId={card.id}
+          cardId={card._id}
           variant="default"
         />
       </div>

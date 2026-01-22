@@ -1,5 +1,5 @@
 import { Bookmark, FileText, Image as ImageIcon } from 'lucide-react';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 import type { SystemTag } from '@/lib/utils/system-tags';
 
 // =============================================================================
@@ -27,11 +27,11 @@ export type SortDirection = 'asc' | 'desc';
 export interface CardGroup {
   key: string;
   label: string;
-  cards: LocalCard[];
+  cards: Card[];
 }
 
 export interface CardListViewProps {
-  cards: LocalCard[];
+  cards: Card[];
   groups?: CardGroup[];
   groupIcon?: React.ComponentType<{ className?: string }>;
   onReorder?: (reorderedIds: string[]) => void;
@@ -105,7 +105,7 @@ export const MIN_COLUMN_WIDTH = 60;
 // HELPERS
 // =============================================================================
 
-export function getCardType(card: LocalCard): string {
+export function getCardType(card: Card): string {
   switch (card.type) {
     case 'md-note': return 'Note';
     case 'text-note': return 'Note';
@@ -116,7 +116,7 @@ export function getCardType(card: LocalCard): string {
   }
 }
 
-export function getCardIcon(card: LocalCard) {
+export function getCardIcon(card: Card) {
   switch (card.type) {
     case 'md-note': return FileText;
     case 'text-note': return FileText;

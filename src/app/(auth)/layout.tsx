@@ -1,17 +1,40 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+'use client';
 
-export default async function AuthLayout({
+import { useRouter } from 'next/navigation';
+import { useConvexAuth } from 'convex/react';
+import { useEffect } from 'react';
+
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const router = useRouter();
+  const { isLoading, isAuthenticated } = useConvexAuth();
 
-  // Redirect to dashboard if already logged in
-  if (user) {
-    redirect('/dashboard');
+  useEffect(() => {
+    // Redirect to dashboard if already logged in
+    if (!isLoading && isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isLoading, isAuthenticated, router]);
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="text-zinc-400">Loading...</div>
+      </div>
+    );
+  }
+
+  // If authenticated, don't render children (redirect will happen)
+  if (isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+        <div className="text-zinc-400">Redirecting...</div>
+      </div>
+    );
   }
 
   return (

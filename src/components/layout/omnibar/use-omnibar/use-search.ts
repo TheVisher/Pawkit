@@ -8,25 +8,26 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { format, isSameDay, startOfDay } from 'date-fns';
-import { db } from '@/lib/db';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useTagStore } from '@/lib/stores/tag-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
+import { Id } from '@/lib/types/convex';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, type SearchResults } from '../types';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { detectTodo } from '@/lib/utils/todo-detection';
 import { addTaskToContent } from '@/lib/utils/parse-task-items';
 import { suggestSimilarTags, validateTag, cleanTagInput, findExistingTag } from '@/lib/utils/tag-normalizer';
+import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 import {
   isPlateJson,
   parseJsonContent,
   serializePlateContent,
   htmlToPlateJson,
+  extractPlateText,
 } from '@/lib/plate/html-to-plate';
 import type { Value, Descendant } from 'platejs';
 
@@ -76,6 +77,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const [textareaHeight, setTextareaHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isDiscardingRef = useRef(false);
+  const addDraftToClipboard = useOmnibarClipboardStore((s) => s.addDraft);
 
   // Tag creation state
   const [pendingTagCreation, setPendingTagCreation] = useState<string | null>(null);
@@ -94,13 +96,22 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const toggleLeftSidebar = useUIStore((s) => s.toggleLeftSidebar);
   const openAddCard = useModalStore((s) => s.openAddCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
-  const createCard = useDataStore((s) => s.createCard);
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { createCard, updateCard } = useMutations();
   const currentWorkspace = useCurrentWorkspace();
-  const cards = useCards(currentWorkspace?.id);
-  const collections = useCollections(currentWorkspace?.id);
-  const uniqueTags = useTagStore((s) => s.uniqueTags);
-  const createTag = useTagStore((s) => s.createTag);
+  const cards = useCards();
+  const collections = useCollections();
+
+  // Derive uniqueTags from cards instead of using tag-store
+  const uniqueTags = useMemo(() => {
+    const tagSet = new Set<string>();
+    for (const card of cards) {
+      if (card.deleted) continue;
+      for (const tag of card.tags || []) {
+        tagSet.add(tag);
+      }
+    }
+    return Array.from(tagSet).sort();
+  }, [cards]);
 
   // Debounce search query
   const debouncedQuery = useDebounce(quickNoteText, 150);
@@ -247,7 +258,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       ? query.slice(1).toLowerCase()
       : lowerQuery;
 
-    let matchedCards: typeof cards = [];
+    let matchedCards: SearchResults['cards'] = [];
     let matchedCollections: typeof collections = [];
     let matchedActions: typeof SEARCHABLE_ACTIONS = [];
     let matchedTags: string[] = [];
@@ -271,18 +282,95 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         col.name.toLowerCase().includes(searchQuery)
       ).slice(0, 5);
     } else {
-      matchedCards = cards.filter(card => {
+      const normalizeSnippetText = (value: string) =>
+        value.replace(/\s+/g, ' ').trim();
+
+      const getPlainText = (content: unknown): string => {
+        if (!content) return '';
+        if (Array.isArray(content)) {
+          return extractPlateText(content as Value);
+        }
+        if (typeof content === 'string') {
+          if (isPlateJson(content)) {
+            const parsed = parseJsonContent(content);
+            if (parsed) return extractPlateText(parsed);
+          }
+          return stripHtml(content);
+        }
+        return '';
+      };
+
+      const buildSnippet = (text: string, queryValue: string) => {
+        const normalized = normalizeSnippetText(text);
+        if (!normalized) return null;
+        const lowerText = normalized.toLowerCase();
+        const lowerQuery = queryValue.toLowerCase();
+        const matchIndex = lowerText.indexOf(lowerQuery);
+        if (matchIndex === -1) return null;
+
+        const context = 36;
+        const start = Math.max(0, matchIndex - context);
+        const end = Math.min(normalized.length, matchIndex + lowerQuery.length + context);
+        return {
+          text: normalized.slice(start, end),
+          matchStart: matchIndex - start,
+          matchLength: lowerQuery.length,
+          hasMatch: true,
+          hasPrefix: start > 0,
+          hasSuffix: end < normalized.length,
+        };
+      };
+
+      const createCardSnippet = (card: (typeof cards)[number]) => {
+        if (card.type === 'md-note' || card.type === 'text-note') {
+          const plainText = getPlainText(card.content || '');
+          const snippet = buildSnippet(plainText, lowerQuery);
+          if (snippet) return snippet;
+        }
+
+        const description = card.description ?? '';
+        const descriptionSnippet = buildSnippet(description, lowerQuery);
+        if (descriptionSnippet) return descriptionSnippet;
+
+        const notes = card.notes ?? '';
+        const notesSnippet = buildSnippet(notes, lowerQuery);
+        if (notesSnippet) return notesSnippet;
+
+        const title = card.title ?? '';
+        const titleSnippet = buildSnippet(title, lowerQuery);
+        if (titleSnippet) return titleSnippet;
+
+        const domain = card.domain ?? '';
+        const domainSnippet = buildSnippet(domain, lowerQuery);
+        if (domainSnippet) return domainSnippet;
+
+        const tagMatch = card.tags?.find((tag) =>
+          tag.toLowerCase().includes(lowerQuery)
+        );
+        if (tagMatch) {
+          return buildSnippet(tagMatch, lowerQuery);
+        }
+
+        return null;
+      };
+
+      const filteredCards = cards.filter(card => {
         if (card.title?.toLowerCase().includes(lowerQuery)) return true;
         if (card.domain?.toLowerCase().includes(lowerQuery)) return true;
         if (card.tags?.some(t => t.toLowerCase().includes(lowerQuery))) return true;
 
         if (card.type === 'md-note' || card.type === 'text-note') {
-          const plainText = stripHtml(card.content || '');
+          const plainText = getPlainText(card.content || '');
           if (plainText.toLowerCase().includes(lowerQuery)) return true;
         }
 
         return false;
       }).slice(0, 5);
+
+      matchedCards = filteredCards.map((card) => ({
+        ...card,
+        omnibarSnippet: createCardSnippet(card) ?? undefined,
+      }));
 
       matchedCollections = collections.filter(col =>
         col.name.toLowerCase().includes(lowerQuery)
@@ -355,12 +443,40 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     setForceExpanded(false);
     setSelectedIndex(-1);
     setShowDiscardConfirm(false);
-    setTextareaHeight(0);
     setPendingTagCreation(null);
     setSimilarTagsWarning([]);
     textareaRef.current?.blur();
     setTimeout(() => { isDiscardingRef.current = false; }, 0);
   }, []);
+
+  const stashDraft = useCallback(() => {
+    const trimmed = quickNoteText.trim();
+    if (!trimmed) {
+      resetSearch();
+      return;
+    }
+
+    if (
+      !trimmed.startsWith('/') &&
+      !trimmed.startsWith('#') &&
+      !trimmed.startsWith('@') &&
+      !isOnTagsPage
+    ) {
+      addDraftToClipboard(trimmed);
+    }
+
+    isDiscardingRef.current = true;
+    setIsQuickNoteMode(false);
+    setSearchResults(null);
+    setForceExpanded(false);
+    setSelectedIndex(-1);
+    setShowDiscardConfirm(false);
+    setTextareaHeight(0);
+    setPendingTagCreation(null);
+    setSimilarTagsWarning([]);
+    textareaRef.current?.blur();
+    setTimeout(() => { isDiscardingRef.current = false; }, 0);
+  }, [quickNoteText, resetSearch, addDraftToClipboard, isOnTagsPage]);
 
   const executeResult = useCallback((index: number) => {
     if (!searchResults || index < 0) return;
@@ -369,7 +485,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
 
     if (index < currentIdx + searchResults.cards.length) {
       const card = searchResults.cards[index - currentIdx];
-      openCardDetail(card.id);
+      openCardDetail(card._id);
       resetSearch();
       return;
     }
@@ -432,7 +548,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         const normalizedInput = normalizeUrl(url);
 
         const existingCard = cards.find((card) => {
-          if (card._deleted) return false;
+          if (card.deleted) return false;
           if (card.type !== 'url') return false;
           if (!card.url) return false;
           return normalizeUrl(card.url) === normalizedInput;
@@ -444,14 +560,14 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
             message: 'This URL is already saved',
             action: {
               label: 'View existing',
-              onClick: () => openCardDetail(existingCard.id),
+              onClick: () => openCardDetail(existingCard._id),
             },
           });
           return;
         }
 
         await createCard({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentWorkspace._id as Id<'workspaces'>,
           type: 'url',
           url: url,
           title: '',
@@ -459,7 +575,6 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
           tags: [],
           pinned: false,
           isFileCard: false,
-          status: 'PENDING',
         });
 
         resetSearch();
@@ -481,18 +596,15 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         ],
       }));
 
-      // Find today's daily note
-      const existingNotes = await db.cards
-        .where('workspaceId')
-        .equals(currentWorkspace.id)
-        .filter(
-          (c) =>
-            c.isDailyNote === true &&
-            c.scheduledDate != null &&
-            isSameDay(new Date(c.scheduledDate), today) &&
-            c._deleted !== true
-        )
-        .toArray();
+      // Find today's daily note from the cards array
+      const existingNotes = cards.filter(
+        (c) =>
+          c.workspaceId === currentWorkspace._id &&
+          c.isDailyNote === true &&
+          c.scheduledDates?.[0] != null &&
+          isSameDay(new Date(c.scheduledDates[0]), today) &&
+          c.deleted !== true
+      );
 
       let dailyNote = existingNotes.length > 0
         ? existingNotes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
@@ -516,44 +628,44 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         } else {
           newContent = serializePlateContent(entryNodes as Value);
         }
-        await updateCard(dailyNote.id, { content: newContent });
+        await updateCard(dailyNote._id, { content: newContent });
       } else {
         // Create new daily note with Plate JSON content
         await createCard({
-          workspaceId: currentWorkspace.id,
+          workspaceId: currentWorkspace._id as Id<'workspaces'>,
           type: 'md-note',
           url: '',
           title: format(today, 'MMMM d, yyyy'),
           content: serializePlateContent(entryNodes as Value),
           isDailyNote: true,
-          scheduledDate: startOfDay(today),
+          scheduledDates: [startOfDay(today).toISOString()],
           tags: ['daily-note'],
           pinned: false,
           isFileCard: false,
-          status: 'READY',
         });
       }
 
       // Todo detection: if text is a task, also add to todo card
       const todoResult = detectTodo(trimmedText);
       if (todoResult.isTodo) {
-        // Find existing todo card
-        const todoCards = await db.cards
-          .where('workspaceId')
-          .equals(currentWorkspace.id)
-          .filter((c) => c.tags?.includes('todo') && c._deleted !== true)
-          .toArray();
+        // Find existing todo card from the cards array
+        const todoCardsList = cards.filter(
+          (c) =>
+            c.workspaceId === currentWorkspace._id &&
+            c.tags?.includes('todo') &&
+            c.deleted !== true
+        );
 
-        const todoCard = todoCards.length > 0 ? todoCards[0] : null;
+        const todoCard = todoCardsList.length > 0 ? todoCardsList[0] : null;
 
         if (todoCard) {
           const newContent = addTaskToContent(todoCard.content || '', trimmedText);
-          await updateCard(todoCard.id, { content: newContent });
+          await updateCard(todoCard._id, { content: newContent });
         } else {
           // Create new todo card with task
           const content = addTaskToContent('', trimmedText);
           await createCard({
-            workspaceId: currentWorkspace.id,
+            workspaceId: currentWorkspace._id as Id<'workspaces'>,
             type: 'md-note',
             url: '',
             title: 'Todos',
@@ -561,7 +673,6 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
             tags: ['todo'],
             pinned: false,
             isFileCard: false,
-            status: 'READY',
           });
         }
 
@@ -613,28 +724,27 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         message: `Similar tag${similarTags.length > 1 ? 's' : ''} exist${similarTags.length === 1 ? 's' : ''}: ${similarTags.join(', ')}. Press Enter again to create anyway.`,
       });
     } else {
-      // No similar tags, create directly
-      createTag(cleaned);
-      toast({ type: 'success', message: `Tag "${cleaned}" created` });
+      // No similar tags - tags are created when added to cards, just show success
+      toast({ type: 'success', message: `Tag "${cleaned}" is available for use` });
       // Clear URL filter before resetting (resetSearch sets isQuickNoteMode=false which prevents URL cleanup)
       if (isOnTagsPage) {
         router.replace('/tags', { scroll: false });
       }
       resetSearch();
     }
-  }, [quickNoteText, uniqueTags, toast, createTag, resetSearch, isOnTagsPage, router]);
+  }, [quickNoteText, uniqueTags, toast, resetSearch, isOnTagsPage, router]);
 
   const confirmTagCreation = useCallback(() => {
     if (!pendingTagCreation) return;
 
-    createTag(pendingTagCreation);
-    toast({ type: 'success', message: `Tag "${pendingTagCreation}" created` });
+    // Tags are created when added to cards - just confirm availability
+    toast({ type: 'success', message: `Tag "${pendingTagCreation}" is available for use` });
     // Clear URL filter before resetting
     if (isOnTagsPage) {
       router.replace('/tags', { scroll: false });
     }
     resetSearch();
-  }, [pendingTagCreation, createTag, toast, resetSearch, isOnTagsPage, router]);
+  }, [pendingTagCreation, toast, resetSearch, isOnTagsPage, router]);
 
   const cancelTagCreation = useCallback(() => {
     setPendingTagCreation(null);
@@ -695,15 +805,13 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         return;
       }
 
-      if (showDiscardConfirm) {
-        confirmDiscard();
-      } else if (quickNoteText.trim()) {
-        setShowDiscardConfirm(true);
+      if (quickNoteText.trim()) {
+        stashDraft();
       } else {
         resetSearch();
       }
     }
-  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation]);
+  }, [quickNoteText, saveQuickNote, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation, stashDraft]);
 
   const handleQuickNoteBlur = useCallback((e: React.FocusEvent) => {
     if (isDiscardingRef.current) return;
@@ -717,11 +825,11 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     }
 
     if (quickNoteText.trim()) {
-      setShowDiscardConfirm(true);
+      stashDraft();
     } else {
       resetSearch();
     }
-  }, [quickNoteText, isOnTagsPage, resetSearch]);
+  }, [quickNoteText, isOnTagsPage, resetSearch, stashDraft]);
 
   const confirmDiscard = useCallback(() => {
     resetSearch();
@@ -784,7 +892,9 @@ export function getSearchHeight(
   textareaHeight: number,
   searchResults: SearchResults | null,
   isOnTagsPage: boolean,
-  similarTagsWarning: string[] = []
+  similarTagsWarning: string[] = [],
+  clipboardOpen: boolean = false,
+  clipboardItemsCount: number = 0
 ): number {
   if (!isQuickNoteMode) return 48;
 
@@ -815,11 +925,12 @@ export function getSearchHeight(
 
   if (searchResults && isQuickNoteMode) {
     const { cards, collections, actions, tags } = searchResults;
+    const isRecentMode = !hasTypedContent && !isPrefixCommand;
     // Item heights: py-3 (24px) + two text lines (~36px) = ~60px, but md:py-2 reduces to ~52px
-    const itemHeight = 52;
-    const headerHeight = 28;
-    const tipsHeight = 52;
-    const containerPadding = 16; // mt-2 + pt-2 + border
+    const itemHeight = isRecentMode ? 44 : 52;
+    const headerHeight = isRecentMode ? 24 : 28;
+    const tipsHeight = isRecentMode ? 40 : 52;
+    const containerPadding = isRecentMode ? 12 : 16; // mt-2 + pt-2 + border
 
     let sectionsWithItems = 0;
     let totalItems = 0;
@@ -841,6 +952,13 @@ export function getSearchHeight(
     if (!hasTypedContent && cards.length > 0) {
       height += tipsHeight;
     }
+  }
+
+  if (clipboardOpen && clipboardItemsCount > 0 && !hasTypedContent) {
+    const itemHeight = 38;
+    const headerHeight = 24;
+    const containerPadding = 12;
+    height += headerHeight + containerPadding + itemHeight * Math.min(clipboardItemsCount, 10);
   }
 
   return Math.min(Math.max(48, height), 600);

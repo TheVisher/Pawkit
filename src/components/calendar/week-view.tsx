@@ -11,12 +11,12 @@ import {
   parseISO,
 } from 'date-fns';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
-import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
+import { useCards, useCalendarEvents } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
-import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
+import type { Card, CalendarEvent } from '@/lib/types/convex';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // px
@@ -39,8 +39,8 @@ interface CalendarItem {
 export function WeekView() {
   const { currentDate } = useCalendarStore();
   const workspace = useCurrentWorkspace();
-  const events = useCalendarEvents(workspace?.id);
-  const cards = useCards(workspace?.id);
+  const events = useCalendarEvents();
+  const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Get the 7 days of the week
@@ -71,7 +71,7 @@ export function WeekView() {
         map.set(dateKey, []);
       }
       map.get(dateKey)!.push({
-        id: event.isOccurrence ? `${event.id}-${dateKey}` : event.id,
+        id: event.isOccurrence ? `${event._id}-${dateKey}` : event._id,
         title: event.title,
         date: dateKey,
         color: event.color,
@@ -83,34 +83,25 @@ export function WeekView() {
       });
     });
 
-    // Add scheduled cards - support both legacy scheduledDate and new scheduledDates array
-    cards.forEach((card: LocalCard) => {
-      // Get all scheduled dates for this card
-      const scheduledDates: string[] = [];
-
-      // Support new scheduledDates array
-      if (card.scheduledDates && card.scheduledDates.length > 0) {
-        scheduledDates.push(...card.scheduledDates);
-      }
-      // Fallback to legacy scheduledDate (for migration period)
-      else if (card.scheduledDate) {
-        scheduledDates.push(format(new Date(card.scheduledDate), 'yyyy-MM-dd'));
-      }
+    // Add scheduled cards (using scheduledDates array)
+    cards.forEach((card: Card) => {
+      // Skip cards with no scheduled dates
+      if (!card.scheduledDates || card.scheduledDates.length === 0) return;
 
       // Add card to each scheduled date
-      scheduledDates.forEach((dateKey) => {
+      card.scheduledDates.forEach((dateKey) => {
         if (!map.has(dateKey)) {
           map.set(dateKey, []);
         }
         map.get(dateKey)!.push({
-          id: `${card.id}-${dateKey}`, // Unique ID for each date occurrence
+          id: `${card._id}-${dateKey}`, // Unique ID for each date occurrence
           title: card.title || card.url || 'Untitled',
           date: dateKey,
           type: 'card',
           isAllDay: !card.scheduledStartTime,
           startTime: card.scheduledStartTime,
           endTime: card.scheduledEndTime,
-          source: { type: 'card', cardId: card.id },
+          source: { type: 'card', cardId: card._id },
         });
       });
     });

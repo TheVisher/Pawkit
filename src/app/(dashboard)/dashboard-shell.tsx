@@ -1,15 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback, startTransition } from 'react';
-import { useAuthStore } from '@/lib/stores/auth-store';
-import { useWorkspaceStore } from '@/lib/stores/workspace-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { runTagArchitectureMigration, normalizeAllTags } from '@/lib/migrations/tag-architecture-migration';
-import { runAspectRatioBackfill } from '@/lib/migrations/aspect-ratio-migration';
+import { useRouter } from 'next/navigation';
+import { useConvexAuth } from 'convex/react';
+import { WorkspaceProvider } from '@/lib/stores/workspace-store';
 import { hydrateLayoutCache } from '@/lib/stores/layout-cache-store';
-import { useSync } from '@/lib/hooks/use-sync';
-import { useTauriEvents } from '@/lib/hooks/use-tauri-events';
-import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 import { useLayoutAnchors, getRightSidebarWidth } from '@/lib/stores/ui-store';
 import { useApplySettings } from '@/lib/stores/settings-store';
 import { useActiveToast } from '@/lib/stores/toast-store';
@@ -27,7 +22,9 @@ import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AppDndProvider } from '@/lib/contexts/dnd-context';
-import { DataProvider } from '@/lib/contexts/data-context';
+import { ConvexDataProvider } from '@/lib/contexts/convex-data-context';
+import { PlateDndProvider } from '@/components/editor/plate-dnd-provider';
+import { TagColorsProvider } from '@/lib/contexts/tag-colors-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
 
@@ -37,16 +34,15 @@ const log = createModuleLogger('DashboardShell');
 const OMNIBAR_SCROLL_THRESHOLD = 20;
 
 interface DashboardShellProps {
-  userId: string;
-  userEmail: string;
   children: React.ReactNode;
 }
 
-export function DashboardShell({ userId, userEmail, children }: DashboardShellProps) {
-  const [isInitialized, setIsInitialized] = useState(false);
+export function DashboardShell({ children }: DashboardShellProps) {
+  // ALL HOOKS MUST BE AT THE TOP - before any early returns
+  const router = useRouter();
+  const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
   const [mounted, setMounted] = useState(false);
   const initStarted = useRef(false);
-  const workspaceEnsured = useRef(false); // Prevents double workspace creation in Strict Mode
 
   // Hover state for revealing closed sidebars
   const [leftHovered, setLeftHovered] = useState(false);
@@ -71,26 +67,6 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   // Track current hover state with refs to avoid triggering re-renders for repeated setState calls
   const leftHoveredRef = useRef(false);
   const rightHoveredRef = useRef(false);
-
-  const setBasicUserInfo = useAuthStore((s) => s.setBasicUserInfo);
-  const setLoading = useAuthStore((s) => s.setLoading);
-  const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
-  const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
-  const setWorkspaces = useWorkspaceStore((s) => s.setWorkspaces);
-  const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrentWorkspace);
-  const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
-  const workspaces = useWorkspaceStore((s) => s.workspaces);
-  const workspacesLoading = useWorkspaceStore((s) => s.isLoading);
-  const loadAll = useDataStore((s) => s.loadAll);
-
-  // Initialize sync engine (gets workspace from useWorkspaceStore internally)
-  useSync();
-
-  // Listen for Tauri events (desktop app portal, etc.)
-  useTauriEvents();
-
-  // Subscribe to Supabase Realtime for cross-device sync
-  useRealtimeSync();
 
   // Apply appearance settings (accent color, background) as CSS variables
   useApplySettings();
@@ -122,127 +98,16 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     return () => window.removeEventListener('resize', updateScreenSize);
   }, []);
 
+  // Initialize auth store with user info
   useEffect(() => {
-    async function init() {
-      if (initStarted.current) return;
-      initStarted.current = true;
+    if (initStarted.current) return;
+    initStarted.current = true;
 
-      // Set user info in auth store
-      setBasicUserInfo({ id: userId, email: userEmail });
-
-      // Load workspaces from Dexie BEFORE hiding loading state
-      await loadWorkspaces(userId);
-
-      // Only hide loading state after data is loaded
-      setLoading(false);
-    }
-
-    init();
-  }, [userId, userEmail, setBasicUserInfo, setLoading, loadWorkspaces]);
-
-  useEffect(() => {
-    async function ensureWorkspace() {
-      // Wait for workspaces to finish loading before checking
-      if (workspacesLoading) return;
-      if (isInitialized) return;
-
-      // Ref guard prevents double execution in React Strict Mode
-      if (workspaceEnsured.current) return;
-      workspaceEnsured.current = true;
-
-      // Simple workspace logic:
-      // 1. Fetch workspaces from server
-      // 2. If any exist, use the default one
-      // 3. If none exist, create ONE default workspace
-      // That's it. No magic, no cleanup, no complexity.
-
-      try {
-        const response = await fetch('/api/workspaces');
-        if (response.ok) {
-          const data = await response.json();
-          const serverWorkspaces = data.workspaces || [];
-
-          if (serverWorkspaces.length > 0) {
-            // Use existing workspaces
-            setWorkspaces(serverWorkspaces);
-
-            // Find default workspace, or use first one
-            const defaultWorkspace = serverWorkspaces.find((w: { isDefault?: boolean }) => w.isDefault) || serverWorkspaces[0];
-            setCurrentWorkspace(defaultWorkspace);
-
-            log.info('Using workspace:', defaultWorkspace.name);
-            setIsInitialized(true);
-            return;
-          }
-        }
-      } catch (error) {
-        log.error('Failed to fetch workspaces:', error);
-        // Fall back to local workspaces if server unavailable
-        if (workspaces.length > 0) {
-          setIsInitialized(true);
-          return;
-        }
-      }
-
-      // No workspaces exist - create the default (only happens on first signup)
-      log.info('First time user, creating default workspace...');
-      await createWorkspace('My Workspace', userId);
-      setIsInitialized(true);
-    }
-
-    ensureWorkspace();
-  }, [workspaces, workspacesLoading, userId, createWorkspace, setWorkspaces, setCurrentWorkspace, isInitialized]);
-
-  const purgeOldTrash = useDataStore((s) => s.purgeOldTrash);
-
-  useEffect(() => {
-    // Load data when workspace is available
-    // Run all initialization tasks in parallel (Phase 4.1 optimization)
-    // See: Performance optimization plan - Phase 4.1
-    if (currentWorkspace) {
-      const workspaceId = currentWorkspace.id;
-
-      // Fire all initialization tasks in parallel - don't await sequentially
-      Promise.all([
-        // Tag architecture migration (one-time, merges collections into tags)
-        runTagArchitectureMigration(false, workspaceId).catch((error) => {
-          log.error('Tag migration failed:', error);
-          return { cardsUpdated: 0 };
-        }),
-        // Normalize all tags to lowercase (one-time)
-        normalizeAllTags(workspaceId).catch((error) => {
-          log.error('Tag normalization failed:', error);
-          return { cardsUpdated: 0 };
-        }),
-        // Load data from IndexedDB
-        loadAll(workspaceId),
-        // Auto-purge trash items older than 30 days
-        purgeOldTrash(workspaceId, 30).catch(() => 0),
-        // Hydrate layout cache from IndexedDB for instant masonry render
-        hydrateLayoutCache().catch((error) => {
-          log.error('Layout cache hydration failed:', error);
-        }),
-        // Backfill aspectRatio for cards created before extraction was added
-        runAspectRatioBackfill(workspaceId).catch((error) => {
-          log.error('AspectRatio backfill failed:', error);
-          return { cardsQueued: 0 };
-        }),
-      ]).then(([migrationResult, normResult, , purgedCount, , aspectRatioResult]) => {
-        if (migrationResult.cardsUpdated > 0) {
-          log.info(`Tag migration: updated ${migrationResult.cardsUpdated} cards`);
-        }
-        if (normResult.cardsUpdated > 0) {
-          log.info(`Tag normalization: updated ${normResult.cardsUpdated} cards`);
-        }
-        if (purgedCount > 0) {
-          log.info(`Auto-purged ${purgedCount} old trash items`);
-        }
-        if (aspectRatioResult?.cardsQueued > 0) {
-          log.info(`AspectRatio backfill: queued ${aspectRatioResult.cardsQueued} cards`);
-        }
-      });
-    }
-  }, [currentWorkspace, loadAll, purgeOldTrash]);
+    // Hydrate layout cache for UI optimization
+    hydrateLayoutCache().catch((error) => {
+      log.error('Layout cache hydration failed:', error);
+    });
+  }, []);
 
   // Use defaults during SSR to prevent hydration mismatch
   // Defaults: left open, right closed, both floating (not anchored)
@@ -376,6 +241,31 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     };
   }, [isLeftOpen, isRightOpen]);
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login');
+    }
+  }, [authLoading, isAuthenticated, router]);
+
+  // Show loading state while checking auth
+  if (authLoading) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-zinc-950">
+        <div className="text-zinc-400">Loading...</div>
+      </div>
+    );
+  }
+
+  // Don't render dashboard content if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="h-screen w-screen flex items-center justify-center bg-zinc-950">
+        <div className="text-zinc-400">Redirecting to login...</div>
+      </div>
+    );
+  }
+
   // Sidebar visibility includes hover state (visible if open OR hovered)
   const isLeftVisible = isLeftOpen || leftHovered;
   const isRightVisible = isRightOpen || rightHovered;
@@ -428,8 +318,11 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     : (isRightOpen ? 16 : 16 + floatingInset);
 
   return (
-    <DataProvider>
-      <AppDndProvider>
+    <WorkspaceProvider>
+      <ConvexDataProvider>
+        <TagColorsProvider>
+        <PlateDndProvider>
+        <AppDndProvider>
         <div className="h-screen w-screen bg-bg-base text-text-primary">
         {/* Mobile bottom nav - only shows < 768px */}
         <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
@@ -604,7 +497,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         <CardPhotoPickerModal />
         <CardsDragHandler />
         </div>
-      </AppDndProvider>
-    </DataProvider>
+        </AppDndProvider>
+        </PlateDndProvider>
+        </TagColorsProvider>
+      </ConvexDataProvider>
+    </WorkspaceProvider>
   );
 }

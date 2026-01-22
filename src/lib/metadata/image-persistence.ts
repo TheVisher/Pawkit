@@ -1,27 +1,25 @@
 /**
  * Image Persistence Service
  *
- * Handles background downloading and storing of expiring image URLs to Supabase Storage.
+ * Handles background downloading and storing of expiring image URLs to Convex Storage.
  * This service is NON-BLOCKING - it queues images for background processing and returns immediately.
  *
  * Flow:
  * 1. Metadata fetch completes with image URL
  * 2. queueImagePersistence() called - returns immediately
- * 3. Background worker downloads image (10s timeout)
- * 4. Uploads to Supabase Storage
- * 5. Updates card with permanent Supabase URL
+ * 3. Convex action downloads image server-side
+ * 4. Uploads to Convex Storage
+ * 5. Updates card with permanent Convex URL
  */
 
-import { getClient } from '@/lib/supabase/client';
-import { db } from '@/lib/db';
-import { addToQueue, triggerSync } from '@/lib/services/sync-queue';
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
 
-const BUCKET_NAME = 'card-images';
-const DOWNLOAD_TIMEOUT_MS = 10000; // 10 seconds
 const MAX_CONCURRENT_UPLOADS = 2;
 
 // Domains known to have expiring image URLs
@@ -36,15 +34,35 @@ const EXPIRING_DOMAINS = [
 const EXPIRY_PARAMS = ['x-expires', 'expires', 'Expires'];
 
 // =============================================================================
+// CONVEX CLIENT
+// =============================================================================
+
+let convexClient: ConvexHttpClient | null = null;
+
+function getConvexClient(): ConvexHttpClient | null {
+  if (convexClient) return convexClient;
+
+  const url = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!url) {
+    console.warn('[ImagePersistence] No Convex URL configured');
+    return null;
+  }
+
+  convexClient = new ConvexHttpClient(url);
+  return convexClient;
+}
+
+// =============================================================================
 // URL DETECTION
 // =============================================================================
 
 /**
- * Check if a URL is already stored in Supabase Storage
+ * Check if a URL is already stored in Convex Storage
  */
 export function isStoredImageUrl(url: string): boolean {
   if (!url) return false;
-  return url.includes('supabase.co/storage');
+  // Convex storage URLs contain convex.cloud or convex.site
+  return url.includes('convex.cloud') || url.includes('convex.site');
 }
 
 /**
@@ -57,7 +75,7 @@ export function isStoredImageUrl(url: string): boolean {
 export function needsPersistence(imageUrl: string): boolean {
   if (!imageUrl) return false;
 
-  // Already stored in Supabase - no need to persist again
+  // Already stored in Convex - no need to persist again
   if (isStoredImageUrl(imageUrl)) {
     return false;
   }
@@ -112,7 +130,7 @@ const processedCards = new Set<string>();
  * Queue an image for background persistence
  *
  * This function is NON-BLOCKING - it adds to the queue and returns immediately.
- * The actual download/upload happens in the background.
+ * The actual download/upload happens in the background via Convex action.
  *
  * @param cardId - The card ID that will be updated with the new URL
  * @param imageUrl - The expiring image URL to download and store
@@ -172,159 +190,98 @@ function processQueue(): void {
 }
 
 // =============================================================================
-// DOWNLOAD & UPLOAD
+// CONVEX PERSISTENCE
 // =============================================================================
 
 /**
- * Process a single queue item - download image and upload to Supabase
+ * Process a single queue item - call Convex action to download and store image
  */
 async function processItem(item: QueueItem): Promise<void> {
   const { cardId, imageUrl } = item;
 
   console.log('[ImagePersistence] Processing:', cardId);
 
-  try {
-    // Download the image with timeout
-    const imageData = await downloadImage(imageUrl);
-    if (!imageData) {
-      console.warn('[ImagePersistence] Failed to download image:', cardId);
-      return;
-    }
-
-    // Upload to Supabase Storage
-    const storedUrl = await uploadToSupabase(cardId, imageData.blob, imageData.contentType);
-    if (!storedUrl) {
-      console.warn('[ImagePersistence] Failed to upload to Supabase:', cardId);
-      return;
-    }
-
-    // Update card with new permanent URL
-    await updateCardImage(cardId, storedUrl);
-
-    console.log('[ImagePersistence] Successfully persisted image:', cardId, storedUrl.substring(0, 80));
-  } catch (error) {
-    console.error('[ImagePersistence] Error processing:', cardId, error);
+  const client = getConvexClient();
+  if (!client) {
+    console.warn('[ImagePersistence] No Convex client available');
+    return;
   }
-}
 
-/**
- * Download an image with timeout
- */
-async function downloadImage(url: string): Promise<{ blob: Blob; contentType: string } | null> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
-
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-      },
+    // Call Convex action to persist the image
+    // The action handles download, storage, and card update
+    const result = await client.action(api.storage.persistImageFromUrl, {
+      cardId: cardId as Id<"cards">,
+      imageUrl,
     });
 
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      console.warn('[ImagePersistence] Download failed with status:', response.status);
-      return null;
-    }
-
-    const blob = await response.blob();
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
-
-    return { blob, contentType };
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('[ImagePersistence] Download timed out');
+    if (result.success) {
+      console.log('[ImagePersistence] Successfully persisted image:', cardId);
     } else {
-      console.error('[ImagePersistence] Download error:', error);
+      console.warn('[ImagePersistence] Failed to persist:', cardId, result.error);
     }
-    return null;
+  } catch (error) {
+    console.error('[ImagePersistence] Error calling Convex action:', cardId, error);
   }
 }
 
+// =============================================================================
+// CLIENT-SIDE UPLOAD (for user-selected images)
+// =============================================================================
+
 /**
- * Upload image to Supabase Storage
+ * Upload a file to Convex storage and return the permanent URL
  *
- * @param cardId - The card ID (used for filename generation)
+ * @param cardId - The card ID (for logging)
  * @param blob - The image blob to upload
  * @param contentType - The MIME type of the image
- * @returns The public URL of the uploaded image, or null on failure
+ * @returns The permanent URL of the uploaded image, or null on failure
  */
-export async function uploadToSupabase(
+export async function uploadToConvex(
   cardId: string,
   blob: Blob,
-  contentType: string
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _contentType: string
 ): Promise<string | null> {
+  const client = getConvexClient();
+  if (!client) {
+    console.error('[ImagePersistence] No Convex client available');
+    return null;
+  }
+
   try {
-    const supabase = getClient();
+    // Get upload URL from Convex
+    const uploadUrl = await client.mutation(api.storage.generateUploadUrl, {});
 
-    // Generate filename from cardId and content hash
-    const arrayBuffer = await blob.arrayBuffer();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hash = hashArray.slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+    // Upload the blob to Convex storage
+    const response = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': blob.type },
+      body: blob,
+    });
 
-    // Determine file extension from content type
-    const ext = contentType.split('/')[1]?.split(';')[0] || 'jpg';
-    const filename = `${cardId}-${hash}.${ext}`;
-
-    // Upload to Supabase Storage
-    const { error } = await supabase.storage
-      .from(BUCKET_NAME)
-      .upload(filename, blob, {
-        contentType,
-        cacheControl: '31536000', // 1 year cache
-        upsert: true, // Overwrite if exists
-      });
-
-    if (error) {
-      console.error('[ImagePersistence] Supabase upload error:', error);
+    if (!response.ok) {
+      console.error('[ImagePersistence] Upload failed:', response.status);
       return null;
     }
 
-    // Get the public URL
-    const { data: urlData } = supabase.storage
-      .from(BUCKET_NAME)
-      .getPublicUrl(filename);
+    // Get the storage ID from the response
+    const { storageId } = await response.json();
 
-    return urlData.publicUrl;
+    // Get the permanent URL
+    const permanentUrl = await client.query(api.storage.getUrl, { storageId });
+
+    console.log('[ImagePersistence] Uploaded to Convex:', cardId, permanentUrl?.substring(0, 60));
+
+    return permanentUrl;
   } catch (error) {
     console.error('[ImagePersistence] Upload error:', error);
     return null;
   }
 }
 
-/**
- * Update card with new permanent image URL
- */
-async function updateCardImage(cardId: string, newImageUrl: string): Promise<void> {
-  try {
-    // Get current card to preserve other fields
-    const card = await db.cards.get(cardId);
-    if (!card) {
-      console.warn('[ImagePersistence] Card not found:', cardId);
-      return;
-    }
-
-    // Update in Dexie (local-first)
-    await db.cards.update(cardId, {
-      image: newImageUrl,
-      _synced: false,
-      _lastModified: new Date(),
-    });
-
-    // Queue for server sync (skip conflict check - image URL is additive, not destructive)
-    await addToQueue('card', cardId, 'update', { image: newImageUrl }, { skipConflictCheck: true });
-
-    // Trigger sync to push update to server
-    triggerSync();
-
-    console.log('[ImagePersistence] Updated card with persisted image:', cardId);
-  } catch (error) {
-    console.error('[ImagePersistence] Error updating card:', error);
-  }
-}
+// Legacy export name for compatibility
+export const uploadToSupabase = uploadToConvex;
 
 // =============================================================================
 // UTILITY FUNCTIONS

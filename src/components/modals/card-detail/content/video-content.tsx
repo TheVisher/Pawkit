@@ -8,10 +8,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useSettingsStore } from '@/lib/stores/settings-store';
 import { extractYouTubeVideoId } from '@/lib/utils/url-detection';
-import type { LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
 
 // YouTube IFrame API types
 declare global {
@@ -47,12 +47,12 @@ interface YTPlayer {
 }
 
 interface VideoContentProps {
-  card: LocalCard;
+  card: Card;
   className?: string;
 }
 
 export function VideoContent({ card, className }: VideoContentProps) {
-  const updateCard = useDataStore((s) => s.updateCard);
+  const { updateCard } = useMutations();
   const videoAutoPlay = useSettingsStore((s) => s.videoAutoResume);
   const videoId = card.url ? extractYouTubeVideoId(card.url) : null;
 
@@ -79,8 +79,8 @@ export function VideoContent({ card, className }: VideoContentProps) {
     if (progress >= 95) {
       updates.isRead = true;
     }
-    updateCard(card.id, updates);
-  }, [card.id, updateCard]);
+    updateCard(card._id, updates);
+  }, [card._id, updateCard]);
 
   // Update progress bar (visual only, no state changes)
   const updateProgress = useCallback(() => {
@@ -114,10 +114,10 @@ export function VideoContent({ card, className }: VideoContentProps) {
       if (!isMounted || !window.YT) return;
 
       // Check if element exists (might have been removed)
-      const element = document.getElementById(`youtube-player-${card.id}`);
+      const element = document.getElementById(`youtube-player-${card._id}`);
       if (!element) return;
 
-      playerRef.current = new window.YT.Player(`youtube-player-${card.id}`, {
+      playerRef.current = new window.YT.Player(`youtube-player-${card._id}`, {
         videoId,
         playerVars: {
           enablejsapi: 1,
@@ -229,7 +229,7 @@ export function VideoContent({ card, className }: VideoContentProps) {
         playerRef.current = null;
       }
     };
-  }, [videoId, card.id, updateProgress, saveProgress]); // Removed card.readProgress and videoAutoPlay
+  }, [videoId, card._id, updateProgress, saveProgress]); // Removed card.readProgress and videoAutoPlay
 
   if (!videoId) {
     return (
@@ -253,7 +253,7 @@ export function VideoContent({ card, className }: VideoContentProps) {
       {/* Embedded Video */}
       <div className="px-6 pt-4">
         <div className="aspect-video rounded-lg overflow-hidden bg-black">
-          <div id={`youtube-player-${card.id}`} className="w-full h-full" />
+          <div id={`youtube-player-${card._id}`} className="w-full h-full" />
         </div>
       </div>
 

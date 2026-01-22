@@ -10,18 +10,28 @@ import { useMemo } from 'react';
 import { format } from 'date-fns';
 import { Link2, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useBacklinks, useCards } from '@/lib/hooks/use-live-data';
+import { useCards, useBacklinks } from '@/lib/contexts/convex-data-context';
 import { useModalStore } from '@/lib/stores/modal-store';
-import type { LocalReference, LocalCard } from '@/lib/db';
+import type { Card } from '@/lib/types/convex';
+
+// Local Reference type definition (replaces LocalReference from db)
+interface Reference {
+  id: string;
+  sourceId: string;
+  targetId: string;
+  targetType: 'card' | 'date' | 'pawkit';
+  linkText: string;
+  workspaceId: string;
+}
 
 interface BacklinksSectionProps {
-  card: LocalCard;
+  card: Card;
   workspaceId: string;
 }
 
 interface BacklinkItemProps {
-  reference: LocalReference;
-  sourceCard: LocalCard | undefined;
+  reference: Reference;
+  sourceCard: Card | undefined;
   onClick: () => void;
 }
 
@@ -58,29 +68,25 @@ function BacklinkItem({ reference, sourceCard, onClick }: BacklinkItemProps) {
 }
 
 export function BacklinksSection({ card, workspaceId }: BacklinksSectionProps) {
-  // Get card backlinks (references with targetType: 'card')
-  const cardBacklinks = useBacklinks(card.id, 'card');
+  const cards = useCards();
+  const { openCardDetail } = useModalStore();
+
+  // Get card backlinks from Convex references table
+  const cardBacklinks = useBacklinks(card._id, 'card');
 
   // For daily notes, also get date backlinks
-  // Daily notes are linked via @date mentions using the ISO date string
   const dailyNoteDate = useMemo(() => {
     if (!card.isDailyNote) return undefined;
-    // Use scheduledDate or the first scheduledDates entry
-    if (card.scheduledDate) {
-      return format(new Date(card.scheduledDate), 'yyyy-MM-dd');
-    }
+    // Use the first scheduledDates entry
     if (card.scheduledDates && card.scheduledDates.length > 0) {
       return card.scheduledDates[0];
     }
     return undefined;
-  }, [card.isDailyNote, card.scheduledDate, card.scheduledDates]);
+  }, [card.isDailyNote, card.scheduledDates]);
 
   const dateBacklinks = useBacklinks(dailyNoteDate, 'date');
 
-  const cards = useCards(workspaceId);
-  const { openCardDetail } = useModalStore();
-
-  // Combine and deduplicate backlinks
+  // Combine and enrich backlinks with source card data
   const enrichedBacklinks = useMemo(() => {
     // Combine card and date backlinks
     const allBacklinks = [...cardBacklinks, ...dateBacklinks];
@@ -94,9 +100,16 @@ export function BacklinksSection({ card, workspaceId }: BacklinksSectionProps) {
     });
 
     return unique.map((ref) => ({
-      reference: ref,
-      sourceCard: cards.find((c) => c.id === ref.sourceId),
-    })).filter((item) => item.sourceCard); // Filter out deleted source cards
+      reference: {
+        id: ref._id,
+        sourceId: ref.sourceId,
+        targetId: ref.targetId,
+        targetType: ref.targetType as 'card' | 'date' | 'pawkit',
+        linkText: ref.linkText,
+        workspaceId: ref.workspaceId,
+      },
+      sourceCard: cards.find((c) => c._id === ref.sourceId),
+    })).filter((item) => item.sourceCard && !item.sourceCard.deleted) as { reference: Reference; sourceCard: Card }[];
   }, [cardBacklinks, dateBacklinks, cards]);
 
   const handleCardClick = (cardId: string) => {

@@ -5,8 +5,8 @@ import { createPortal } from 'react-dom';
 import { DragOverlay, useDndMonitor } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { FolderPlus, Folder } from 'lucide-react';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
+import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useDataContext } from '@/lib/contexts/data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -17,15 +17,14 @@ import { PawkitCard } from '@/components/pawkits/pawkit-card';
 import { EmptyState } from '@/components/cards/empty-state';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { cn } from '@/lib/utils';
-import type { LocalCollection } from '@/lib/db';
+import type { Collection } from '@/lib/types/convex';
 
 export default function PawkitsPage() {
   const workspace = useCurrentWorkspace();
-  const collections = useCollections(workspace?.id);
-  const cards = useCards(workspace?.id);
-  const { isFullyLoaded } = useDataContext();
-  const isLoading = useDataStore((state) => state.isLoading);
-  const updateCollection = useDataStore((state) => state.updateCollection);
+  const collections = useCollections();
+  const cards = useCards();
+  const { isFullyLoaded, isLoading } = useDataContext();
+  const { updateCollection } = useMutations();
   const openCreatePawkitModal = useModalStore((state) => state.openCreatePawkitModal);
 
   // Pawkit overview display settings
@@ -41,7 +40,7 @@ export default function PawkitsPage() {
   const headerRef = useRef<HTMLDivElement>(null);
   const needsOffset = useOmnibarCollision(headerRef);
 
-  const [activeCollection, setActiveCollection] = useState<LocalCollection | null>(null);
+  const [activeCollection, setActiveCollection] = useState<Collection | null>(null);
 
   // Build set of valid Pawkit slugs
   const pawkitSlugs = useMemo(() => {
@@ -53,7 +52,7 @@ export default function PawkitsPage() {
   const cardCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const card of cards) {
-      if (card._deleted) continue;
+      if (card.deleted) continue;
       for (const tag of card.tags || []) {
         // Only count tags that are Pawkit slugs
         if (pawkitSlugs.has(tag)) {
@@ -66,7 +65,7 @@ export default function PawkitsPage() {
 
   // Get root-level collections (no parent) and sort based on settings
   const rootCollections = useMemo(() => {
-    const filtered = collections.filter((c) => !c.parentId && !c._deleted);
+    const filtered = collections.filter((c) => !c.parentId && !c.deleted);
 
     // Sort based on pawkitOverviewSortBy
     return filtered.sort((a, b) => {
@@ -87,7 +86,7 @@ export default function PawkitsPage() {
   }, [collections, pawkitOverviewSortBy, cardCounts]);
 
   // Collection IDs for SortableContext
-  const collectionIds = useMemo(() => rootCollections.map((c) => c.id), [rootCollections]);
+  const collectionIds = useMemo(() => rootCollections.map((c) => c._id), [rootCollections]);
 
   // Get grid columns class based on pawkitOverviewColumns setting
   const getGridCols = () => {
@@ -103,8 +102,8 @@ export default function PawkitsPage() {
 
   // Handle reordering collections
   const handleReorder = useCallback(async (activeId: string, overId: string) => {
-    const oldIndex = rootCollections.findIndex((c) => c.id === activeId);
-    const newIndex = rootCollections.findIndex((c) => c.id === overId);
+    const oldIndex = rootCollections.findIndex((c) => c._id === activeId);
+    const newIndex = rootCollections.findIndex((c) => c._id === overId);
 
     if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
 
@@ -116,7 +115,7 @@ export default function PawkitsPage() {
     // Update positions for all affected collections
     for (let i = 0; i < newOrder.length; i++) {
       if (newOrder[i].position !== i) {
-        await updateCollection(newOrder[i].id, { position: i });
+        await updateCollection(newOrder[i]._id, { position: i });
       }
     }
   }, [rootCollections, updateCollection]);
@@ -126,7 +125,7 @@ export default function PawkitsPage() {
     onDragStart: (event) => {
       const activeData = event.active.data.current;
       if (activeData?.type === 'pawkit') {
-        const collection = rootCollections.find((c) => c.id === event.active.id);
+        const collection = rootCollections.find((c) => c._id === event.active.id);
         setActiveCollection(collection || null);
       }
     },
@@ -205,9 +204,9 @@ export default function PawkitsPage() {
                 <div className={cn('grid gap-4', getGridCols())}>
                   {rootCollections.map((collection) => (
                     <PawkitCard
-                      key={collection.id}
+                      key={collection._id}
                       collection={collection}
-                      isDragging={activeCollection?.id === collection.id}
+                      isDragging={activeCollection?._id === collection._id}
                       size={pawkitOverviewSize}
                       showThumbnails={pawkitOverviewShowThumbnails}
                       showItemCount={pawkitOverviewShowItemCount}
