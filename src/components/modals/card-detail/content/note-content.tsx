@@ -8,19 +8,20 @@
  * Updated to use Plate editor with JSON content storage.
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { cn } from '@/lib/utils';
-import { useMutations } from '@/lib/contexts/convex-data-context';
+import { useMutations, useCalendarEvents } from '@/lib/contexts/convex-data-context';
 import { PawkitPlateEditor } from '@/components/editor';
 import { ContactPhotoHeader } from '../contact-photo-header';
-import { isSupertag } from '@/lib/tags/supertags';
+import { isSupertag, getCalendarFieldsFromTags } from '@/lib/tags/supertags';
 import {
   serializePlateContent,
   getPlateContentStats,
   isPlateJson,
   parseJsonContent,
 } from '@/lib/plate/html-to-plate';
-import type { Card } from '@/lib/types/convex';
+import { useSupertagCalendarSync } from '@/lib/hooks/use-supertag-calendar-sync';
+import type { Card, Id } from '@/lib/types/convex';
 
 // Simple type for Plate content
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,7 +52,39 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
   // Local state for Plate content
   const [plateContent, setPlateContent] = useState<PlateContent | string>(initialContent);
 
-  // Note: Calendar sync removed - handled by Convex or external services
+  // Calendar sync for supertag dates
+  const calendarEvents = useCalendarEvents();
+  const { syncCardToCalendar } = useSupertagCalendarSync();
+  const lastSyncedContent = useRef<string | null>(null);
+
+  // Check if this card has any supertags with calendar fields
+  const hasCalendarFields = useMemo(() => {
+    if (!card.tags?.length) return false;
+    const fields = getCalendarFieldsFromTags(card.tags);
+    return fields.length > 0;
+  }, [card.tags]);
+
+  // Sync supertag dates to calendar when card content changes
+  useEffect(() => {
+    if (!hasCalendarFields || !card.workspaceId) return;
+
+    const contentStr = typeof card.content === 'string' ? card.content : JSON.stringify(card.content);
+
+    // Skip if content hasn't changed since last sync
+    if (contentStr === lastSyncedContent.current) return;
+    lastSyncedContent.current = contentStr;
+
+    // Debounce the sync to avoid too many requests
+    const timeoutId = setTimeout(() => {
+      syncCardToCalendar(
+        card,
+        card.workspaceId as Id<'workspaces'>,
+        calendarEvents
+      ).catch(console.error);
+    }, 1000);
+
+    return () => clearTimeout(timeoutId);
+  }, [card, hasCalendarFields, calendarEvents, syncCardToCalendar]);
 
   // Sync local state when card changes (including external updates like Quick Convert)
   useEffect(() => {

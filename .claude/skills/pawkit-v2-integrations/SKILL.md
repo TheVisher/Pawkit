@@ -6,11 +6,11 @@ When building ANY new feature in Pawkit V2, ensure it's wired to these integrati
 
 ## Quick Reference
 
-| Feature Type | Omnibar Search | ⌘K Command | + Menu | Kit Tool |
+| Feature Type | Omnibar Search | K Command | + Menu | Kit Tool |
 |--------------|----------------|------------|--------|----------|
-| New content type | ✓ | ✓ | ✓ | ✓ |
-| View/filter | ✓ | ✓ | - | ✓ |
-| Settings/config | - | ✓ | - | Maybe |
+| New content type |  |  |  |  |
+| View/filter |  |  | - |  |
+| Settings/config | - |  | - | Maybe |
 | UI component | - | - | - | - |
 
 ---
@@ -23,7 +23,7 @@ Every feature should be accessible via the omnibar where appropriate:
 - Can users find this via search? (cards, notes, pawkits, tags, etc.)
 - Add to search index/results in `src/lib/search/`
 
-### Command Palette (⌘K)
+### Command Palette (K)
 - Add relevant commands to `src/lib/commands/`
 - Format: `{ id, label, icon, action, keywords, shortcut? }`
 
@@ -63,7 +63,7 @@ For external AI access via Model Context Protocol:
 When completing a feature, verify:
 
 - [ ] Searchable via omnibar? (if applicable)
-- [ ] Added to ⌘K commands? (if applicable)
+- [ ] Added to K commands? (if applicable)
 - [ ] Added to + menu? (if creates content)
 - [ ] Kit tool defined? (if actionable)
 - [ ] Kit context updated? (if provides data)

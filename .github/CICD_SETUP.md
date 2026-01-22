@@ -1,6 +1,6 @@
 # GitHub Actions CI/CD Setup Guide
 
-## 📋 What Was Created
+##  What Was Created
 
 Two workflow files have been added to your repository:
 
@@ -10,13 +10,13 @@ Two workflow files have been added to your repository:
 
 | Job | What It Does | Time |
 |-----|--------------|------|
-| 🧪 Test Suite | Runs all 24 tests with Vitest | ~2 min |
-| 🔍 TypeScript Check | Validates types with `tsc` | ~1 min |
-| 🎨 Lint Check | Checks code style with ESLint | ~30 sec |
-| 🏗️ Build Check | Ensures production build succeeds | ~2 min |
-| 🔒 Security Audit | Scans for vulnerable dependencies | ~30 sec |
-| 🚀 Deploy | Auto-deploys to Vercel (main branch only) | ~3 min |
-| 💬 PR Comment | Posts results summary on PR | ~10 sec |
+|  Test Suite | Runs all 24 tests with Vitest | ~2 min |
+|  TypeScript Check | Validates types with `tsc` | ~1 min |
+|  Lint Check | Checks code style with ESLint | ~30 sec |
+|  Build Check | Ensures production build succeeds | ~2 min |
+|  Security Audit | Scans for vulnerable dependencies | ~30 sec |
+|  Deploy | Auto-deploys to Vercel (main branch only) | ~3 min |
+|  PR Comment | Posts results summary on PR | ~10 sec |
 
 **Total time per run:** ~6 minutes
 
@@ -30,7 +30,7 @@ Two workflow files have been added to your repository:
 
 ---
 
-## 🚀 Quick Start
+##  Quick Start
 
 ### Step 1: Commit the Workflows
 
@@ -49,7 +49,7 @@ git push origin main
 
 ---
 
-## 🔑 Setup Vercel Auto-Deploy (Optional)
+##  Setup Vercel Auto-Deploy (Optional)
 
 To enable automatic deployment to Vercel when you merge to main, you need to add secrets to GitHub.
 
@@ -114,7 +114,7 @@ git push
 
 ---
 
-## 📊 What You'll See on GitHub
+##  What You'll See on GitHub
 
 ### On a Pull Request
 
@@ -122,11 +122,11 @@ When you open a PR, you'll see:
 
 ```
 Checks
-✅ Test Suite — All 24 tests passed (2m 15s)
-✅ TypeScript Check — No type errors (1m 5s)
-✅ Lint — Code style is clean (32s)
-✅ Build — Production build succeeded (2m 43s)
-✅ Security Audit — No vulnerabilities found (28s)
+ Test Suite — All 24 tests passed (2m 15s)
+ TypeScript Check — No type errors (1m 5s)
+ Lint — Code style is clean (32s)
+ Build — Production build succeeded (2m 43s)
+ Security Audit — No vulnerabilities found (28s)
 
 All checks have passed
 ```
@@ -134,18 +134,18 @@ All checks have passed
 Plus a bot comment:
 
 ```
-## ✅ CI/CD Results
+##  CI/CD Results
 
-All checks have passed! 🎉
+All checks have passed! 
 
 | Check | Status |
 |-------|--------|
-| 🧪 Tests | ✅ Passed |
-| 🔍 TypeScript | ✅ Passed |
-| 🎨 Lint | ✅ Passed |
-| 🏗️ Build | ✅ Passed |
+|  Tests |  Passed |
+|  TypeScript |  Passed |
+|  Lint |  Passed |
+|  Build |  Passed |
 
-Ready to merge! 🚀
+Ready to merge! 
 ```
 
 ### On Merge to Main
@@ -154,18 +154,18 @@ After merging:
 
 ```
 Checks (same as above)
-✅ ... all checks pass
+ ... all checks pass
 
 Plus:
-🚀 Deploy to Vercel — Deploying to production (3m 12s)
-✅ Deployed to https://pawkit.app
+ Deploy to Vercel — Deploying to production (3m 12s)
+ Deployed to https://pawkit.app
 ```
 
 You'll get a Vercel deployment URL automatically.
 
 ---
 
-## 🛠️ Customization
+##  Customization
 
 ### Change When Workflows Run
 
@@ -185,7 +185,7 @@ on:
 If your tests need env vars:
 
 ```yaml
-- name: 🧪 Run tests
+- name:  Run tests
   run: pnpm test
   env:
     NODE_ENV: test
@@ -223,7 +223,7 @@ Workflow won't run (useful for documentation-only changes).
 
 ---
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### "Workflow not running"
 
@@ -266,12 +266,12 @@ NODE_ENV=test pnpm test
 
 ---
 
-## 💰 GitHub Actions Costs
+##  GitHub Actions Costs
 
 ### Free Tier (Public Repos)
 
-✅ **2,000 minutes/month FREE**
-✅ **Unlimited** for public repositories
+ **2,000 minutes/month FREE**
+ **Unlimited** for public repositories
 
 ### Your Usage Estimate
 
@@ -293,7 +293,7 @@ Your usage would still be free.
 
 ---
 
-## 📈 Monitoring
+##  Monitoring
 
 ### View Workflow Runs
 
@@ -309,25 +309,25 @@ Click any workflow run to see:
 ### Email Notifications
 
 By default, you get emails when:
-- ❌ Workflow fails (on your commits)
-- ✅ Workflow fixed (after it was failing)
+-  Workflow fails (on your commits)
+-  Workflow fixed (after it was failing)
 
 Customize in: https://github.com/settings/notifications
 
 ---
 
-## 🎯 What Happens Now
+##  What Happens Now
 
 ### On Every Pull Request
 
 1. You push code
-2. 🤖 Robots automatically run:
+2.  Robots automatically run:
    - Tests
    - TypeScript check
    - Lint check
    - Build verification
    - Security scan
-3. GitHub shows ✅ or ❌ on the PR
+3. GitHub shows  or  on the PR
 4. Bot posts summary comment
 5. You can't merge until all checks pass
 
@@ -346,7 +346,7 @@ Customize in: https://github.com/settings/notifications
 
 ---
 
-## 🚀 Next Steps
+##  Next Steps
 
 1. **Commit workflows:**
    ```bash
@@ -371,21 +371,21 @@ Customize in: https://github.com/settings/notifications
 
 ---
 
-## 🎉 You're Done!
+##  You're Done!
 
 Your repository now has:
-- ✅ Automated testing on every PR
-- ✅ Code quality checks (TypeScript, lint)
-- ✅ Build verification
-- ✅ Security scanning
-- ✅ Optional auto-deployment to Vercel
-- ✅ PR status comments
+-  Automated testing on every PR
+-  Code quality checks (TypeScript, lint)
+-  Build verification
+-  Security scanning
+-  Optional auto-deployment to Vercel
+-  PR status comments
 
-**No more "forgot to run tests" bugs!** 🎊
+**No more "forgot to run tests" bugs!** 
 
 ---
 
-## 📚 Resources
+##  Resources
 
 - [GitHub Actions Docs](https://docs.github.com/en/actions)
 - [Vercel GitHub Actions Guide](https://vercel.com/guides/how-can-i-use-github-actions-with-vercel)

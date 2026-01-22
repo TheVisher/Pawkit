@@ -69,37 +69,37 @@ src/components/
 ├── cards/
 │   ├── card-grid.tsx                 8.0KB
 │   ├── card-item/                    (Refactored - Modular)
-│   │   ├── grid-card.tsx             12.0KB  ⚠️ Watch limit
+│   │   ├── grid-card.tsx             12.0KB   Watch limit
 │   │   └── list-card.tsx             4.0KB
 │   ├── card-list-view/               (Refactored - Modular)
-│   │   └── index.tsx                 11.0KB  ⚠️ Watch limit
+│   │   └── index.tsx                 11.0KB   Watch limit
 │   ├── empty-state.tsx               1.5KB
-│   └── masonry-grid.tsx             18.0KB  🚨 CRITICAL - SPLIT ASAP
+│   └── masonry-grid.tsx             18.0KB   CRITICAL - SPLIT ASAP
 ├── editor/
-│   ├── editor.tsx                   17.0KB  ⚠️ Watch limit
-│   ├── slash-command-menu.tsx       10.0KB  ⚠️ Watch limit
+│   ├── editor.tsx                   17.0KB   Watch limit
+│   ├── slash-command-menu.tsx       10.0KB   Watch limit
 │   └── index.ts                      0.1KB
 ├── layout/
 │   ├── left-sidebar.tsx              8.1KB
 │   ├── mobile-nav.tsx                1.8KB
 │   ├── page-header.tsx               1.6KB
 │   ├── right-sidebar/                (Refactored - Modular)
-│   │   ├── index.tsx                 15.0KB  ⚠️ Watch limit
+│   │   ├── index.tsx                 15.0KB   Watch limit
 │   │   └── sections/                 (Individual filter modules)
 │   ├── omnibar/
 │   │   ├── index.tsx                 6.6KB
-│   │   ├── idle-content.tsx         14.0KB  ⚠️ Watch limit
+│   │   ├── idle-content.tsx         14.0KB   Watch limit
 │   │   └── use-omnibar/
 │   │       ├── index.ts              7.0KB
-│   │       └── use-search.ts        20.0KB  ⚠️ Watch limit
+│   │       └── use-search.ts        20.0KB   Watch limit
 │   └── toast-stack.tsx               5.5KB
 ├── modals/
-│   ├── add-card-modal.tsx           13.0KB  ⚠️ Watch limit
+│   ├── add-card-modal.tsx           13.0KB   Watch limit
 │   ├── card-detail/
 │   │   ├── index.tsx                 3.3KB
 │   │   ├── header.tsx                8.9KB
 │   │   └── content.tsx               2.5KB
-│   ├── cover-image-picker-modal.tsx 18.0KB  ⚠️ Watch limit
+│   ├── cover-image-picker-modal.tsx 18.0KB   Watch limit
 │   └── create-pawkit-modal.tsx       6.2KB
 ├── pawkits/
 │   ├── cards-drag-handler.tsx        1.4KB
@@ -113,18 +113,18 @@ src/components/
 ├── settings/
 │   └── sections/
 │       ├── appearance-section.tsx    6.4KB
-│       ├── accent-color-picker.tsx  10.0KB  ⚠️ Watch limit
+│       ├── accent-color-picker.tsx  10.0KB   Watch limit
 │       ├── account-section.tsx       3.0KB
 │       └── data-section.tsx          5.5KB
 └── ui/                              [shadcn - not tracked]
 
 src/app/portal/components/
-├── portal-card-item.tsx         12.0KB  ⚠️ Watch limit
+├── portal-card-item.tsx         12.0KB   Watch limit
 ├── portal-masonry-grid.tsx       8.0KB
 └── portal-pawkits-tree.tsx       8.0KB
 ```
 
-**Component limit**: 300 lines (~9KB). Files marked ⚠️ are approaching or exceeding recommended limits.
+**Component limit**: 300 lines (~9KB). Files marked  are approaching or exceeding recommended limits.
 
 ---
 

@@ -1,5 +1,7 @@
 # Convex Migration Task List
 
+Status: Historical. Migration tasks are kept for reference; current development uses Convex by default.
+
 > Quick reference for migration progress. See `CONVEX_MIGRATION_PLAYBOOK.md` for full details.
 
 ## Phase 1: Create Native Convex Hooks

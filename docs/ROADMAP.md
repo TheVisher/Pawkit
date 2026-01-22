@@ -274,11 +274,11 @@
 
 | File | Lines | Issue | Recommended Split | Status |
 |------|-------|-------|-------------------|--------|
-| `card-list-view.tsx` | ~380 | "God Component" | ListRow, ColumnHeader | ✅ **Refactored** |
-| `right-sidebar/index.tsx` | ~560 | Too many sections | SidebarSection, Filters | ✅ **Refactored** |
-| `card-item/grid-card.tsx` | ~380 | Too many responsibilities | CardImage, CardActions | ✅ **Refactored** |
-| `masonry-grid.tsx` | 637 | **NEW** Critical | Virtualization, Layout logic | 🚨 **Pending** |
-| `sync-service.ts` | 615 | Core sync logic | SyncQueue, ConflictResolver | 🔄 In Progress |
+| `card-list-view.tsx` | ~380 | "God Component" | ListRow, ColumnHeader |  **Refactored** |
+| `right-sidebar/index.tsx` | ~560 | Too many sections | SidebarSection, Filters |  **Refactored** |
+| `card-item/grid-card.tsx` | ~380 | Too many responsibilities | CardImage, CardActions |  **Refactored** |
+| `masonry-grid.tsx` | 637 | **NEW** Critical | Virtualization, Layout logic |  **Pending** |
+| `sync-service.ts` | 615 | Core sync logic | SyncQueue, ConflictResolver |  In Progress |
 
 **Approach**: Extract sub-components one at a time, test after each extraction.
 

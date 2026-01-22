@@ -1,12 +1,17 @@
 /**
  * Auth Configuration
  *
- * This file configures external OAuth providers (GitHub, Google, etc.)
- * For Password-only auth (our current setup), no providers are needed here.
- * The Password provider is configured in auth.ts.
+ * Configures JWT token verification for Convex Auth.
+ * The domain/applicationID entry is required for Convex to verify
+ * tokens it issues (even for password-only auth).
  *
- * @see https://labs.convex.dev/auth/config/passwords
+ * @see https://labs.convex.dev/auth/setup/manual
  */
 export default {
-  providers: [],
+  providers: [
+    {
+      domain: process.env.CONVEX_SITE_URL,
+      applicationID: "convex",
+    },
+  ],
 };

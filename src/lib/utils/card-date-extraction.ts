@@ -26,14 +26,22 @@ export interface ExtractedDate {
 }
 
 // Field name to recurrence type mapping
+// Keys are lowercase with spaces removed (to match field normalization)
 const FIELD_RECURRENCE: Record<string, 'yearly' | 'monthly' | 'none'> = {
+  // Contact fields (yearly)
   birthday: 'yearly',
   anniversary: 'yearly',
+  // Subscription fields (monthly)
   renewalday: 'monthly',
   renews: 'monthly',
+  // One-time dates (none)
   expirydate: 'none',
   expiry: 'none',
   date: 'none',
+  deadline: 'none',
+  due: 'none',
+  duedate: 'none',
+  warranty: 'none',
 };
 
 /**

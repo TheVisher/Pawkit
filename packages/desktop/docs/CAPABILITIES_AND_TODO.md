@@ -2,7 +2,7 @@
 
 This document outlines the expanded capabilities unlocked by the Tauri desktop application and serves as a roadmap for future features.
 
-## 📂 File & Storage
+##  File & Storage
 *Since we have access to the local file system, we can manage heavy assets directly.*
 
 - [ ] **File Uploads**: Support for PDFs, images, videos, and audio files. Store locally and sync metadata/access tokens to server.
@@ -10,7 +10,7 @@ This document outlines the expanded capabilities unlocked by the Tauri desktop a
 - [ ] **Local Backups**: One-click export of the entire library (cards + files) to a local folder.
 - [ ] **Importers**: Native readers for Notion exports, Pocket exports, and browser bookmark files.
 
-## 📸 Capture & Input
+##  Capture & Input
 *Rich input methods beyond just text and URLs.*
 
 - [ ] **Screenshot Capture**: Global hotkey to capture a screen region directly into a new card.
@@ -18,7 +18,7 @@ This document outlines the expanded capabilities unlocked by the Tauri desktop a
 - [ ] **Audio Recording**: Native voice memos and quick audio notes.
 - [ ] **Webcam Capture**: Quick photo notes or video diary entries.
 
-## 🧠 Processing & AI
+##  Processing & AI
 *Leverage the user's local hardware for privacy-preserving intelligence.*
 
 - [ ] **Local OCR**: Extract text from saved images and PDFs for searchability.
@@ -26,7 +26,7 @@ This document outlines the expanded capabilities unlocked by the Tauri desktop a
 - [ ] **Local AI Categorization**: Run small, efficient models (SLMs) for auto-tagging content.
 - [ ] **PDF Text Extraction**: Enable full-text search within stored documents.
 
-## 🖥️ OS Integration
+##  OS Integration
 *Deep integration into the operating system workflow.*
 
 - [ ] **System Tray**: Quick access menu, sync status indicator, and "mini-capture" window.
@@ -37,7 +37,7 @@ This document outlines the expanded capabilities unlocked by the Tauri desktop a
 - [ ] **Native Notifications**: Richer, more reliable notifications than web push.
 - [ ] **Auto-Start**: Option to launch silently on login for background syncing.
 
-## 🚀 Advanced
+##  Advanced
 *Power user features.*
 
 - [ ] **Browser Integration**: Companion extension that communicates directly with the desktop app.

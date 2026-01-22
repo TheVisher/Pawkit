@@ -45,7 +45,7 @@
 - Supporting information
 
 **Muted** (`text-text-muted`):
-- Keyboard shortcuts (e.g., `⌘K`)
+- Keyboard shortcuts (e.g., `K`)
 - Omnibar placeholder text
 - Icon buttons (collapse, anchor, settings)
 - Timestamps and dates in headers
@@ -71,7 +71,7 @@
 
 **Keyboard Shortcut**:
 ```tsx
-<kbd className="text-xs text-text-muted">⌘K</kbd>
+<kbd className="text-xs text-text-muted">K</kbd>
 ```
 
 **Sidebar Icon Button**:
@@ -185,11 +185,11 @@ className="hover:bg-[var(--glass-bg)] focus:bg-[var(--glass-bg)]"
 - Use `var(--glass-blur)` for backdrop blur values
 
 **DON'T**:
-- ❌ `bg-white/10` - Use `bg-[var(--glass-bg)]`
-- ❌ `bg-white/15` - Use `bg-[var(--glass-bg-hover)]`
-- ❌ `border-white/10` - Use `border-[var(--glass-border)]`
-- ❌ `bg-[hsl(0_0%_12%/0.70)]` - Use `bg-[var(--glass-panel-bg)]`
-- ❌ `backdrop-blur-[12px]` - Use `backdrop-blur-[var(--glass-blur)]`
+-  `bg-white/10` - Use `bg-[var(--glass-bg)]`
+-  `bg-white/15` - Use `bg-[var(--glass-bg-hover)]`
+-  `border-white/10` - Use `border-[var(--glass-border)]`
+-  `bg-[hsl(0_0%_12%/0.70)]` - Use `bg-[var(--glass-panel-bg)]`
+-  `backdrop-blur-[12px]` - Use `backdrop-blur-[var(--glass-blur)]`
 
 ### Benefits
 
@@ -498,22 +498,22 @@ Time-based views use similar gap approach:
 
 **Library View** (correct):
 ```tsx
-<div className="flex-1 overflow-auto p-6">  {/* ✅ p-6 here */}
-  <MasonryGrid />  {/* ✅ No padding here */}
+<div className="flex-1 overflow-auto p-6">  {/*  p-6 here */}
+  <MasonryGrid />  {/*  No padding here */}
 </div>
 ```
 
 **Calendar View** (correct):
 ```tsx
-<div className="flex-1 overflow-auto p-6">  {/* ✅ p-6 here */}
-  <MonthView />  {/* ✅ No padding here */}
+<div className="flex-1 overflow-auto p-6">  {/*  p-6 here */}
+  <MonthView />  {/*  No padding here */}
 </div>
 ```
 
 **Agenda View** (correct):
 ```tsx
-<div className="flex-1 overflow-auto p-6">  {/* ✅ p-6 here */}
-  <div className="max-w-3xl mx-auto">  {/* ✅ No padding here */}
+<div className="flex-1 overflow-auto p-6">  {/*  p-6 here */}
+  <div className="max-w-3xl mx-auto">  {/*  No padding here */}
     {/* Content */}
   </div>
 </div>

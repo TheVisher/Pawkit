@@ -644,18 +644,18 @@ When building ANY new feature, ensure:
 
 | Feature | Action Registry | MCP Ready | Kit Ready | Omnibar Ready |
 |---------|-----------------|-----------|-----------|---------------|
-| Create Card | ❌ TODO | ❌ | ❌ | ❌ |
-| Update Card | ❌ TODO | ❌ | ❌ | ❌ |
-| Delete Card | ❌ TODO | ❌ | ❌ | ❌ |
-| Move Card | ❌ TODO | ❌ | ❌ | ❌ |
-| Search Cards | ❌ TODO | ❌ | ❌ | ❌ |
-| Create Pocket | ❌ TODO | ❌ | ❌ | ❌ |
-| Rename Pocket | ❌ TODO | ❌ | ❌ | ❌ |
-| Delete Pocket | ❌ TODO | ❌ | ❌ | ❌ |
-| Move Pocket | ❌ TODO | ❌ | ❌ | ❌ |
-| Calendar Schedule | ❌ TODO | ❌ | ❌ | ❌ |
+| Create Card |  TODO |  |  |  |
+| Update Card |  TODO |  |  |  |
+| Delete Card |  TODO |  |  |  |
+| Move Card |  TODO |  |  |  |
+| Search Cards |  TODO |  |  |  |
+| Create Pocket |  TODO |  |  |  |
+| Rename Pocket |  TODO |  |  |  |
+| Delete Pocket |  TODO |  |  |  |
+| Move Pocket |  TODO |  |  |  |
+| Calendar Schedule |  TODO |  |  |  |
 
-**Legend**: ✅ Implemented | ⏳ In Progress | ❌ TODO
+**Legend**:  Implemented |  In Progress |  TODO
 
 ---
 

@@ -1,6 +1,8 @@
 # Local-First Architecture
 
-## 🎯 The Problem You Experienced
+Status: Legacy. Pawkit now uses Convex as the source of truth. This document is retained for historical context.
+
+##  The Problem You Experienced
 
 **What happened:**
 1. You added data on your computer → Saved to server
@@ -19,7 +21,7 @@
 
 ---
 
-## ✅ The Solution: True Local-First
+##  The Solution: True Local-First
 
 **New architecture: Local IndexedDB = Source of Truth**
 
@@ -60,7 +62,7 @@
 
 ---
 
-## 🔑 Key Principles
+##  Key Principles
 
 ### 1. IndexedDB is the Source of Truth
 - **All** user data is stored in IndexedDB
@@ -153,7 +155,7 @@ On FULL sync (initial load only):
 
 ---
 
-## 📁 New File Structure
+##  New File Structure
 
 ### Created Files:
 
@@ -177,7 +179,7 @@ On FULL sync (initial load only):
 
 ---
 
-## 🔄 How Data Flows
+##  How Data Flows
 
 ### Adding a Card:
 
@@ -187,16 +189,16 @@ Old Way (Server-First):
 2. Optimistic update in Zustand
 3. POST to server
 4. If success: Keep in Zustand
-5. If fail or refresh: Lost forever ❌
+5. If fail or refresh: Lost forever 
 
 New Way (Local-First):
 1. User clicks "Add Card"
-2. Save to IndexedDB ✅ (PERMANENT)
+2. Save to IndexedDB  (PERMANENT)
 3. Update Zustand (instant UI)
 4. POST to server (background)
 5. If success: Mark as synced
 6. If fail: Retry later
-7. User data NEVER lost! ✅
+7. User data NEVER lost! 
 ```
 
 ### Loading the App:
@@ -206,16 +208,16 @@ Old Way:
 1. Open app
 2. Fetch from server
 3. Replace Zustand with server data
-4. If server empty → All data gone ❌
+4. If server empty → All data gone 
 
 New Way:
 1. Open app
-2. Load from IndexedDB (local) ✅
+2. Load from IndexedDB (local) 
 3. Show UI immediately
 4. Sync with server (background)
 5. Merge any new server data
 6. Push any local changes
-7. Both sides in sync ✅
+7. Both sides in sync 
 ```
 
 ### Server Gets Wiped (Your Scenario):
@@ -226,21 +228,21 @@ Old Way:
 2. User opens app
 3. Fetches empty array from server
 4. Local data overwritten
-5. All data lost ❌
+5. All data lost 
 
 New Way:
 1. Server wiped
 2. User opens app
-3. Loads from IndexedDB (all data intact) ✅
+3. Loads from IndexedDB (all data intact) 
 4. Syncs with server (finds server empty)
-5. Pushes all local data to server ✅
-6. Server repopulated from local! ✅
-7. No data lost! ✅
+5. Pushes all local data to server 
+6. Server repopulated from local! 
+7. No data lost! 
 ```
 
 ---
 
-## 🚀 Migration Path
+##  Migration Path
 
 ### Phase 1: Test New System (Safe)
 Both old and new systems coexist:
@@ -289,7 +291,7 @@ mv lib/stores/data-store-v2.ts lib/stores/data-store.ts
 
 ---
 
-## 💾 User Data Export/Import
+##  User Data Export/Import
 
 ### Export (Backup):
 ```typescript
@@ -316,58 +318,58 @@ await dataStore.importData(file);
 
 ---
 
-## 🛡️ Data Safety Guarantees
+##  Data Safety Guarantees
 
 ### Scenario 1: Server Database Wiped
-- ✅ All user data preserved in IndexedDB
-- ✅ Next sync pushes local data back to server
-- ✅ Server repopulated automatically
-- ✅ **No data loss**
+-  All user data preserved in IndexedDB
+-  Next sync pushes local data back to server
+-  Server repopulated automatically
+-  **No data loss**
 
 ### Scenario 2: User Clears Browser Data
-- ❌ IndexedDB cleared (user intentional action)
-- ✅ Can restore from server (if sync was enabled)
-- ✅ Can restore from manual backup file
-- ⚠️ **Users should export backups regularly**
+-  IndexedDB cleared (user intentional action)
+-  Can restore from server (if sync was enabled)
+-  Can restore from manual backup file
+-  **Users should export backups regularly**
 
 ### Scenario 3: Network Offline
-- ✅ All operations work locally
-- ✅ Data saved to IndexedDB
-- ✅ Syncs automatically when back online
-- ✅ **No data loss**
+-  All operations work locally
+-  Data saved to IndexedDB
+-  Syncs automatically when back online
+-  **No data loss**
 
 ### Scenario 4: App Crash Mid-Operation
-- ✅ Data saved to IndexedDB before API call
-- ✅ Operations resume on next load
-- ✅ Sync queue retries failed operations
-- ✅ **No data loss**
+-  Data saved to IndexedDB before API call
+-  Operations resume on next load
+-  Sync queue retries failed operations
+-  **No data loss**
 
 ### Scenario 5: Two Devices Editing Same Card
-- ✅ Both save locally (no data loss)
-- ✅ Sync merges by timestamp
-- ✅ Last write wins
-- ⚠️ **User notified of conflict**
+-  Both save locally (no data loss)
+-  Sync merges by timestamp
+-  Last write wins
+-  **User notified of conflict**
 
 ---
 
-## 📊 Comparison: Old vs New
+##  Comparison: Old vs New
 
 | Feature | Old (Server-First) | New (Local-First) |
 |---------|-------------------|-------------------|
 | **Source of Truth** | Server | IndexedDB |
-| **Survives server wipe** | ❌ No | ✅ Yes |
-| **Works offline** | ⚠️ Partially | ✅ Fully |
-| **Data loss on refresh** | ❌ Yes | ✅ No |
-| **Survives crash** | ❌ No | ✅ Yes |
-| **Sync between devices** | ✅ Yes | ✅ Yes |
-| **User data export** | ❌ No | ✅ Yes |
-| **Recovery from backup** | ❌ Server only | ✅ Local + Server + File |
-| **Conflict resolution** | ⚠️ Basic | ✅ Advanced |
-| **User control** | ❌ Limited | ✅ Full |
+| **Survives server wipe** |  No |  Yes |
+| **Works offline** |  Partially |  Fully |
+| **Data loss on refresh** |  Yes |  No |
+| **Survives crash** |  No |  Yes |
+| **Sync between devices** |  Yes |  Yes |
+| **User data export** |  No |  Yes |
+| **Recovery from backup** |  Server only |  Local + Server + File |
+| **Conflict resolution** |  Basic |  Advanced |
+| **User control** |  Limited |  Full |
 
 ---
 
-## 🔧 Implementation Details
+##  Implementation Details
 
 ### IndexedDB Stores:
 
@@ -445,7 +447,7 @@ async function sync() {
 
 ---
 
-## 🎛️ User Settings
+##  User Settings
 
 ### Server Sync Toggle:
 ```typescript
@@ -467,7 +469,7 @@ settings.setAutoSyncOnReconnect(true);
 
 ---
 
-## 📝 User Guide
+##  User Guide
 
 ### For End Users:
 
@@ -497,30 +499,30 @@ settings.setAutoSyncOnReconnect(true);
 
 ---
 
-## 🚨 What This Fixes
+##  What This Fixes
 
 ### The Original Problem:
 > "I had claude add some things to my code, in the process reset my data base on supabase completely. How can I ensure this NEVER happens again. All my users lost ALL of their data...."
 
 ### The Solution:
-1. ✅ **Database protection scripts** - Prevents accidental server resets
-2. ✅ **Local-first architecture** - Preserves data even if server is wiped
-3. ✅ **Bidirectional sync** - Repopulates server from local data
-4. ✅ **Export/import** - Users control their own backups
-5. ✅ **No server dependency** - App works fully offline
+1.  **Database protection scripts** - Prevents accidental server resets
+2.  **Local-first architecture** - Preserves data even if server is wiped
+3.  **Bidirectional sync** - Repopulates server from local data
+4.  **Export/import** - Users control their own backups
+5.  **No server dependency** - App works fully offline
 
 ### Result:
 **Even if the server database is completely wiped again:**
-- ✅ Users' local data is safe in IndexedDB
-- ✅ Next time they open the app, data loads from local
-- ✅ Background sync detects empty server
-- ✅ Pushes all local data back to server
-- ✅ Server is repopulated automatically
-- ✅ **ZERO data loss!**
+-  Users' local data is safe in IndexedDB
+-  Next time they open the app, data loads from local
+-  Background sync detects empty server
+-  Pushes all local data back to server
+-  Server is repopulated automatically
+-  **ZERO data loss!**
 
 ---
 
-## 📋 Next Steps
+##  Next Steps
 
 ### Immediate:
 1. Review the new files:
@@ -555,25 +557,25 @@ settings.setAutoSyncOnReconnect(true);
 
 ---
 
-## 🎉 Benefits
+##  Benefits
 
 ### For Users:
-- ✅ Never lose data again
-- ✅ Works offline
-- ✅ Control over their data
-- ✅ Export anytime
-- ✅ Faster app (local-first)
+-  Never lose data again
+-  Works offline
+-  Control over their data
+-  Export anytime
+-  Faster app (local-first)
 
 ### For You:
-- ✅ Server can be wiped safely
-- ✅ Less database protection stress
-- ✅ Easier to debug (inspect IndexedDB)
-- ✅ Better offline support
-- ✅ Happy users!
+-  Server can be wiped safely
+-  Less database protection stress
+-  Easier to debug (inspect IndexedDB)
+-  Better offline support
+-  Happy users!
 
 ---
 
-## 📚 Additional Resources
+##  Additional Resources
 
 - [IndexedDB API Docs](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 - [idb Library Docs](https://github.com/jakearchibald/idb)
@@ -581,4 +583,4 @@ settings.setAutoSyncOnReconnect(true);
 
 ---
 
-**Remember:** Your users' data is now SAFE, even if the server explodes. 🚀
+**Remember:** Your users' data is now SAFE, even if the server explodes. 

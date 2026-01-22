@@ -293,7 +293,7 @@ Works well with accessibility contrast requirements too.
 
 **Source Tracking**:
 - [ ] Sources panel in Topic Note - Shows all platforms/items cited
-- [ ] Source indicators - "12 sources · 🎬 4 · 🤖 5 · 🐦 2 · 📄 1"
+- [ ] Source indicators - "12 sources ·  4 ·  5 ·  2 ·  1"
 
 ---
 
@@ -432,7 +432,7 @@ Kit is Pawkit's built-in AI (Claude Haiku), available in-app.
 **Example**:
 ```
 User: "Remind me to read this article tomorrow"
-Kit: "I'll add a reminder for tomorrow at 9am. Sound good? 📅"
+Kit: "I'll add a reminder for tomorrow at 9am. Sound good? "
 User: "Make it 2pm"
 Kit: "Done! Added 'Read: [article title]' for tomorrow at 2pm."
 ```
@@ -490,7 +490,7 @@ Users jot quick one-line notes. They end up with 1000 single-line files. Clutter
 ### Solution: Quick Notes + Auto-Consolidation
 
 **Quick Capture**:
-- [ ] Quick Notes section in sidebar (or `⌘+Shift+N`)
+- [ ] Quick Notes section in sidebar (or `+Shift+N`)
 - [ ] Frictionless - type and done
 - [ ] NOT full notes - fleeting thoughts
 
@@ -503,12 +503,12 @@ Users jot quick one-line notes. They end up with 1000 single-line files. Clutter
 **Sidebar structure**:
 ```
 NOTES
-├── 📁 My Folders
-├── 📝 Quick Notes (7)        ← Current captures
+├──  My Folders
+├──  Quick Notes (7)        ← Current captures
 ├── ─────────────
-├── 📁 Archive
-│   ├── 📝 Week of Dec 8      ← Auto-consolidated
-│   └── 📝 Week of Dec 1
+├──  Archive
+│   ├──  Week of Dec 8      ← Auto-consolidated
+│   └──  Week of Dec 1
 ```
 
 ---
@@ -928,7 +928,7 @@ Users can: scroll past end → seamlessly load next
 **"Remind me" button** in card modal with quick options:
 - [ ] Tomorrow, This weekend, Next week, Custom
 - [ ] Optional reminder notes - "Review before Monday meeting"
-- [ ] Calendar integration - Shows with 🔔 icon
+- [ ] Calendar integration - Shows with  icon
 - [ ] Home widget - "Reminders Today" dashboard section
 - [ ] Completion tracking - Mark as done, snooze, reschedule
 - [ ] Rediscover integration - "Remind me later" as skip action
@@ -1927,7 +1927,7 @@ interface Card {
 
 **Tour steps**:
 1. Library - "This is where all your saves live"
-2. Omnibar (⌘K) - "Quick add anything"
+2. Omnibar (K) - "Quick add anything"
 3. Pawkits organization - "Create collections to organize"
 4. Calendar - "Schedule content for later"
 5. Reader mode - "Distraction-free reading"

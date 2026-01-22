@@ -40,21 +40,21 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 ### Expected Behavior
 
-- ✅ Be respectful and considerate
-- ✅ Use welcoming and inclusive language
-- ✅ Provide constructive feedback
-- ✅ Accept constructive criticism gracefully
-- ✅ Focus on what's best for the community
-- ✅ Show empathy towards other contributors
+-  Be respectful and considerate
+-  Use welcoming and inclusive language
+-  Provide constructive feedback
+-  Accept constructive criticism gracefully
+-  Focus on what's best for the community
+-  Show empathy towards other contributors
 
 ### Unacceptable Behavior
 
-- ❌ Harassment or discriminatory comments
-- ❌ Trolling or insulting remarks
-- ❌ Personal or political attacks
-- ❌ Publishing others' private information
-- ❌ Unwelcome sexual attention or advances
-- ❌ Any conduct inappropriate in a professional setting
+-  Harassment or discriminatory comments
+-  Trolling or insulting remarks
+-  Personal or political attacks
+-  Publishing others' private information
+-  Unwelcome sexual attention or advances
+-  Any conduct inappropriate in a professional setting
 
 ### Enforcement
 
@@ -74,8 +74,9 @@ Before you begin, ensure you have:
 - Basic knowledge of:
   - TypeScript
   - React 19
-  - Next.js 16
+  - TanStack Start
   - Tailwind CSS
+  - Convex
 
 ### Initial Setup
 
@@ -102,10 +103,9 @@ Before you begin, ensure you have:
    # Edit .env.local with your credentials
    ```
 
-5. **Run database migrations**
+5. **Start Convex**
    ```bash
-   pnpm prisma:migrate
-   pnpm prisma:generate
+   npx convex dev
    ```
 
 6. **Start development server**
@@ -140,11 +140,11 @@ feature/your-feature-name (your work)
 - `test/what-tested` - Test additions
 
 **Examples:**
-- ✅ `feature/google-calendar-sync`
-- ✅ `fix/card-drag-drop-crash`
-- ✅ `docs/update-setup-guide`
-- ❌ `my-changes` (too vague)
-- ❌ `feature` (missing description)
+-  `feature/google-calendar-sync`
+-  `fix/card-drag-drop-crash`
+-  `docs/update-setup-guide`
+-  `my-changes` (too vague)
+-  `feature` (missing description)
 
 ### Development Steps
 
@@ -191,7 +191,7 @@ feature/your-feature-name (your work)
 **Always use TypeScript** - No JavaScript files in `src/`.
 
 ```typescript
-// ✅ GOOD: Explicit types
+//  GOOD: Explicit types
 interface CardProps {
   id: string;
   title: string;
@@ -202,7 +202,7 @@ function Card({ id, title, url }: CardProps) {
   // ...
 }
 
-// ❌ BAD: No types
+//  BAD: No types
 function Card(props) {
   // ...
 }
@@ -211,12 +211,12 @@ function Card(props) {
 **Avoid `any`** - Use proper types or `unknown`.
 
 ```typescript
-// ❌ BAD
+//  BAD
 function processData(data: any) {
   return data.value;
 }
 
-// ✅ GOOD
+//  GOOD
 interface Data {
   value: string;
 }
@@ -231,7 +231,7 @@ function processData(data: Data) {
 **Use functional components** - No class components.
 
 ```typescript
-// ✅ GOOD: Functional component with hooks
+//  GOOD: Functional component with hooks
 export function BookmarkCard({ bookmark }: Props) {
   const [isHovered, setIsHovered] = useState(false);
   
@@ -242,7 +242,7 @@ export function BookmarkCard({ bookmark }: Props) {
   );
 }
 
-// ❌ BAD: Class component
+//  BAD: Class component
 export class BookmarkCard extends React.Component {
   // ...
 }
@@ -251,12 +251,12 @@ export class BookmarkCard extends React.Component {
 **Use proper hook dependencies** - Always include all dependencies.
 
 ```typescript
-// ❌ BAD: Missing dependency
+//  BAD: Missing dependency
 useEffect(() => {
   fetchData(userId);
 }, []);
 
-// ✅ GOOD: All dependencies listed
+//  GOOD: All dependencies listed
 useEffect(() => {
   fetchData(userId);
 }, [userId]);
@@ -265,7 +265,7 @@ useEffect(() => {
 **Memoize expensive computations**
 
 ```typescript
-// ✅ GOOD: Memoized expensive filtering
+//  GOOD: Memoized expensive filtering
 const filteredCards = useMemo(() => {
   return cards.filter(card => 
     card.title.toLowerCase().includes(search.toLowerCase())
@@ -278,27 +278,27 @@ const filteredCards = useMemo(() => {
 **Use CSS variables** - Never hardcode colors.
 
 ```typescript
-// ❌ BAD: Hardcoded colors
+//  BAD: Hardcoded colors
 <div className="bg-gray-900 text-white" />
 
-// ✅ GOOD: CSS variables
+//  GOOD: CSS variables
 <div style={{ background: 'var(--bg-surface-2)' }} />
 ```
 
 **Use Tailwind utilities** - Prefer utilities over custom CSS.
 
 ```typescript
-// ✅ GOOD: Tailwind utilities
+//  GOOD: Tailwind utilities
 <button className="px-4 py-2 rounded-lg hover:opacity-80" />
 
-// ❌ BAD: Inline styles when utility exists
+//  BAD: Inline styles when utility exists
 <button style={{ padding: '8px 16px' }} />
 ```
 
 **Responsive design** - Always consider mobile.
 
 ```typescript
-// ✅ GOOD: Responsive classes
+//  GOOD: Responsive classes
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3" />
 ```
 
@@ -330,10 +330,10 @@ import styles from './component.module.css';
 **Use absolute imports** - Prefer `@/` over relative paths.
 
 ```typescript
-// ✅ GOOD
+//  GOOD
 import { Card } from '@/components/cards/card';
 
-// ❌ BAD (only use for sibling files)
+//  BAD (only use for sibling files)
 import { Card } from '../../../components/cards/card';
 ```
 
@@ -438,11 +438,11 @@ export function MyComponent({ id }: Props) {
 **Use PascalCase** for components.
 
 ```typescript
-// ✅ GOOD
+//  GOOD
 export function BookmarkCard() { }
 export function CardListView() { }
 
-// ❌ BAD
+//  BAD
 export function bookmarkCard() { }
 export function card_list_view() { }
 ```
@@ -450,12 +450,12 @@ export function card_list_view() { }
 **Use descriptive names**
 
 ```typescript
-// ✅ GOOD
+//  GOOD
 <CardThumbnail />
 <CardActionMenu />
 <CardTagList />
 
-// ❌ BAD
+//  BAD
 <Thumb />
 <Menu />
 <Tags />
@@ -468,10 +468,10 @@ export function card_list_view() { }
 ### When to Write Tests
 
 **Always write tests for:**
-- ✅ New features
-- ✅ Bug fixes (add regression test)
-- ✅ Utility functions
-- ✅ Critical business logic (sync, auth, etc.)
+-  New features
+-  Bug fixes (add regression test)
+-  Utility functions
+-  Critical business logic (sync, auth, etc.)
 
 **Tests are optional for:**
 - Simple UI components
@@ -565,7 +565,7 @@ The part of the codebase affected:
 - `ui` - UI components
 - `sync` - Sync logic
 - `auth` - Authentication
-- `db` - Database/Prisma
+- `convex` - Convex schema and functions
 - `docs` - Documentation
 
 ### Examples
@@ -652,74 +652,39 @@ After: [screenshot]
 ### Review Criteria
 
 Reviewers will check:
-- ✅ Code quality and readability
-- ✅ Test coverage
-- ✅ Performance impact
-- ✅ Security considerations
-- ✅ Documentation completeness
-- ✅ Breaking changes (if any)
+-  Code quality and readability
+-  Test coverage
+-  Performance impact
+-  Security considerations
+-  Documentation completeness
+-  Breaking changes (if any)
 
 ---
 
 ## Architecture Decisions
 
-### Local-First Principle
+### Convex-First Data Model
 
-**Always prioritize local storage** - IndexedDB is the source of truth.
+Convex is the source of truth. Use Convex queries and mutations rather than custom REST APIs or client-side sync queues.
 
 ```typescript
-// ✅ GOOD: Write to local first
-async function saveCard(card: Card) {
-  // 1. Save to IndexedDB (instant)
-  await localDB.cards.put(card);
-  
-  // 2. Update UI immediately
-  store.addCard(card);
-  
-  // 3. Sync to server (background)
-  syncQueue.enqueue('create', card);
-}
+// Good: use Convex mutations and let queries update UI
+const createCard = useMutation(api.cards.create);
+await createCard({ workspaceId, title, type: 'md-note' });
 
-// ❌ BAD: Wait for server
-async function saveCard(card: Card) {
-  const result = await api.createCard(card);
-  store.addCard(result);
-}
+// UI updates via Convex subscriptions
+const cards = useQuery(api.cards.list, { workspaceId });
 ```
 
 ### Data Flow Pattern
 
 ```
-User Action → IndexedDB → UI Update → Sync Queue → Server
-                ↓
-          Source of Truth
+User Action → Convex Mutation → Live Query Updates → UI
 ```
 
-**Never bypass IndexedDB** - All data mutations go through local storage first.
+### Access Control
 
-### Sync Patterns
-
-**Always use the sync queue** - Don't call API directly.
-
-```typescript
-// ✅ GOOD: Use sync queue
-syncQueue.enqueue('update', card);
-
-// ❌ BAD: Direct API call
-await fetch('/api/cards', { method: 'PATCH', body: JSON.stringify(card) });
-```
-
-**Handle conflicts properly** - Last-write-wins by `updatedAt`.
-
-```typescript
-if (serverCard.updatedAt > localCard.updatedAt) {
-  // Server is newer, update local
-  await localDB.cards.put(serverCard);
-} else {
-  // Local is newer, push to server
-  syncQueue.enqueue('update', localCard);
-}
-```
+Authorization is enforced in Convex functions. Do not rely on client checks alone.
 
 ---
 
@@ -730,28 +695,32 @@ if (serverCard.updatedAt > localCard.updatedAt) {
 **Always validate sessions server-side**
 
 ```typescript
-// ✅ GOOD: Server-side validation
-export async function GET(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    return new Response('Unauthorized', { status: 401 });
-  }
-  
-  // Use user.id (from session, not request body)
-  const cards = await db.card.findMany({
-    where: { userId: user.id }
-  });
-}
+// Good: Convex server-side auth
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) {
+      throw new Error('Unauthorized');
+    }
 
-// ❌ BAD: Trust client
-export async function GET(request: Request) {
-  const { userId } = await request.json();
-  const cards = await db.card.findMany({
-    where: { userId } // NEVER trust client-provided IDs
-  });
-}
+    return await ctx.db
+      .query('cards')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+  },
+});
+
+// Bad: Trusting client-provided userId
+export const listInsecure = query({
+  args: { userId: v.id('users') },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('cards')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+  },
+});
 ```
 
 ### Input Validation
@@ -759,7 +728,7 @@ export async function GET(request: Request) {
 **Validate and sanitize all user input**
 
 ```typescript
-// ✅ GOOD: Validate URL
+//  GOOD: Validate URL
 function validateUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -769,7 +738,7 @@ function validateUrl(url: string): boolean {
   }
 }
 
-// ✅ GOOD: Sanitize HTML
+//  GOOD: Sanitize HTML
 import DOMPurify from 'isomorphic-dompurify';
 
 const clean = DOMPurify.sanitize(userInput);
@@ -778,10 +747,10 @@ const clean = DOMPurify.sanitize(userInput);
 ### NEVER Log Sensitive Data
 
 ```typescript
-// ❌ BAD: Logs password
+//  BAD: Logs password
 console.log('User login:', { email, password });
 
-// ✅ GOOD: No sensitive data
+//  GOOD: No sensitive data
 console.log('User login:', { email });
 ```
 
@@ -800,11 +769,11 @@ Email **security@pawkit.app** instead.
 **Write comments for "why", not "what"**
 
 ```typescript
-// ❌ BAD: Obvious
+//  BAD: Obvious
 // Increment counter
 count++;
 
-// ✅ GOOD: Explains reasoning
+//  GOOD: Explains reasoning
 // Reset count after sync to prevent duplicate requests
 count = 0;
 ```
@@ -843,8 +812,8 @@ function mergeOperations(op1: SyncOp, op2: SyncOp): SyncOp | null {
 - `README.md` - Project overview, setup, features
 - `SECURITY.md` - Security measures, policies
 - `CONTRIBUTING.md` - This file (contribution guidelines)
-- `docs/PLAYBOOK.md` - Architecture decisions, patterns
-- `docs/LOCAL_FIRST_ARCHITECTURE.md` - Local-first design
+- `docs/PLAYBOOK.md` - Architecture decisions and patterns (legacy sections may exist)
+- `docs/INDEX.md` - Documentation index and status
 
 ---
 
@@ -852,14 +821,14 @@ function mergeOperations(op1: SyncOp, op2: SyncOp): SyncOp | null {
 
 ### For Contributors
 
-- 💬 **Discord:** [discord.gg/pawkit](#)
-- 🐛 **Issues:** [GitHub Issues](https://github.com/TheVisher/Pawkit/issues)
-- 📧 **Email:** dev@pawkit.app
+- Discord: [discord.gg/pawkit](#)
+- Issues: [GitHub Issues](https://github.com/TheVisher/Pawkit/issues)
+- Email: dev@pawkit.app
 
 ### For Users
 
-- 📧 **Support:** support@pawkit.app
-- 🔒 **Security:** security@pawkit.app
+- Support: support@pawkit.app
+- Security: security@pawkit.app
 
 ### Discussion Topics
 
@@ -901,7 +870,7 @@ Don't hesitate to ask for help:
 - Ask in Discord
 - Email dev@pawkit.app
 
-We're here to help you succeed! 🎉
+We're here to help you succeed! 
 
 ---
 
@@ -917,12 +886,12 @@ All contributors are listed in:
 ### Special Thanks
 
 We deeply appreciate:
-- 🐛 Bug reporters
-- 📝 Documentation improvers
-- 🧪 Test writers
-- 🎨 UI/UX contributors
-- 🔒 Security researchers
-- 💬 Community helpers
+-  Bug reporters
+-  Documentation improvers
+-  Test writers
+-  UI/UX contributors
+-  Security researchers
+-  Community helpers
 
 ---
 
@@ -932,7 +901,7 @@ By contributing to Pawkit, you agree that your contributions will be licensed un
 
 ---
 
-**Thank you for contributing to Pawkit!** 🙏
+**Thank you for contributing to Pawkit!** 
 
 Your efforts help make Pawkit better for everyone. Whether you're fixing a typo or adding a major feature, every contribution matters.
 

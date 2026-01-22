@@ -267,19 +267,19 @@ Throughout all testing:
 
 ## Pass Criteria
 
-✅ **All templates render as JSON** - No `<h2>`, `<ul>`, `<li>` HTML tags visible in raw content
+ **All templates render as JSON** - No `<h2>`, `<ul>`, `<li>` HTML tags visible in raw content
 
-✅ **All interactive elements work** - Checkboxes toggle, links work
+ **All interactive elements work** - Checkboxes toggle, links work
 
-✅ **SupertagPanel operations work** - Add, remove, reorder, format toggle, type switch
+ **SupertagPanel operations work** - Add, remove, reorder, format toggle, type switch
 
-✅ **Field extraction works** - Quick actions appear when fields are filled
+ **Field extraction works** - Quick actions appear when fields are filled
 
-✅ **Calendar integration works** - Dates appear in widgets/calendar
+ **Calendar integration works** - Dates appear in widgets/calendar
 
-✅ **Legacy compatibility** - Old HTML content still displays and is editable
+ **Legacy compatibility** - Old HTML content still displays and is editable
 
-✅ **No console errors** - Clean console during all operations
+ **No console errors** - Clean console during all operations
 
 ---
 

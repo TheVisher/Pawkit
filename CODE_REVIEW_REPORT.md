@@ -90,11 +90,11 @@ function isExtensionOrigin(origin: string | null): boolean {
 ---
 
 ### Good Security Practices Found
-- Password validation: 12+ characters, complexity requirements ✓
-- SSRF protection in article API: Comprehensive private IP blocking ✓
-- Authorization on all main API routes ✓
-- No SQL injection risk: Prisma ORM with parameterized queries ✓
-- DOMPurify used correctly for XSS protection ✓
+- Password validation: 12+ characters, complexity requirements 
+- SSRF protection in article API: Comprehensive private IP blocking 
+- Authorization on all main API routes 
+- No SQL injection risk: Prisma ORM with parameterized queries 
+- DOMPurify used correctly for XSS protection 
 
 ---
 

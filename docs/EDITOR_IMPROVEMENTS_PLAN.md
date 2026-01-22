@@ -25,22 +25,22 @@
 
 | Phase | Feature | Status |
 |-------|---------|--------|
-| 0.1 | Photo Picker Storage | ✅ Complete |
-| 1.1 | Image Support in Editor | ✅ Complete |
-| 1.2 | Callout/Admonition Blocks | ✅ Complete |
-| 1.3 | Code Syntax Highlighting | ✅ Complete |
-| 2.1 | Enhanced Table Controls | ✅ Complete |
-| 2.2 | Multiple Highlight Colors | ✅ Complete |
-| 2.3 | Better Link Editing | ✅ Complete |
-| 2.4 | Toggle/Collapsible Sections | ✅ Complete |
-| 2.5 | Block Drag Handle + Menu | ✅ Complete |
-| 2.6 | Contextual Image Toolbar | ⏳ Not Started |
-| 2.7 | Improved Slash Menu | ✅ Complete |
-| 2.8 | Enhanced Text Selection Toolbar | ✅ Complete |
-| 2.9 | Table of Contents Widget | ⏳ Not Started |
-| 2.10 | Advanced Table Controls | ⏳ Not Started |
-| 2.11 | Text Colors | ✅ Complete |
-| 3.1 | Markdown Export | ✅ Complete |
+| 0.1 | Photo Picker Storage |  Complete |
+| 1.1 | Image Support in Editor |  Complete |
+| 1.2 | Callout/Admonition Blocks |  Complete |
+| 1.3 | Code Syntax Highlighting |  Complete |
+| 2.1 | Enhanced Table Controls |  Complete |
+| 2.2 | Multiple Highlight Colors |  Complete |
+| 2.3 | Better Link Editing |  Complete |
+| 2.4 | Toggle/Collapsible Sections |  Complete |
+| 2.5 | Block Drag Handle + Menu |  Complete |
+| 2.6 | Contextual Image Toolbar |  Not Started |
+| 2.7 | Improved Slash Menu |  Complete |
+| 2.8 | Enhanced Text Selection Toolbar |  Complete |
+| 2.9 | Table of Contents Widget |  Not Started |
+| 2.10 | Advanced Table Controls |  Not Started |
+| 2.11 | Text Colors |  Complete |
+| 3.1 | Markdown Export |  Complete |
 
 **Completed:** 13/16 features (81%)
 **Remaining:** Image toolbar, TOC widget, advanced table controls
@@ -51,7 +51,7 @@
 
 ### 0.1 Use Supabase Storage for Manual Photo Uploads
 
-**Priority:** 🔴 Critical (Quick Win)
+**Priority:**  Critical (Quick Win)
 **Effort:** Low (infrastructure already exists)
 **Files to modify:**
 - `src/components/modals/card-photo-picker-modal.tsx`
@@ -63,8 +63,8 @@ Currently, manual photo uploads via the Card Photo Picker save images as **Base6
 
 | Upload Method | Current Behavior | Storage Location |
 |---------------|------------------|------------------|
-| TikTok/Instagram/Twitter bookmark | Auto-uploads to Supabase | `card-images` bucket ✅ |
-| Manual photo upload | Base64 data URL | Postgres database ❌ |
+| TikTok/Instagram/Twitter bookmark | Auto-uploads to Supabase | `card-images` bucket  |
+| Manual photo upload | Base64 data URL | Postgres database  |
 
 **Issues with Base64:**
 - Base64 is ~33% larger than binary (500KB image → 670KB string)
@@ -195,7 +195,7 @@ export async function migrateBase64Images() {
 
 ### 1.1 Image Support in Editor
 
-**Priority:** 🔴 Critical
+**Priority:**  Critical
 **Effort:** Medium
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -306,7 +306,7 @@ Since free tier has 1GB storage, implement these safeguards:
 
 ### 1.2 Callout/Admonition Blocks
 
-**Priority:** 🔴 Critical
+**Priority:**  Critical
 **Effort:** Medium
 **Files to modify:**
 - New: `src/lib/tiptap/extensions/callout.ts`
@@ -459,7 +459,7 @@ export function CalloutNodeView({ node, updateAttributes }) {
 
 ### 1.3 Code Syntax Highlighting
 
-**Priority:** 🟡 High
+**Priority:**  High
 **Effort:** Low
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -566,7 +566,7 @@ export function CodeBlockNodeView({ node, updateAttributes }) {
 
 ### 2.1 Enhanced Table Controls
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -636,7 +636,7 @@ addKeyboardShortcuts() {
 
 ### 2.2 Multiple Highlight Colors
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Low
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -704,7 +704,7 @@ const highlightColors = [
 
 ### 2.3 Better Link Editing
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -781,7 +781,7 @@ export function LinkPopover({ editor, isOpen, onClose }) {
 
 ### 2.4 Toggle/Collapsible Sections
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - New: `src/lib/tiptap/extensions/toggle.ts`
@@ -883,9 +883,9 @@ export function ToggleNodeView({ node, updateAttributes }) {
 
 ### 2.5 Block Drag Handle + Add Button
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
-**Status:** ✅ Implemented
+**Status:**  Implemented
 **Files modified:**
 - `src/components/editor/editor.tsx`
 - `src/components/editor/block-handle.tsx`
@@ -935,7 +935,7 @@ Menu includes (styled with glass panel to match slash menu):
 
 ### 2.6 Contextual Image Toolbar
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -973,7 +973,7 @@ When clicking on images, there's no contextual menu for common actions like alig
 
 ### 2.7 Improved Slash Menu with Categories
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - `src/components/editor/slash-command-menu.tsx`
@@ -1023,7 +1023,7 @@ const commandGroups = [
 
 ### 2.8 Enhanced Text Selection Toolbar
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -1065,7 +1065,7 @@ Current bubble menu is basic. TipTap Notion template has additional features lik
 
 ### 2.9 Table of Contents Widget
 
-**Priority:** 🟢 Nice to Have
+**Priority:**  Nice to Have
 **Effort:** Medium
 **Files to modify:**
 - New: `src/components/editor/table-of-contents.tsx`
@@ -1101,7 +1101,7 @@ Long documents need a way to navigate between sections. TipTap Notion template h
 
 ### 2.10 Advanced Table Controls
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** High
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -1161,7 +1161,7 @@ Current table controls are in a floating toolbar. TipTap Notion template has mor
 
 ### 2.11 Text Colors
 
-**Priority:** 🟢 Nice to Have
+**Priority:**  Nice to Have
 **Effort:** Low
 **Files to modify:**
 - `src/components/editor/editor.tsx`
@@ -1212,7 +1212,7 @@ editor.chain().focus().unsetColor().run()
 
 ### 3.1 Markdown Export
 
-**Priority:** 🟡 Medium
+**Priority:**  Medium
 **Effort:** Medium
 **Files to modify:**
 - New: `src/lib/tiptap/markdown.ts`
@@ -1286,7 +1286,7 @@ export function downloadAsMarkdown(editor: Editor, filename: string) {
 
 ### 3.2 Slash Command Expansion
 
-**Priority:** 🟢 Nice to Have
+**Priority:**  Nice to Have
 **Effort:** Low
 **Files to modify:**
 - `src/components/editor/slash-command-menu.tsx`
@@ -1337,7 +1337,7 @@ const commandGroups = [
 
 ### 3.3 Keyboard Shortcuts Documentation
 
-**Priority:** 🟢 Nice to Have
+**Priority:**  Nice to Have
 **Effort:** Low
 
 #### Add Help Modal
@@ -1488,30 +1488,30 @@ const shortcuts = [
 
 | Feature | Pawkit | Notion | Obsidian | Recall | Fabric | Tana | Priority |
 |---------|--------|--------|----------|--------|--------|------|----------|
-| Graph View | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | 🔴 High |
-| AI Summarization | ❌ | ✅ | Plugins | ✅ | ✅ | ✅ | 🔴 High |
-| Semantic Search | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | 🔴 High |
-| AI Chat with Notes | ❌ | ✅ | Plugins | ✅ | ✅ | ✅ | 🔴 High |
-| Embeds (YouTube, etc) | ❌ | ✅ 50+ | ✅ | ✅ | ✅ | ✅ | 🟡 Medium |
-| Voice Notes | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | 🟡 Medium |
-| Canvas/Whiteboard | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | 🟡 Medium |
-| Version History | ❌ | ✅ | ✅ Git | ❌ | ❌ | ✅ | 🟡 Medium |
-| Markdown Export | ❌ | ✅ | ✅ Native | ❌ | ❌ | ✅ | 🟡 Medium |
-| Public Sharing | ❌ | ✅ | ✅ Publish | ❌ | ❌ | ✅ | 🟢 Low |
-| Math/LaTeX | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | 🟢 Low |
-| Real-time Collab | ❌ | ✅ | Plugins | ❌ | ❌ | ❌ | 🟢 Low |
+| Graph View |  |  |  |  |  |  |  High |
+| AI Summarization |  |  | Plugins |  |  |  |  High |
+| Semantic Search |  |  |  |  |  |  |  High |
+| AI Chat with Notes |  |  | Plugins |  |  |  |  High |
+| Embeds (YouTube, etc) |  |  50+ |  |  |  |  |  Medium |
+| Voice Notes |  |  |  |  |  |  |  Medium |
+| Canvas/Whiteboard |  |  |  |  |  |  |  Medium |
+| Version History |  |  |  Git |  |  |  |  Medium |
+| Markdown Export |  |  |  Native |  |  |  |  Medium |
+| Public Sharing |  |  |  Publish |  |  |  |  Low |
+| Math/LaTeX |  |  |  |  |  |  |  Low |
+| Real-time Collab |  |  | Plugins |  |  |  |  Low |
 
 #### Pawkit Strengths (What we have that others don't)
 
 | Feature | Pawkit | Competitors |
 |---------|--------|-------------|
-| YouTube Transcript Extraction | ✅ | Only Recall |
-| Supertags with Auto-Templates | ✅ 10 types | Tana has similar |
-| Offline-First with Sync | ✅ IndexedDB | Notion just added (2025), Obsidian local-only |
-| Browser Extension + Web Clipper | ✅ | Most have basic clippers |
-| Link Health Checking | ✅ | Unique feature |
-| Multi-view Layouts | ✅ Grid/List/Board/Timeline | Notion has similar |
-| Daily Notes Widget | ✅ | Obsidian, Logseq |
+| YouTube Transcript Extraction |  | Only Recall |
+| Supertags with Auto-Templates |  10 types | Tana has similar |
+| Offline-First with Sync |  IndexedDB | Notion just added (2025), Obsidian local-only |
+| Browser Extension + Web Clipper |  | Most have basic clippers |
+| Link Health Checking |  | Unique feature |
+| Multi-view Layouts |  Grid/List/Board/Timeline | Notion has similar |
+| Daily Notes Widget |  | Obsidian, Logseq |
 
 ---
 

@@ -72,7 +72,7 @@ ANCHORED (merged):
 
 ```
 ┌─────────────────────────────┐
-│ [Avatar]          [↗] [✕]  │  ← User avatar flyout, anchor, close
+│ [Avatar]          [↗] []  │  ← User avatar flyout, anchor, close
 └─────────────────────────────┘
 
 Home
@@ -101,7 +101,7 @@ CONNECTIONS ────────────────[▼]
 │ erik@email.com              │
 ├─────────────────────────────┤
 │ WORKSPACES                  │
-│ ● Personal            ✓    │
+│ ● Personal                │
 │ ○ Work                      │
 │ + Create workspace          │
 ├─────────────────────────────┤
@@ -116,7 +116,7 @@ CONNECTIONS ────────────────[▼]
 
 ### Header (Constant)
 ```
-[✕] [↗] [Theme] [Trash] [Settings]
+[] [↗] [Theme] [Trash] [Settings]
 close, anchor, theme toggle, trash, settings
 ```
 
@@ -137,7 +137,7 @@ TAGS ──────────────────────[▼]
 
 SORT ──────────────────────[▼]
 ├── Recently Modified
-├── Date Added ✓
+├── Date Added 
 ├── Title A-Z
 └── Domain
 
@@ -170,19 +170,19 @@ DISPLAY ───────────────────[▼]
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ [+] [ Search Pawkit...                    ] [⌘K] [?] │
+│ [+] [ Search Pawkit...                    ] [K] [?] │
 └──────────────────────────────────────────────────────┘
 ```
 
 ### + Menu Options
 ```
 ┌─────────────────────────┐
-│ Add Bookmark       ⌘B   │
-│ New Note           ⌘N   │
+│ Add Bookmark       B   │
+│ New Note           N   │
 │ Quick Note              │
 │ Upload File             │
 │ New Event               │
-│ New Task           ⌘T   │
+│ New Task           T   │
 └─────────────────────────┘
 ```
 

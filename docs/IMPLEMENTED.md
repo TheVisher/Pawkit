@@ -1,5 +1,7 @@
 # Pawkit V2 - Implemented Features
 
+Status: Mixed. This document includes legacy local-first implementation notes. Convex is the current backend; treat Dexie, Supabase, and Prisma sections as historical.
+
 > **Verified against actual V2 codebase** - December 28, 2025
 > **See also**: [ROADMAP.md](./ROADMAP.md) for future features, [IDEAS.md](./IDEAS.md) for idea bank
 
@@ -11,30 +13,30 @@
 
 | Feature | Status | Key Files |
 |---------|--------|-----------|
-| URL Bookmarking | ✅ | Omnibar, extension |
-| Notes (Markdown) | ✅ | Tiptap editor with preview, auto-save |
-| Card Types | ✅ | `url`, `md-note`, `text-note` |
-| Quick Notes | ✅ | Lightweight sticky-note cards |
-| Smart Todo Detection | ✅ | Auto-detects tasks in notes |
+| URL Bookmarking |  | Omnibar, extension |
+| Notes (Markdown) |  | Tiptap editor with preview, auto-save |
+| Card Types |  | `url`, `md-note`, `text-note` |
+| Quick Notes |  | Lightweight sticky-note cards |
+| Smart Todo Detection |  | Auto-detects tasks in notes |
 
 ### Collections (Pawkits)
 
 | Feature | Status | Key Files |
 |---------|--------|-----------|
-| Hierarchical Collections | ✅ | Nested structure, drag-drop |
-| Cover Images | ✅ | Gradient fades, position/height sliders |
-| Private Pawkits | ✅ | `isPrivate` flag, server-side filtering |
-| Slug-based References | ✅ | Cards use `slug`, not `id` |
+| Hierarchical Collections |  | Nested structure, drag-drop |
+| Cover Images |  | Gradient fades, position/height sliders |
+| Private Pawkits |  | `isPrivate` flag, server-side filtering |
+| Slug-based References |  | Cards use `slug`, not `id` |
 
 ### Organization
 
 | Feature | Status | Key Files |
 |---------|--------|-----------|
-| Tag System | ✅ | Multi-tag, hierarchy, colors |
-| Virtual Tag Hierarchy | ✅ | Parent nodes that group children |
-| Search | ✅ | Full-text, operators (`is:note`, `tag:`, `in:`) |
-| Multiple Layouts | ✅ | Grid, List, Masonry (L-to-R), Compact |
-| Duplicate Detection | ✅ | `src/lib/utils/url-normalizer.ts` |
+| Tag System |  | Multi-tag, hierarchy, colors |
+| Virtual Tag Hierarchy |  | Parent nodes that group children |
+| Search |  | Full-text, operators (`is:note`, `tag:`, `in:`) |
+| Multiple Layouts |  | Grid, List, Masonry (L-to-R), Compact |
+| Duplicate Detection |  | `src/lib/utils/url-normalizer.ts` |
 
 **Virtual Tag Hierarchy**: Tags like `#dev` can exist solely to group children (`#dev/react`, `#dev/css`) without being assigned to cards themselves.
 
@@ -84,12 +86,12 @@
 
 | Feature | Status |
 |---------|--------|
-| Distraction-free reading | ✅ |
-| Font size (6 sizes) | ✅ |
-| Themes (Dark/Sepia/Light) | ✅ |
-| Fullscreen support | ✅ |
-| Progress tracking | ✅ |
-| Article extraction (on-demand) | ✅ |
+| Distraction-free reading |  |
+| Font size (6 sizes) |  |
+| Themes (Dark/Sepia/Light) |  |
+| Fullscreen support |  |
+| Progress tracking |  |
+| Article extraction (on-demand) |  |
 
 **Article Extraction**:
 - API endpoint: `src/app/api/article/route.ts`
@@ -260,15 +262,15 @@ Sync Queue (2s debounce) → Background API → Supabase → Other devices
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Rate Limiting | ✅ | `src/lib/rate-limit.ts` |
-| RLS Policies | ✅ | All Supabase tables |
-| SSRF Protection | ✅ | Link checker, metadata fetcher |
-| User Isolation | ✅ | Per-user IndexedDB databases |
-| Open Redirect Fix | ✅ | Allowlist validation |
-| CSP Headers | ✅ | `next.config.ts` |
-| Strong Passwords | ✅ | 12+ chars, mixed case, numbers |
-| Article Extraction | ✅ | `src/app/api/article/route.ts` |
-| Danger Zone (Data Deletion) | ✅ | Local, Cloud, or Complete purge |
+| Rate Limiting |  | `src/lib/rate-limit.ts` |
+| RLS Policies |  | All Supabase tables |
+| SSRF Protection |  | Link checker, metadata fetcher |
+| User Isolation |  | Per-user IndexedDB databases |
+| Open Redirect Fix |  | Allowlist validation |
+| CSP Headers |  | `next.config.ts` |
+| Strong Passwords |  | 12+ chars, mixed case, numbers |
+| Article Extraction |  | `src/app/api/article/route.ts` |
+| Danger Zone (Data Deletion) |  | Local, Cloud, or Complete purge |
 
 **Danger Zone (Data Deletion)**:
 - Users can choose between deleting **Local Data** (clear IndexedDB), **Database Data** (remote wipe), or **All Data**.
@@ -310,22 +312,22 @@ Migration Status: 14 migrations applied (December 2025)
 
 | Feature | Status |
 |---------|--------|
-| HSL-based color tokens | ✅ |
-| Surface hierarchy (bg-base → bg-surface-4) | ✅ |
-| Glass/Modern mode toggle | ✅ |
-| Light/Dark theme | ✅ |
-| Visual Styles System (Glass, Flat, High Contrast) | ✅ |
-| Settings Integrated into Right Sidebar | ✅ |
-| Context menu system | ✅ |
-| Custom masonry layout | ✅ |
-| Layout Cache Store (Performance) | ✅ |
-| Modular Omnibar (Search/Add/Kit Modes) | ✅ |
-| Cover images | ✅ |
-| Drag-and-drop (dnd-kit) | ✅ |
-| Smart collision detection | ✅ |
-| Reading-order masonry | ✅ |
-| Animated Pawkits Tree | ✅ |
-| Sliding Sidebar Nav Highlight | ✅ |
+| HSL-based color tokens |  |
+| Surface hierarchy (bg-base → bg-surface-4) |  |
+| Glass/Modern mode toggle |  |
+| Light/Dark theme |  |
+| Visual Styles System (Glass, Flat, High Contrast) |  |
+| Settings Integrated into Right Sidebar |  |
+| Context menu system |  |
+| Custom masonry layout |  |
+| Layout Cache Store (Performance) |  |
+| Modular Omnibar (Search/Add/Kit Modes) |  |
+| Cover images |  |
+| Drag-and-drop (dnd-kit) |  |
+| Smart collision detection |  |
+| Reading-order masonry |  |
+| Animated Pawkits Tree |  |
+| Sliding Sidebar Nav Highlight |  |
 
 **Modular Omnibar**:
 - Refactored into specialized hooks: `useSearch`, `useAddMode`, `useKitMode`.
@@ -395,8 +397,8 @@ Files modified for High Contrast:
 
 | Platform | Version | Status |
 |----------|---------|--------|
-| Chrome | 1.1.0 | ⚠️ Rejected (unused permission) |
-| Firefox | 1.1.0 | ✅ Published |
+| Chrome | 1.1.0 |  Rejected (unused permission) |
+| Firefox | 1.1.0 |  Published |
 
 **Implemented Features**:
 - OAuth sign-in flow
@@ -410,8 +412,8 @@ Files modified for High Contrast:
 
 | Platform | Status |
 |----------|--------|
-| iOS | 🧪 TestFlight Beta |
-| Android | 🔄 In Development |
+| iOS |  TestFlight Beta |
+| Android |  In Development |
 
 **Implemented**:
 - Share Extension (expo-share-intent)
@@ -430,14 +432,14 @@ Files modified for High Contrast:
 
 | Feature | Status |
 |---------|--------|
-| Rich text formatting | ✅ Bold, italic, code, links |
-| Markdown shortcuts | ✅ `#` headings, `-` lists, `[ ]` checkboxes |
-| Floating toolbar | ✅ Appears on text selection |
-| Task lists | ✅ Interactive checkboxes |
-| Typography | ✅ Smart quotes, dashes |
-| Auto-save | ✅ Debounced 500ms |
-| Edit/Preview toggle | ✅ Switch modes |
-| Keyboard navigation | ✅ ↑↓ Enter Esc in menus |
+| Rich text formatting |  Bold, italic, code, links |
+| Markdown shortcuts |  `#` headings, `-` lists, `[ ]` checkboxes |
+| Floating toolbar |  Appears on text selection |
+| Task lists |  Interactive checkboxes |
+| Typography |  Smart quotes, dashes |
+| Auto-save |  Debounced 500ms |
+| Edit/Preview toggle |  Switch modes |
+| Keyboard navigation |  ↑↓ Enter Esc in menus |
 
 **Phase 7.2 Planned**: Wiki-links, inline tags, Kit AI integration
 
@@ -449,12 +451,12 @@ Files modified for High Contrast:
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Auto-deploy | ✅ | Push to main → instant deploy |
-| Preview deployments | ✅ | Per-PR testing environments |
-| Edge Functions | ✅ | Serverless compute |
-| Environment variables | ✅ | Secure config via Vercel |
-| Custom domain | ✅ | pawkit.app with SSL |
-| Build monitoring | ✅ | Logs via Vercel dashboard |
+| Auto-deploy |  | Push to main → instant deploy |
+| Preview deployments |  | Per-PR testing environments |
+| Edge Functions |  | Serverless compute |
+| Environment variables |  | Secure config via Vercel |
+| Custom domain |  | pawkit.app with SSL |
+| Build monitoring |  | Logs via Vercel dashboard |
 
 **Recent Stats**: 20+ successful deployments
 

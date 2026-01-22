@@ -16,9 +16,9 @@
 
 ### V1 Violations to Avoid
 ```
-card-gallery.tsx      - 1,848 lines  ❌
-card-detail-modal.tsx - 2,756 lines  ❌
-left-navigation-panel.tsx - 2,112 lines  ❌
+card-gallery.tsx      - 1,848 lines  
+card-detail-modal.tsx - 2,756 lines  
+left-navigation-panel.tsx - 2,112 lines  
 ```
 
 **If exceeding limits, SPLIT into smaller modules.**
@@ -275,7 +275,7 @@ export const exampleService = new ExampleService();
 
 ### Before (Too Large)
 ```typescript
-// ❌ card-detail-modal.tsx - 2,756 lines
+//  card-detail-modal.tsx - 2,756 lines
 function CardDetailModal() {
   // Metadata section - 400 lines
   // Actions section - 300 lines
@@ -289,7 +289,7 @@ function CardDetailModal() {
 
 ### After (Split)
 ```typescript
-// ✅ card-detail-modal.tsx - 150 lines
+//  card-detail-modal.tsx - 150 lines
 function CardDetailModal() {
   return (
     <Dialog>
@@ -300,11 +300,11 @@ function CardDetailModal() {
   );
 }
 
-// ✅ card-metadata.tsx - 200 lines
-// ✅ card-content.tsx - 250 lines
-// ✅ card-actions.tsx - 150 lines
-// ✅ card-tags-manager.tsx - 150 lines
-// ✅ card-reader-mode.tsx - 200 lines
+//  card-metadata.tsx - 200 lines
+//  card-content.tsx - 250 lines
+//  card-actions.tsx - 150 lines
+//  card-tags-manager.tsx - 150 lines
+//  card-reader-mode.tsx - 200 lines
 ```
 
 ---

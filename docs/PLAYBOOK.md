@@ -1,5 +1,7 @@
 # Pawkit V2 Playbook
 
+Status: Mixed. The current stack is Convex-based; sections referencing Dexie, Supabase, or Prisma are legacy and should not be followed for new work.
+
 > **The definitive guide for building Pawkit V2**
 >
 > This document contains everything needed to build V2 from scratch while maintaining full feature parity with V1 and setting the foundation for all planned future features.
@@ -80,7 +82,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 - Render UI before any network calls
 - Sync to server in background
 - App works fully offline
-- **✅ User can disable server sync entirely (`serverSync` toggle)**
+- ** User can disable server sync entirely (`serverSync` toggle)**
 
 ### Privacy-First
 
@@ -104,7 +106,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 - No blocking network calls during initialization
 - Debounced background sync
 - Optimistic UI updates
-- **✅ Image caching with LRU eviction for thumbnails**
+- ** Image caching with LRU eviction for thumbnails**
 
 ---
 
@@ -197,11 +199,11 @@ claude /commit
 
 | Standard | Status | Notes |
 |----------|--------|-------|
-| Zero `any` usage | ✅ | Extremely high type discipline |
-| Strict mode | ✅ | All strict flags enabled |
-| Zod validation | ✅ | API request/response schemas |
-| Component prop types | ✅ | Explicit interfaces for all |
-| Environment validation | ✅ | Runtime checks for required vars |
+| Zero `any` usage |  | Extremely high type discipline |
+| Strict mode |  | All strict flags enabled |
+| Zod validation |  | API request/response schemas |
+| Component prop types |  | Explicit interfaces for all |
+| Environment validation |  | Runtime checks for required vars |
 
 **Type Patterns Used**:
 ```typescript
@@ -228,10 +230,10 @@ const CreateCardSchema = z.object({
 
 | Tool | Purpose | Status |
 |------|---------|--------|
-| ESLint | Catch errors during dev | ✅ Configured |
-| Prettier | Consistent formatting | ✅ Configured |
-| TypeScript strict | Block type errors | ✅ Enabled |
-| `pnpm build` | Type check + bundle | ✅ CI ready |
+| ESLint | Catch errors during dev |  Configured |
+| Prettier | Consistent formatting |  Configured |
+| TypeScript strict | Block type errors |  Enabled |
+| `pnpm build` | Type check + bundle |  CI ready |
 
 **Future Additions**:
 - [ ] Bundle size tracking
@@ -256,19 +258,19 @@ model User {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  // ✅ V1 PARITY: Local-only mode toggle
+  //  V1 PARITY: Local-only mode toggle
   serverSync            Boolean  @default(true)
 
   workspaces     Workspace[]
   settings       UserSettings?
   deviceSessions DeviceSession[]
 
-  // 🔵 ROADMAP: Connected platform accounts
+  //  ROADMAP: Connected platform accounts
   connectedAccounts ConnectedAccount[]
 }
 ```
 
-#### **✅ DeviceSession (V1 PARITY)**
+#### ** DeviceSession (V1 PARITY)**
 ```prisma
 // V1 has this for multi-device sync conflict resolution
 model DeviceSession {
@@ -288,7 +290,7 @@ model DeviceSession {
 }
 ```
 
-#### **✅ UserViewSettings (SYNCED PREFERENCES)**
+#### ** UserViewSettings (SYNCED PREFERENCES)**
 ```prisma
 // Per-view AND per-content-type layout preferences (synced across devices)
 model UserViewSettings {
@@ -367,7 +369,7 @@ model Card {
   description     String?
   content         String?   // Note content or extracted article
 
-  // ✅ V1 PARITY: Separate notes field (V1 has both content AND notes)
+  //  V1 PARITY: Separate notes field (V1 has both content AND notes)
   notes           String?   // User notes/annotations separate from content
 
   // Metadata
@@ -376,10 +378,10 @@ model Card {
   favicon         String?
   metadata        Json?     // Flexible metadata from scraping
 
-  // ✅ V1 PARITY: Async metadata fetch status
+  //  V1 PARITY: Async metadata fetch status
   status          String    @default("PENDING")  // PENDING, READY, ERROR
 
-  // 🔵 ROADMAP: YouTube transcripts for Kit AI context
+  //  ROADMAP: YouTube transcripts for Kit AI context
   transcriptSegments String?  // JSON array of transcript segments
 
   // AI & Future Features
@@ -424,7 +426,7 @@ model Card {
   // Junction for notes in Pawkits (notes organized via Pawkits + Tags, NOT folders)
   collectionNotes CollectionNote[]
 
-  // 🔵 ROADMAP: Citations for Topic Notes
+  //  ROADMAP: Citations for Topic Notes
   citations       Citation[]
 
   @@index([workspaceId])
@@ -565,7 +567,7 @@ model Connection {
 }
 ```
 
-#### **🔵 ConnectedAccount (ROADMAP FOUNDATION)**
+#### ** ConnectedAccount (ROADMAP FOUNDATION)**
 ```prisma
 // For Reddit, YouTube, Twitter, Hacker News integrations
 model ConnectedAccount {
@@ -599,7 +601,7 @@ model ConnectedAccount {
 }
 ```
 
-#### **🔵 ImportJob (ROADMAP FOUNDATION)**
+#### ** ImportJob (ROADMAP FOUNDATION)**
 ```prisma
 // For bulk import operations from connected platforms
 model ImportJob {
@@ -627,7 +629,7 @@ model ImportJob {
 }
 ```
 
-#### **🔵 Citation (ROADMAP FOUNDATION - Topic Notes)**
+#### ** Citation (ROADMAP FOUNDATION - Topic Notes)**
 ```prisma
 // For Topic Notes with source citations
 model Citation {
@@ -654,7 +656,7 @@ model Citation {
 }
 ```
 
-#### **🔵 QuickNoteArchive (ROADMAP FOUNDATION)**
+#### ** QuickNoteArchive (ROADMAP FOUNDATION)**
 ```prisma
 // For weekly auto-consolidation of quick notes
 model QuickNoteArchive {
@@ -706,11 +708,11 @@ model CollectionNote {
 | `source` | Card, CalendarEvent | Track origin (manual, Kit, Reddit, etc.) |
 | `metadata` | Collection | Board config, custom settings |
 | `linkedCardId` | Todo | Link tasks to cards |
-| **✅ `status`** | Card | Async metadata fetch tracking |
-| **🔵 `transcriptSegments`** | Card | YouTube transcripts for Kit AI |
-| **✅ `notes`** | Card | User annotations separate from content |
-| **🔵 `Citation`** | Model | Topic Notes source tracking |
-| **🔵 `ConnectedAccount`** | Model | Platform OAuth and sync state |
+| ** `status`** | Card | Async metadata fetch tracking |
+| ** `transcriptSegments`** | Card | YouTube transcripts for Kit AI |
+| ** `notes`** | Card | User annotations separate from content |
+| ** `Citation`** | Model | Topic Notes source tracking |
+| ** `ConnectedAccount`** | Model | Platform OAuth and sync state |
 
 ---
 
@@ -801,7 +803,7 @@ To maintain a high-density, professional look, V2 uses specific Lucide icon patt
 
 ```
 ┌─────────────────────────────┐
-│ [👤]              [↗] [✕]  │  ← User avatar (flyout), anchor, close
+│ []              [↗] []  │  ← User avatar (flyout), anchor, close
 └─────────────────────────────┘
 
 Home
@@ -817,8 +819,8 @@ PAWKITS ─────────────────── [▼]
 └── + New Pawkit
 
 CONNECTIONS ────────────────[▼]
-├── ☁️ Filen
-├── 🔌 MCP
+├──  Filen
+├──  MCP
 └── + Connect service
 ```
 
@@ -829,12 +831,12 @@ CONNECTIONS ────────────────[▼]
 │ erik@email.com              │
 ├─────────────────────────────┤
 │ WORKSPACES                  │
-│ ● Personal            ✓    │
+│ ● Personal                │
 │ ○ Work                      │
 │ + Create workspace          │
 ├─────────────────────────────┤
-│ ⚙️ Account settings         │
-│ 🚪 Sign out                 │
+│  Account settings         │
+│  Sign out                 │
 └─────────────────────────────┘
 ```
 
@@ -847,26 +849,26 @@ CONNECTIONS ────────────────[▼]
 
 **Header (constant):**
 ```
-[✕] [↗] [🌙/☀️] [🗑️] [⚙️]
+[] [↗] [/] [] []
 close, anchor, theme toggle, trash, settings
 ```
 
 **Library View:**
 ```
 CONTENT TYPE ──────────────[▼]
-├── 🔗 Bookmarks
-├── 📝 Notes
-├── 📺 Video
-├── 🖼️ Images
-├── 📄 Docs
-├── 🎵 Audio
-└── 📦 Other
+├──  Bookmarks
+├──  Notes
+├──  Video
+├──  Images
+├──  Docs
+├──  Audio
+└──  Other
 
 NOTE FOLDERS ──────────────[▼]  ← Only visible when Content Type = Notes
-├── 📁 Work Notes
-├── 📁 Personal
-│   └── 📁 Journal
-└── 📁 Projects
+├──  Work Notes
+├──  Personal
+│   └──  Journal
+└──  Projects
 
 TAGS ──────────────────────[▼]
 ├── #products (19)
@@ -875,7 +877,7 @@ TAGS ──────────────────────[▼]
 
 SORT ──────────────────────[▼]
 ├── Recently Modified
-├── Date Added ✓
+├── Date Added 
 ├── Title A-Z
 └── Domain
 
@@ -895,11 +897,11 @@ VIEW ──────────────────────[▼]
 ├── Week
 
 SHOW ──────────────────────[▼]
-├── ☑️ Events
-├── ☑️ Scheduled Cards
-├── ☑️ Tasks
-├── ☑️ Daily Notes
-├── 🆕 ☑️ Holidays (with country picker)
+├──  Events
+├──  Scheduled Cards
+├──  Tasks
+├──  Daily Notes
+├── 🆕  Holidays (with country picker)
 ```
 
 **🆕 Calendar Preferences:**
@@ -923,7 +925,7 @@ PAWKIT ────────────────────[▼]
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ [+] [ Search Pawkit...                    ] [⌘K] [?] │
+│ [+] [ Search Pawkit...                    ] [K] [?] │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -940,18 +942,18 @@ The Omnibar doubles as the global toast/notification container.
 **+ Menu:**
 ```
 ┌─────────────────────────┐
-│ 🔗 Add Bookmark    ⌘B   │
-│ 📝 New Note        ⌘N   │
-│ 📋 Quick Note           │
-│ 📁 Upload File          │
-│ 📅 New Event            │
-│ ✓ New Task        ⌘T   │
+│  Add Bookmark    B   │
+│  New Note        N   │
+│  Quick Note           │
+│  Upload File          │
+│  New Event            │
+│  New Task        T   │
 └─────────────────────────┘
 ```
 
 **New Task (inline in + menu):**
 ```
-│ ✓ New Task        ⌘T   │
+│  New Task        T   │
 │ ┌─────────────────────┐ │
 │ │ Buy groceries...    │ │  ← Input appears
 │ └─────────────────────┘ │
@@ -980,21 +982,21 @@ The Omnibar doubles as the global toast/notification container.
 **Tasks Modal (opened from Tasks Widget):**
 ```
 ┌─────────────────────────────────────────────────┐
-│ Tasks                                      [✕]  │
+│ Tasks                                      []  │
 ├─────────────────────────────────────────────────┤
 │ [Active] [Completed]              ← Tab toggle  │
 ├─────────────────────────────────────────────────┤
 │ OVERDUE                                         │
-│ ☐ Fix sync bug                      Dec 15     │
+│  Fix sync bug                      Dec 15     │
 │                                                 │
 │ TODAY                                           │
-│ ☐ Review PR                         Dec 19     │
+│  Review PR                         Dec 19     │
 │                                                 │
 │ UPCOMING                                        │
-│ ☐ Christmas shopping                Dec 22     │
+│  Christmas shopping                Dec 22     │
 │                                                 │
 │ NO DUE DATE                                     │
-│ ☐ Research frameworks                          │
+│  Research frameworks                          │
 ├─────────────────────────────────────────────────┤
 │ [+ Add task...]                                 │
 └─────────────────────────────────────────────────┘
@@ -1007,7 +1009,7 @@ The Omnibar doubles as the global toast/notification container.
 **Standard Modal:**
 ```
 ┌─────────────────────────────────────────────────┐
-│ Title                                      [✕]  │
+│ Title                                      []  │
 ├─────────────────────────────────────────────────┤
 │                                                 │
 │  Content area                                   │
@@ -1711,10 +1713,10 @@ When Kit wants to perform an action:
    ┌─────────────────────────────────────────┐
    │ Kit wants to create an event           │
    ├─────────────────────────────────────────┤
-   │ 📅 Team Meeting                         │
+   │  Team Meeting                         │
    │ December 20, 2025 at 2:00 PM           │
    ├─────────────────────────────────────────┤
-   │ ☐ Don't ask again for this action      │
+   │  Don't ask again for this action      │
    │                                         │
    │              [Cancel] [Create]          │
    └─────────────────────────────────────────┘
@@ -2031,12 +2033,12 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
 
 ### Explicitly Excluded from V2
 
-- ❌ No V2.1, V2.2 planning - V2 is complete
-- ❌ No partial features - everything works or isn't included
-- ❌ No "coming soon" placeholders in UI
-- ❌ No separate Notes view - notes filtered via Library
-- ❌ No Tasks in left sidebar - accessed via Home widget + modal
-- ❌ No Den feature - replaced by `isPrivate` on any Pawkit
+-  No V2.1, V2.2 planning - V2 is complete
+-  No partial features - everything works or isn't included
+-  No "coming soon" placeholders in UI
+-  No separate Notes view - notes filtered via Library
+-  No Tasks in left sidebar - accessed via Home widget + modal
+-  No Den feature - replaced by `isPrivate` on any Pawkit
 
 ---
 
@@ -2062,7 +2064,7 @@ interface Card {
 1.  **Static Analysis:** Calculate `readingTime` (Word Count / 225 WPM) on scrape.
 2.  **Dynamic Tracking:** Track scroll position in Reader Mode.
 3.  **Visuals:**
-    -   **Badges:** Show `⏱️ 5m` on cards.
+    -   **Badges:** Show ` 5m` on cards.
     -   **Progress Bar:** Thin line at bottom of thumbnail for `in-progress` items.
 4.  **Filters:** "Unread", "In Progress", "Done".
 
@@ -2149,7 +2151,7 @@ interface Card {
 6. **Omnibar**
    - Search input
    - + menu with all creation options
-   - Command palette (⌘K)
+   - Command palette (K)
    - **🆕 Omnibar-Toast System:** Elastic morphing and spring-physics notification stack (`framer-motion`)
 
 ### Phase 3: Views
@@ -2398,15 +2400,15 @@ Content-Type: application/json
 
 ### V2 Requirements
 
-1. ✅ Preserve 64-char hex token format
-2. ✅ Preserve bcrypt hashing (10 rounds)
-3. ✅ Preserve 30-day expiry
-4. ✅ Preserve 5-minute token cache
-5. ✅ Preserve Bearer token header format
-6. ✅ Maintain `/api/extension/token` endpoint
-7. ✅ Maintain `/api/cards` POST with extension auth
-8. ✅ Maintain `/api/pawkits` GET with extension auth
-9. ✅ Preserve CORS whitelist pattern
+1.  Preserve 64-char hex token format
+2.  Preserve bcrypt hashing (10 rounds)
+3.  Preserve 30-day expiry
+4.  Preserve 5-minute token cache
+5.  Preserve Bearer token header format
+6.  Maintain `/api/extension/token` endpoint
+7.  Maintain `/api/cards` POST with extension auth
+8.  Maintain `/api/pawkits` GET with extension auth
+9.  Preserve CORS whitelist pattern
 
 ---
 
@@ -2579,7 +2581,7 @@ Use this checklist to verify V2 has all V1 features:
 - [x] Drag cards between Kanban columns
 - [x] Reorder Pawkits in sidebar
 - [ ] Keyboard shortcuts (K/F/D in Rediscover)
-- [x] Command palette (⌘K)
+- [x] Command palette (K)
 
 ### AI & Integrations
 - [ ] Kit AI chat with context awareness

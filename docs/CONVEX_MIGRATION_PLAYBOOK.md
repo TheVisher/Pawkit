@@ -1,5 +1,7 @@
 # Convex Native Migration Playbook
 
+Status: Historical. The Convex migration is complete; this playbook is retained for reference.
+
 > **Goal:** Migrate Pawkit from Dexie/IndexedDB to native Convex backend. No compatibility layers, no mapping - pure Convex.
 
 ## Native Convex Non-Negotiables
@@ -94,7 +96,7 @@ The codebase has a **hybrid architecture** with compatibility layers:
 - Delete `src/lib/hooks/use-live-data.ts`
 - Stop all `LocalCard`/Dexie types in components
 
-### Phase 1: Create Native Convex Hooks ✅ (Partially Done)
+### Phase 1: Create Native Convex Hooks  (Partially Done)
 
 **Status**: Convex schema and mutations exist in `/convex/`
 

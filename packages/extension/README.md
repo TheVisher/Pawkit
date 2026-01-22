@@ -4,11 +4,11 @@ Firefox-first browser extension (Manifest V3) for saving web pages to Pawkit.
 
 ## Features
 
-- 🦊 **Firefox-first** with easy Chrome/Edge migration path
-- 🎨 **Shadcn UI** components matching Pawkit's dark theme
-- 📋 **Quick save** via popup or context menu
-- 🔐 **Token-based auth** for secure API access
-- ⚡️ **Fast** - Built with React, TypeScript, and Vite
+-  **Firefox-first** with easy Chrome/Edge migration path
+-  **Shadcn UI** components matching Pawkit's dark theme
+-  **Quick save** via popup or context menu
+-  **Token-based auth** for secure API access
+-  **Fast** - Built with React, TypeScript, and Vite
 
 ## Development
 

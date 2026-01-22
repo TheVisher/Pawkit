@@ -155,23 +155,23 @@ function getDescendantSlugs(pawkitSlug: string): string[] {
 ### Example
 
 ```
-📁 Contacts
-├── 📁 Work
+ Contacts
+├──  Work
 │   └── John Smith    [tags: #contacts, #work]
-└── 📁 Family
+└──  Family
     └── Mom           [tags: #contacts, #family]
 
 Query "Contacts" Pawkit:
-├── John has #contacts ✓
-├── John also has #work (a descendant) ✗
+├── John has #contacts 
+├── John also has #work (a descendant) 
 ├── John excluded from Contacts view
 └── Same for Mom (#family is descendant)
 
 Query "Work" Pawkit:
-├── John has #work ✓
+├── John has #work 
 ├── Descendants of "work": []
-├── John has no descendant tags ✓
-└── John shows in Work view ✓
+├── John has no descendant tags 
+└── John shows in Work view 
 
 Result:
 ├── View Contacts → empty (or only direct children)
@@ -188,9 +188,9 @@ Card: "Generic Contact"
 Tags: #contacts
 
 Query Contacts:
-├── Has #contacts ✓
-├── Has no descendant tags ✓
-└── Shows in Contacts view ✓
+├── Has #contacts 
+├── Has no descendant tags 
+└── Shows in Contacts view 
 ```
 
 ---
@@ -301,7 +301,7 @@ export const SUPERTAG_REGISTRY: Record<string, SupertagDefinition> = {
     uiHints: {
       showCheckboxes: true,
       showInWidget: 'todo-widget',
-      icon: '✓'
+      icon: ''
     }
   },
 
@@ -312,7 +312,7 @@ export const SUPERTAG_REGISTRY: Record<string, SupertagDefinition> = {
     template: CONTACT_TEMPLATE,
     uiHints: {
       calendarFields: ['birthday', 'anniversary'],
-      icon: '👤'
+      icon: ''
     },
     actions: ['call', 'email', 'message']
   },
@@ -325,7 +325,7 @@ export const SUPERTAG_REGISTRY: Record<string, SupertagDefinition> = {
     uiHints: {
       showInWidget: 'bills-widget',
       calendarFields: ['renewalDay'],
-      icon: '💳'
+      icon: ''
     }
   },
 
@@ -335,7 +335,7 @@ export const SUPERTAG_REGISTRY: Record<string, SupertagDefinition> = {
     suggestedFields: ['ingredients', 'steps', 'prepTime', 'servings'],
     template: RECIPE_TEMPLATE,
     uiHints: {
-      icon: '🍳'
+      icon: ''
     }
   },
 
@@ -345,7 +345,7 @@ export const SUPERTAG_REGISTRY: Record<string, SupertagDefinition> = {
     suggestedFields: ['author', 'pages', 'currentPage'],
     uiHints: {
       showInWidget: 'reading-widget',
-      icon: '📚'
+      icon: ''
     }
   }
 };
@@ -374,9 +374,9 @@ export function isSupertagTag(tag: string): boolean {
    # John Smith
 
    ## Contact Info
-   - 📱 Phone:
-   - 📧 Email:
-   - 🎂 Birthday:
+   -  Phone:
+   -  Email:
+   -  Birthday:
 
    ## Notes
    ...
