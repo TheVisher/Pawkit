@@ -2,10 +2,11 @@
 
 import { X, Clock, Check, CalendarDays, AlertTriangle, AlertCircle, WifiOff, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getTagColor, getTagStyle } from '@/lib/utils/tag-colors';
+import { getTagStyle } from '@/lib/utils/tag-colors';
 import { getTagName } from '@/lib/utils/tag-hierarchy';
 import { type SystemTag, isReadingTimeTag, READ_TAG, SCHEDULED_TAG, DUE_TODAY_TAG, OVERDUE_TAG, CONFLICT_TAG } from '@/lib/utils/system-tags';
 import { SystemTagBadge } from './system-tag-badge';
+import { useTagColors } from '@/lib/contexts/tag-colors-context';
 
 export interface TagBadgeProps {
   /** The full tag path (e.g., "dev/react") */
@@ -22,6 +23,8 @@ export interface TagBadgeProps {
   className?: string;
   /** Whether the badge is interactive (shows hover state) */
   interactive?: boolean;
+  /** Custom HSL color string (e.g., "270 60 50") - overrides deterministic color */
+  customColor?: string;
 }
 
 /**
@@ -76,10 +79,14 @@ export function TagBadge({
   showLeafOnly = false,
   className,
   interactive = false,
+  customColor: customColorProp,
 }: TagBadgeProps) {
   const displayName = showLeafOnly ? getTagName(tag) : tag;
-  // Custom tag colors removed - use deterministic colors based on tag name
-  const colors = getTagColor(tag);
+
+  // Get custom color from context if not passed as prop
+  const { getCustomColor } = useTagColors();
+  const customColor = customColorProp ?? getCustomColor(tag);
+
   const Icon = getSystemTagIcon(tag);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -106,7 +113,7 @@ export function TagBadge({
 
   // Icon-only privacy tags get special styling
   const isPrivacy = isPrivacyTag(tag);
-  const tagStyle = isPrivacy ? PRIVACY_TAG_STYLE : getTagStyle(tag);
+  const tagStyle = isPrivacy ? PRIVACY_TAG_STYLE : getTagStyle(tag, customColor);
 
   // Icon-only tags need square padding to look like badges
   const iconOnlySizeClasses = {

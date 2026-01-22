@@ -7,6 +7,7 @@ import { ThemeProvider } from '../components/providers/theme-provider'
 import { DebugProvider } from '../components/debug'
 import { AppShell } from '../components/layout/app-shell'
 import { AppDndProvider } from '../lib/contexts/dnd-context'
+import { TagColorsProvider } from '../lib/contexts/tag-colors-context'
 
 import appCss from '../styles.css?url'
 
@@ -47,7 +48,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <DebugProvider>
               <AppDndProvider>
-                <AppShell>{children}</AppShell>
+                <TagColorsProvider>
+                  <AppShell>{children}</AppShell>
+                </TagColorsProvider>
               </AppDndProvider>
               <TanStackDevtools
                 config={{

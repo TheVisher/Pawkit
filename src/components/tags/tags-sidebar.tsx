@@ -184,7 +184,7 @@ function TagEditingPanel({
       <div className="flex-1 py-4 space-y-6">
         {/* Current Tag Display */}
         <div className="flex justify-center">
-          <TagBadge tag={tag} size="md" />
+          <TagBadge tag={tag} size="md" customColor={getColor(tag)} />
         </div>
 
         {/* Tag Name Input */}

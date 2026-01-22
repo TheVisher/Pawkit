@@ -21,6 +21,7 @@ import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { detectTodo } from '@/lib/utils/todo-detection';
 import { addTaskToContent } from '@/lib/utils/parse-task-items';
 import { suggestSimilarTags, validateTag, cleanTagInput, findExistingTag } from '@/lib/utils/tag-normalizer';
+import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 import {
   isPlateJson,
   parseJsonContent,
@@ -77,6 +78,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const [textareaHeight, setTextareaHeight] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isDiscardingRef = useRef(false);
+  const addDraftToClipboard = useOmnibarClipboardStore((s) => s.addDraft);
 
   // Tag creation state
   const [pendingTagCreation, setPendingTagCreation] = useState<string | null>(null);
@@ -257,7 +259,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       ? query.slice(1).toLowerCase()
       : lowerQuery;
 
-    let matchedCards: typeof cards = [];
+    let matchedCards: SearchResults['cards'] = [];
     let matchedCollections: typeof collections = [];
     let matchedActions: typeof SEARCHABLE_ACTIONS = [];
     let matchedTags: string[] = [];
@@ -281,7 +283,64 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         col.name.toLowerCase().includes(searchQuery)
       ).slice(0, 5);
     } else {
-      matchedCards = cards.filter(card => {
+      const normalizeSnippetText = (value: string) =>
+        value.replace(/\s+/g, ' ').trim();
+
+      const buildSnippet = (text: string, queryValue: string) => {
+        const normalized = normalizeSnippetText(text);
+        if (!normalized) return null;
+        const lowerText = normalized.toLowerCase();
+        const lowerQuery = queryValue.toLowerCase();
+        const matchIndex = lowerText.indexOf(lowerQuery);
+        if (matchIndex === -1) return null;
+
+        const context = 36;
+        const start = Math.max(0, matchIndex - context);
+        const end = Math.min(normalized.length, matchIndex + lowerQuery.length + context);
+        return {
+          text: normalized.slice(start, end),
+          matchStart: matchIndex - start,
+          matchLength: lowerQuery.length,
+          hasMatch: true,
+          hasPrefix: start > 0,
+          hasSuffix: end < normalized.length,
+        };
+      };
+
+      const createCardSnippet = (card: (typeof cards)[number]) => {
+        if (card.type === 'md-note' || card.type === 'text-note') {
+          const plainText = getContentText(card.content || '');
+          const snippet = buildSnippet(plainText, lowerQuery);
+          if (snippet) return snippet;
+        }
+
+        const description = card.description ?? '';
+        const descriptionSnippet = buildSnippet(description, lowerQuery);
+        if (descriptionSnippet) return descriptionSnippet;
+
+        const notes = card.notes ?? '';
+        const notesSnippet = buildSnippet(notes, lowerQuery);
+        if (notesSnippet) return notesSnippet;
+
+        const title = card.title ?? '';
+        const titleSnippet = buildSnippet(title, lowerQuery);
+        if (titleSnippet) return titleSnippet;
+
+        const domain = card.domain ?? '';
+        const domainSnippet = buildSnippet(domain, lowerQuery);
+        if (domainSnippet) return domainSnippet;
+
+        const tagMatch = card.tags?.find((tag) =>
+          tag.toLowerCase().includes(lowerQuery)
+        );
+        if (tagMatch) {
+          return buildSnippet(tagMatch, lowerQuery);
+        }
+
+        return null;
+      };
+
+      const filteredCards = cards.filter(card => {
         if (card.title?.toLowerCase().includes(lowerQuery)) return true;
         if (card.domain?.toLowerCase().includes(lowerQuery)) return true;
         if (card.tags?.some(t => t.toLowerCase().includes(lowerQuery))) return true;
@@ -293,6 +352,11 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
 
         return false;
       }).slice(0, 5);
+
+      matchedCards = filteredCards.map((card) => ({
+        ...card,
+        omnibarSnippet: createCardSnippet(card) ?? undefined,
+      }));
 
       matchedCollections = collections.filter(col =>
         col.name.toLowerCase().includes(lowerQuery)
@@ -371,6 +435,35 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     textareaRef.current?.blur();
     setTimeout(() => { isDiscardingRef.current = false; }, 0);
   }, []);
+
+  const stashDraft = useCallback(() => {
+    const trimmed = quickNoteText.trim();
+    if (!trimmed) {
+      resetSearch();
+      return;
+    }
+
+    if (
+      !trimmed.startsWith('/') &&
+      !trimmed.startsWith('#') &&
+      !trimmed.startsWith('@') &&
+      !isOnTagsPage
+    ) {
+      addDraftToClipboard(trimmed);
+    }
+
+    isDiscardingRef.current = true;
+    setIsQuickNoteMode(false);
+    setSearchResults(null);
+    setForceExpanded(false);
+    setSelectedIndex(-1);
+    setShowDiscardConfirm(false);
+    setTextareaHeight(0);
+    setPendingTagCreation(null);
+    setSimilarTagsWarning([]);
+    textareaRef.current?.blur();
+    setTimeout(() => { isDiscardingRef.current = false; }, 0);
+  }, [quickNoteText, resetSearch, addDraftToClipboard, isOnTagsPage]);
 
   const executeResult = useCallback((index: number) => {
     if (!searchResults || index < 0) return;
@@ -699,15 +792,13 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         return;
       }
 
-      if (showDiscardConfirm) {
-        confirmDiscard();
-      } else if (quickNoteText.trim()) {
-        setShowDiscardConfirm(true);
+      if (quickNoteText.trim()) {
+        stashDraft();
       } else {
         resetSearch();
       }
     }
-  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation]);
+  }, [quickNoteText, saveQuickNote, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation, stashDraft]);
 
   const handleQuickNoteBlur = useCallback((e: React.FocusEvent) => {
     if (isDiscardingRef.current) return;
@@ -721,11 +812,11 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     }
 
     if (quickNoteText.trim()) {
-      setShowDiscardConfirm(true);
+      stashDraft();
     } else {
       resetSearch();
     }
-  }, [quickNoteText, isOnTagsPage, resetSearch]);
+  }, [quickNoteText, isOnTagsPage, resetSearch, stashDraft]);
 
   const confirmDiscard = useCallback(() => {
     resetSearch();
@@ -788,7 +879,9 @@ export function getSearchHeight(
   textareaHeight: number,
   searchResults: SearchResults | null,
   isOnTagsPage: boolean,
-  similarTagsWarning: string[] = []
+  similarTagsWarning: string[] = [],
+  clipboardOpen: boolean = false,
+  clipboardItemsCount: number = 0
 ): number {
   if (!isQuickNoteMode) return 48;
 
@@ -819,11 +912,12 @@ export function getSearchHeight(
 
   if (searchResults && isQuickNoteMode) {
     const { cards, collections, actions, tags } = searchResults;
+    const isRecentMode = !hasTypedContent && !isPrefixCommand;
     // Item heights: py-3 (24px) + two text lines (~36px) = ~60px, but md:py-2 reduces to ~52px
-    const itemHeight = 52;
-    const headerHeight = 28;
-    const tipsHeight = 52;
-    const containerPadding = 16; // mt-2 + pt-2 + border
+    const itemHeight = isRecentMode ? 44 : 52;
+    const headerHeight = isRecentMode ? 24 : 28;
+    const tipsHeight = isRecentMode ? 40 : 52;
+    const containerPadding = isRecentMode ? 12 : 16; // mt-2 + pt-2 + border
 
     let sectionsWithItems = 0;
     let totalItems = 0;
@@ -845,6 +939,13 @@ export function getSearchHeight(
     if (!hasTypedContent && cards.length > 0) {
       height += tipsHeight;
     }
+  }
+
+  if (clipboardOpen && clipboardItemsCount > 0 && !hasTypedContent) {
+    const itemHeight = 38;
+    const headerHeight = 24;
+    const containerPadding = 12;
+    height += headerHeight + containerPadding + itemHeight * Math.min(clipboardItemsCount, 10);
   }
 
   return Math.min(Math.max(48, height), 600);
