@@ -13,6 +13,7 @@ import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import { isPlateJson, parseJsonContent, extractPlateText, createEmptyPlateContent } from '@/lib/plate/html-to-plate';
 import type { Card, Id } from '@/lib/types/convex';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // px
@@ -229,20 +230,22 @@ export function DayView() {
             <div className="border-r border-border-subtle text-xs text-text-muted text-right pr-2 py-2">
               All day
             </div>
-            <div className="p-2">
-              <div className="flex flex-wrap gap-1.5">
-                {dayItems
-                  .filter(item => item.isAllDay)
-                  .map((item) => (
-                    <EventItem
-                      key={item.id}
-                      item={item}
-                      compact
-                      onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                    />
-                  ))}
+            <ContentAreaContextMenu>
+              <div className="p-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {dayItems
+                    .filter(item => item.isAllDay)
+                    .map((item) => (
+                      <EventItem
+                        key={item.id}
+                        item={item}
+                        compact
+                        onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                      />
+                    ))}
+                </div>
               </div>
-            </div>
+            </ContentAreaContextMenu>
           </div>
         </div>
       )}
@@ -271,20 +274,22 @@ export function DayView() {
                 </div>
 
                 {/* Hour slot */}
-                <div
-                  className="border-r border-b border-border-subtle bg-bg-surface-1/30 hover:bg-bg-surface-2/50 transition-colors p-2"
-                  style={{ height: HOUR_HEIGHT }}
-                >
-                  <div className="space-y-1">
-                    {hourItems.map((item) => (
-                      <EventItem
-                        key={item.id}
-                        item={item}
-                        onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                      />
-                    ))}
+                <ContentAreaContextMenu>
+                  <div
+                    className="border-r border-b border-border-subtle bg-bg-surface-1/30 hover:bg-bg-surface-2/50 transition-colors p-2"
+                    style={{ height: HOUR_HEIGHT }}
+                  >
+                    <div className="space-y-1">
+                      {hourItems.map((item) => (
+                        <EventItem
+                          key={item.id}
+                          item={item}
+                          onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </ContentAreaContextMenu>
               </div>
             );
           })}

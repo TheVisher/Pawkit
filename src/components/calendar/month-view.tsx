@@ -19,6 +19,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { DayCell } from './day-cell';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import type { Card, Id } from '@/lib/types/convex';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -174,18 +175,19 @@ export function MonthView() {
           const isTodayDate = isToday(date);
 
           return (
-            <DayCell
-              key={dateKey}
-              date={date}
-              items={dayItems}
-              isCurrentMonth={isCurrentMonth}
-              isSelected={isSelected}
-              isToday={isTodayDate}
-              dailyNoteId={dailyNoteMap.get(dateKey)}
-              onDailyNoteClick={openCardDetail}
-              onClick={() => handleDayClick(date)}
-              onItemClick={openCardDetail}
-            />
+            <ContentAreaContextMenu key={dateKey}>
+              <DayCell
+                date={date}
+                items={dayItems}
+                isCurrentMonth={isCurrentMonth}
+                isSelected={isSelected}
+                isToday={isTodayDate}
+                dailyNoteId={dailyNoteMap.get(dateKey)}
+                onDailyNoteClick={openCardDetail}
+                onClick={() => handleDayClick(date)}
+                onItemClick={openCardDetail}
+              />
+            </ContentAreaContextMenu>
           );
         })}
       </div>

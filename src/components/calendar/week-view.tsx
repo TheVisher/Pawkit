@@ -18,6 +18,7 @@ import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import type { Card, Id } from '@/lib/types/convex';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // px
@@ -193,21 +194,20 @@ export function WeekView() {
             const allDayItems = (itemsByDate.get(dateKey) || []).filter(item => item.isAllDay);
 
             return (
-              <div
-                key={`allday-${day.toISOString()}`}
-                className="border-r border-border-subtle last:border-r-0 p-1 min-h-[32px]"
-              >
-                <div className="flex flex-wrap gap-0.5">
-                  {allDayItems.map((item) => (
-                    <EventItem
-                      key={item.id}
-                      item={item}
-                      compact
-                      onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                    />
-                  ))}
+              <ContentAreaContextMenu key={`allday-${day.toISOString()}`}>
+                <div className="border-r border-border-subtle last:border-r-0 p-1 min-h-[32px]">
+                  <div className="flex flex-wrap gap-0.5">
+                    {allDayItems.map((item) => (
+                      <EventItem
+                        key={item.id}
+                        item={item}
+                        compact
+                        onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
+              </ContentAreaContextMenu>
             );
           })}
         </div>
@@ -242,22 +242,23 @@ export function WeekView() {
                 });
 
                 return (
-                  <div
-                    key={`${day.toISOString()}-${hour}`}
-                    className="border-r border-b border-border-subtle bg-bg-surface-1/30 hover:bg-bg-surface-2/50 transition-colors relative p-1"
-                    style={{ height: HOUR_HEIGHT }}
-                  >
-                    <div className="space-y-0.5">
-                      {hourItems.map((item) => (
-                        <EventItem
-                          key={item.id}
-                          item={item}
-                          compact
-                          onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                        />
-                      ))}
+                  <ContentAreaContextMenu key={`${day.toISOString()}-${hour}`}>
+                    <div
+                      className="border-r border-b border-border-subtle bg-bg-surface-1/30 hover:bg-bg-surface-2/50 transition-colors relative p-1"
+                      style={{ height: HOUR_HEIGHT }}
+                    >
+                      <div className="space-y-0.5">
+                        {hourItems.map((item) => (
+                          <EventItem
+                            key={item.id}
+                            item={item}
+                            compact
+                            onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                          />
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  </ContentAreaContextMenu>
                 );
               })}
             </div>

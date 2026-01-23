@@ -1,5 +1,6 @@
 "use client";
 
+import { forwardRef } from "react";
 import { format } from "date-fns";
 import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,7 +23,7 @@ interface CalendarItem {
   };
 }
 
-interface DayCellProps {
+interface DayCellProps extends React.HTMLAttributes<HTMLDivElement> {
   date: Date;
   items: CalendarItem[];
   isCurrentMonth: boolean;
@@ -36,23 +37,29 @@ interface DayCellProps {
 
 const MAX_VISIBLE_ITEMS = 3;
 
-export function DayCell({
-  date,
-  items,
-  isCurrentMonth,
-  isSelected,
-  isToday,
-  dailyNoteId,
-  onDailyNoteClick,
-  onClick,
-  onItemClick,
-}: DayCellProps) {
+export const DayCell = forwardRef<HTMLDivElement, DayCellProps>(function DayCell(
+  {
+    date,
+    items,
+    isCurrentMonth,
+    isSelected,
+    isToday,
+    dailyNoteId,
+    onDailyNoteClick,
+    onClick,
+    onItemClick,
+    className,
+    ...rest
+  },
+  ref
+) {
   const dayNumber = format(date, "d");
   const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = items.length - MAX_VISIBLE_ITEMS;
 
   return (
     <div
+      ref={ref}
       onClick={onClick}
       className={cn(
         "p-2 cursor-pointer transition-all flex flex-col rounded-lg",
@@ -60,7 +67,9 @@ export function DayCell({
         "border border-border-subtle/50",
         "shadow-sm hover:shadow-md",
         !isCurrentMonth && "bg-bg-surface-1/50 text-text-muted",
+        className,
       )}
+      {...rest}
     >
       {/* Day number */}
       <div className="flex items-center justify-between mb-2">
@@ -121,4 +130,4 @@ export function DayCell({
       </div>
     </div>
   );
-}
+});

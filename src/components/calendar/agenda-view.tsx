@@ -16,6 +16,7 @@ import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
 import type { CalendarEvent, Card, Id } from '@/lib/types/convex';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 
 const DAYS_TO_SHOW = 30; // Show next 30 days
 
@@ -142,33 +143,35 @@ export function AgendaView() {
           const isTomorrowDate = isTomorrow(group.date);
 
           return (
-            <div key={group.date.toISOString()}>
-              {/* Date header */}
-              <div className="mb-3">
-                <div
-                  className={`text-sm font-medium ${
-                    isTodayDate
-                      ? 'text-accent-primary'
-                      : 'text-text-primary'
-                  }`}
-                >
-                  {isTodayDate && 'Today - '}
-                  {isTomorrowDate && 'Tomorrow - '}
-                  {format(group.date, 'EEEE, MMMM d, yyyy')}
+            <ContentAreaContextMenu key={group.date.toISOString()}>
+              <div>
+                {/* Date header */}
+                <div className="mb-3">
+                  <div
+                    className={`text-sm font-medium ${
+                      isTodayDate
+                        ? 'text-accent-primary'
+                        : 'text-text-primary'
+                    }`}
+                  >
+                    {isTodayDate && 'Today - '}
+                    {isTomorrowDate && 'Tomorrow - '}
+                    {format(group.date, 'EEEE, MMMM d, yyyy')}
+                  </div>
+                </div>
+
+                {/* Events for this day */}
+                <div className="space-y-2">
+                  {group.items.map((item) => (
+                    <EventItem
+                      key={item.id}
+                      item={item}
+                      onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                    />
+                  ))}
                 </div>
               </div>
-
-              {/* Events for this day */}
-              <div className="space-y-2">
-                {group.items.map((item) => (
-                  <EventItem
-                    key={item.id}
-                    item={item}
-                    onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                  />
-                ))}
-              </div>
-            </div>
+            </ContentAreaContextMenu>
           );
         })}
       </div>
