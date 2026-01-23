@@ -21,6 +21,7 @@ import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { detectTodo } from '@/lib/utils/todo-detection';
 import { addTaskToContent } from '@/lib/utils/parse-task-items';
 import { suggestSimilarTags, validateTag, cleanTagInput, findExistingTag } from '@/lib/utils/tag-normalizer';
+import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 import {
   isPlateJson,
   parseJsonContent,
@@ -28,9 +29,7 @@ import {
   htmlToPlateJson,
   getContentText,
   createEmptyPlateContent,
-  extractPlateText,
 } from '@/lib/plate/html-to-plate';
-import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 import type { Value, Descendant } from 'platejs';
 
 export interface SearchState {
@@ -219,10 +218,6 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   // SEARCH LOGIC
   // ==========================================================================
 
-  const stripHtml = useCallback((content: unknown): string => {
-    return getContentText(content);
-  }, []);
-
   // Only compute recent cards when actually in quick note mode
   // This avoids sorting 180 cards on every omnibar transition
   const recentCards = useMemo(() => {
@@ -284,40 +279,28 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         col.name.toLowerCase().includes(searchQuery)
       ).slice(0, 5);
     } else {
-      // Snippet helper functions
       const normalizeSnippetText = (value: string) =>
         value.replace(/\s+/g, ' ').trim();
 
       const getPlainText = (content: unknown): string => {
-        if (!content) return '';
-        if (Array.isArray(content)) {
-          return extractPlateText(content as Value);
-        }
-        if (typeof content === 'string') {
-          if (isPlateJson(content)) {
-            const parsed = parseJsonContent(content);
-            if (parsed) return extractPlateText(parsed);
-          }
-          return stripHtml(content);
-        }
-        return '';
+        return getContentText(content);
       };
 
       const buildSnippet = (text: string, queryValue: string) => {
         const normalized = normalizeSnippetText(text);
         if (!normalized) return null;
         const lowerText = normalized.toLowerCase();
-        const lowerQ = queryValue.toLowerCase();
-        const matchIndex = lowerText.indexOf(lowerQ);
+        const lowerQueryValue = queryValue.toLowerCase();
+        const matchIndex = lowerText.indexOf(lowerQueryValue);
         if (matchIndex === -1) return null;
 
         const context = 36;
         const start = Math.max(0, matchIndex - context);
-        const end = Math.min(normalized.length, matchIndex + lowerQ.length + context);
+        const end = Math.min(normalized.length, matchIndex + lowerQueryValue.length + context);
         return {
           text: normalized.slice(start, end),
           matchStart: matchIndex - start,
-          matchLength: lowerQ.length,
+          matchLength: lowerQueryValue.length,
           hasMatch: true,
           hasPrefix: start > 0,
           hasSuffix: end < normalized.length,
@@ -392,7 +375,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
       tags: matchedTags,
     });
     setSelectedIndex(-1);
-  }, [debouncedQuery, isQuickNoteMode, cards, collections, recentCards, stripHtml]);
+  }, [debouncedQuery, isQuickNoteMode, cards, collections, recentCards]);
 
   // Context-aware filtering for /tags page
   useEffect(() => {
@@ -462,12 +445,24 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     if (
       !trimmed.startsWith('/') &&
       !trimmed.startsWith('#') &&
-      !trimmed.startsWith('@')
+      !trimmed.startsWith('@') &&
+      !isOnTagsPage
     ) {
       addDraftToClipboard(trimmed);
     }
-    resetSearch();
-  }, [quickNoteText, addDraftToClipboard, resetSearch]);
+
+    isDiscardingRef.current = true;
+    setIsQuickNoteMode(false);
+    setSearchResults(null);
+    setForceExpanded(false);
+    setSelectedIndex(-1);
+    setShowDiscardConfirm(false);
+    setTextareaHeight(0);
+    setPendingTagCreation(null);
+    setSimilarTagsWarning([]);
+    textareaRef.current?.blur();
+    setTimeout(() => { isDiscardingRef.current = false; }, 0);
+  }, [quickNoteText, resetSearch, addDraftToClipboard, isOnTagsPage]);
 
   const executeResult = useCallback((index: number) => {
     if (!searchResults || index < 0) return;
@@ -796,15 +791,13 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         return;
       }
 
-      if (showDiscardConfirm) {
-        confirmDiscard();
-      } else if (quickNoteText.trim()) {
-        setShowDiscardConfirm(true);
+      if (quickNoteText.trim()) {
+        stashDraft();
       } else {
         resetSearch();
       }
     }
-  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation]);
+  }, [quickNoteText, saveQuickNote, selectedIndex, totalResultsCount, executeResult, isOnTagsPage, resetSearch, pendingTagCreation, confirmTagCreation, handleTagCreation, cancelTagCreation, stashDraft]);
 
   const handleQuickNoteBlur = useCallback((e: React.FocusEvent) => {
     if (isDiscardingRef.current) return;
@@ -818,11 +811,11 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     }
 
     if (quickNoteText.trim()) {
-      setShowDiscardConfirm(true);
+      stashDraft();
     } else {
       resetSearch();
     }
-  }, [quickNoteText, isOnTagsPage, resetSearch]);
+  }, [quickNoteText, isOnTagsPage, resetSearch, stashDraft]);
 
   const confirmDiscard = useCallback(() => {
     stashDraft();
@@ -885,7 +878,9 @@ export function getSearchHeight(
   textareaHeight: number,
   searchResults: SearchResults | null,
   isOnTagsPage: boolean,
-  similarTagsWarning: string[] = []
+  similarTagsWarning: string[] = [],
+  clipboardOpen: boolean = false,
+  clipboardItemsCount: number = 0
 ): number {
   if (!isQuickNoteMode) return 48;
 
@@ -916,11 +911,12 @@ export function getSearchHeight(
 
   if (searchResults && isQuickNoteMode) {
     const { cards, collections, actions, tags } = searchResults;
+    const isRecentMode = !hasTypedContent && !isPrefixCommand;
     // Item heights: py-3 (24px) + two text lines (~36px) = ~60px, but md:py-2 reduces to ~52px
-    const itemHeight = 52;
-    const headerHeight = 28;
-    const tipsHeight = 52;
-    const containerPadding = 16; // mt-2 + pt-2 + border
+    const itemHeight = isRecentMode ? 44 : 52;
+    const headerHeight = isRecentMode ? 24 : 28;
+    const tipsHeight = isRecentMode ? 40 : 52;
+    const containerPadding = isRecentMode ? 12 : 16; // mt-2 + pt-2 + border
 
     let sectionsWithItems = 0;
     let totalItems = 0;
@@ -942,6 +938,13 @@ export function getSearchHeight(
     if (!hasTypedContent && cards.length > 0) {
       height += tipsHeight;
     }
+  }
+
+  if (clipboardOpen && clipboardItemsCount > 0 && !hasTypedContent) {
+    const itemHeight = 38;
+    const headerHeight = 24;
+    const containerPadding = 12;
+    height += headerHeight + containerPadding + itemHeight * Math.min(clipboardItemsCount, 10);
   }
 
   return Math.min(Math.max(48, height), 600);

@@ -74,6 +74,18 @@ export function CardDetailHeader({
   const hasImage = card.image && !imageError;
   const isArticle = card.type === 'url';
 
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.currentTarget.blur();
+    }
+    if (e.key !== 'Escape') {
+      e.stopPropagation();
+      (e.nativeEvent as { stopImmediatePropagation?: () => void })
+        .stopImmediatePropagation?.();
+    }
+  };
+
   return (
     <div className="relative flex-shrink-0">
       {hasImage ? (
@@ -157,15 +169,7 @@ export function CardDetailHeader({
                       textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.6)',
                       overflow: 'hidden',
                     }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.currentTarget.blur();
-                      }
-                      if (e.key !== 'Escape') {
-                        e.stopPropagation();
-                      }
-                    }}
+                    onKeyDownCapture={handleTitleKeyDown}
                   />
                 </div>
 
@@ -207,15 +211,7 @@ export function CardDetailHeader({
                   textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.6)',
                   overflow: 'hidden',
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                  }
-                  if (e.key !== 'Escape') {
-                    e.stopPropagation();
-                  }
-                }}
+                onKeyDownCapture={handleTitleKeyDown}
               />
             )}
           </div>
@@ -245,15 +241,7 @@ export function CardDetailHeader({
               'leading-tight'
             )}
             style={{ color: 'var(--text-primary)', overflow: 'hidden' }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.currentTarget.blur();
-              }
-              if (e.key !== 'Escape') {
-                e.stopPropagation();
-              }
-            }}
+            onKeyDownCapture={handleTitleKeyDown}
           />
         </div>
       )}

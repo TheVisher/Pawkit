@@ -184,14 +184,7 @@ export function SearchResultsPanel({
         </div>
       )}
 
-      {/* Tips row for empty state */}
-      {showEmptyState && (
-        <div className="px-3 py-2 text-xs text-text-muted flex items-center gap-4 border-t border-[var(--glass-border)] mt-2">
-          <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">/</kbd> commands</span>
-          <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">#</kbd> tags</span>
-          <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">@</kbd> pawkits</span>
-        </div>
-      )}
+      {/* Tips row moved to idle content */}
     </div>
   );
 }

@@ -9,10 +9,12 @@ import {
   Hash,
   Sparkles,
   Link2,
+  Clipboard,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addMenuItems, type SearchResults } from './types';
 import { SearchResultsPanel } from './search-results-panel';
+import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 
 // =============================================================================
 // IDLE CONTENT (Search/Actions)
@@ -91,6 +93,10 @@ export function IdleContent({
 }: IdleContentProps) {
   const hasContent = quickNoteText.length > 0;
   const isPrefixCommand = quickNoteText.startsWith('/') || quickNoteText.startsWith('#') || quickNoteText.startsWith('@');
+  const showClipboardToggle = isQuickNoteMode && !hasContent && !isPrefixCommand;
+  const clipboardItems = useOmnibarClipboardStore((s) => s.items);
+  const isClipboardOpen = useOmnibarClipboardStore((s) => s.isOpen);
+  const toggleClipboardOpen = useOmnibarClipboardStore((s) => s.toggleOpen);
 
   // Check if the input is a URL
   const isUrl = hasContent && /^(https?:\/\/|www\.)|^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(\/|$)/i.test(quickNoteText.trim());
@@ -145,7 +151,10 @@ export function IdleContent({
               : "flex-1 min-w-0 opacity-100"
           )}
         >
-          <div className="flex-1 min-w-0 flex items-center h-10 px-2 gap-2 rounded-xl hover:bg-[var(--glass-bg)] transition-colors duration-150 cursor-text">
+          <div
+            className="flex-1 min-w-0 flex items-center h-10 px-2 gap-2 rounded-xl hover:bg-[var(--glass-bg)] transition-colors duration-150 cursor-text"
+            onClick={() => textareaRef.current?.focus()}
+          >
             <Search className="h-4 w-4 shrink-0 text-text-muted" />
             <input
               ref={textareaRef as unknown as React.RefObject<HTMLInputElement>}
@@ -246,6 +255,62 @@ export function IdleContent({
           onSelectResult={onSelectResult}
           showEmptyState={showEmptyState}
         />
+      )}
+
+      {/* Clipboard Toggle + Panel */}
+      {showClipboardToggle && (
+        <div className="mt-2 border-t border-[var(--glass-border)] pt-2">
+          <button
+            onClick={toggleClipboardOpen}
+            className={cn(
+              'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left',
+              'text-text-muted hover:text-text-primary',
+              'hover:bg-[var(--glass-bg)] transition-colors'
+            )}
+          >
+            <Clipboard className="h-4 w-4 shrink-0" />
+            <span className="text-xs uppercase tracking-wider">Clipboard</span>
+          </button>
+
+          {isClipboardOpen && (
+            <div
+              className="mt-2 max-h-48 overflow-y-auto scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {clipboardItems.length === 0 ? (
+                <div className="px-3 py-2 text-xs text-text-muted">No drafts yet.</div>
+              ) : (
+                clipboardItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setQuickNoteText(item.text);
+                      setIsQuickNoteMode(true);
+                      onForceExpand();
+                      requestAnimationFrame(() => textareaRef.current?.focus());
+                    }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left',
+                      'text-text-secondary hover:text-text-primary',
+                      'hover:bg-[var(--glass-bg)] transition-colors'
+                    )}
+                  >
+                    <div className="text-sm truncate">{item.text}</div>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tips row for empty state - keep at bottom */}
+      {showEmptyState && (
+        <div className="px-3 py-2 text-xs text-text-muted flex items-center gap-4 border-t border-[var(--glass-border)] mt-2">
+          <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">/</kbd> commands</span>
+          <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">#</kbd> tags</span>
+          <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">@</kbd> pawkits</span>
+        </div>
       )}
 
       {/* =================================================================== */}

@@ -10,6 +10,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { useAddMode, getAddModeHeight } from './use-add-mode';
 import { useKitMode, getKitModeHeight } from './use-kit-mode';
 import { useSearch, getSearchHeight } from './use-search';
+import { useOmnibarClipboardStore } from '@/lib/stores/omnibar-clipboard-store';
 
 export function useOmnibar(isCompact: boolean) {
   const [mounted, setMounted] = useState(false);
@@ -35,6 +36,8 @@ export function useOmnibar(isCompact: boolean) {
     search.closeSearch();
     addMode.closeAddMode();
   });
+  const clipboardItemsCount = useOmnibarClipboardStore((s) => s.items.length);
+  const isClipboardOpen = useOmnibarClipboardStore((s) => s.isOpen);
 
   // Effective compact state
   const effectivelyCompact = isCompact &&
@@ -174,9 +177,11 @@ export function useOmnibar(isCompact: boolean) {
       search.textareaHeight,
       search.searchResults,
       search.isOnTagsPage,
-      search.similarTagsWarning
+      search.similarTagsWarning,
+      isClipboardOpen,
+      clipboardItemsCount
     );
-  }, [addMode.isAddMode, kitMode.isKitMode, search]);
+  }, [addMode.isAddMode, kitMode.isKitMode, search, isClipboardOpen, clipboardItemsCount]);
 
   // ==========================================================================
   // RETURN COMPOSED STATE

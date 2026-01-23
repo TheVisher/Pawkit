@@ -38,8 +38,13 @@ interface NoteContentProps {
 export function NoteContent({ card, title, setTitle, onTitleBlur, className }: NoteContentProps) {
   const { updateCard } = useMutations();
   const calendarEvents = useCalendarEvents();
-  const { syncCardToCalendar } = useSupertagCalendarSync();
+  const { syncCardToCalendar, removeCardEvents } = useSupertagCalendarSync();
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSyncedContent = useRef<Map<string, string>>(new Map());
+  const pendingSyncRef = useRef<{ card: Card; contentStr: string } | null>(null);
+  const latestCardRef = useRef(card);
+  const latestEventsRef = useRef(calendarEvents);
+  const prevHasCalendarFieldsRef = useRef(false);
 
   // Parse content - could be HTML (legacy) or JSON string (new format)
   const initialContent = useMemo(() => {
@@ -61,31 +66,107 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
     return fields.length > 0;
   }, [card.tags]);
 
-  // Calendar sync for supertag date fields (birthday, renewal, expiry, etc.)
   useEffect(() => {
-    if (!hasCalendarFields) return;
+    latestCardRef.current = card;
+  }, [card]);
 
-    // Debounce sync to avoid hammering on every keystroke
+  useEffect(() => {
+    latestEventsRef.current = calendarEvents;
+  }, [calendarEvents]);
+
+  useEffect(() => {
+    const previous = prevHasCalendarFieldsRef.current;
+    if (previous && !hasCalendarFields) {
+      removeCardEvents(card._id, latestEventsRef.current).catch(console.error);
+    }
+    prevHasCalendarFieldsRef.current = hasCalendarFields;
+  }, [card._id, hasCalendarFields, removeCardEvents]);
+
+  const scheduleCalendarSync = useCallback((contentStr: string) => {
+    const currentCard = latestCardRef.current;
+    if (!hasCalendarFields || !currentCard.workspaceId) return;
+
+    const lastContent = lastSyncedContent.current.get(currentCard._id);
+    if (contentStr === lastContent) return;
+
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
 
+    pendingSyncRef.current = { card: currentCard, contentStr };
+
     syncTimeoutRef.current = setTimeout(() => {
+      const pending = pendingSyncRef.current;
+      if (!pending?.card.workspaceId) return;
       syncCardToCalendar(
-        card,
-        card.workspaceId as Id<'workspaces'>,
-        calendarEvents
+        { ...pending.card, content: pending.contentStr },
+        pending.card.workspaceId as Id<'workspaces'>,
+        latestEventsRef.current
       ).catch((err) => {
         console.error('[NoteContent] Calendar sync failed:', err);
       });
-    }, 2000); // 2 second debounce
+      lastSyncedContent.current.set(pending.card._id, pending.contentStr);
+      pendingSyncRef.current = null;
+      syncTimeoutRef.current = null;
+    }, 1200);
+  }, [hasCalendarFields, syncCardToCalendar]);
 
+  useEffect(() => {
+    if (!pendingSyncRef.current) return;
+    if (pendingSyncRef.current.card._id === card._id) return;
+
+    const pending = pendingSyncRef.current;
+    pendingSyncRef.current = null;
+
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+      syncTimeoutRef.current = null;
+    }
+
+    if (!pending.card.workspaceId) return;
+
+    syncCardToCalendar(
+      { ...pending.card, content: pending.contentStr },
+      pending.card.workspaceId as Id<'workspaces'>,
+      latestEventsRef.current
+    ).catch((err) => {
+      console.error('[NoteContent] Calendar sync failed:', err);
+    });
+    lastSyncedContent.current.set(pending.card._id, pending.contentStr);
+  }, [card._id, syncCardToCalendar]);
+
+  useEffect(() => {
+    if (!hasCalendarFields || !card.workspaceId) return;
+    const contentStr = typeof card.content === 'string'
+      ? card.content
+      : JSON.stringify(card.content ?? '');
+    scheduleCalendarSync(contentStr);
+  }, [card.content, card.workspaceId, hasCalendarFields, scheduleCalendarSync]);
+
+  useEffect(() => {
     return () => {
       if (syncTimeoutRef.current) {
         clearTimeout(syncTimeoutRef.current);
+        syncTimeoutRef.current = null;
+        const pending = pendingSyncRef.current;
+        const currentCard = pending?.card ?? latestCardRef.current;
+        if (!currentCard.workspaceId) return;
+        const contentStr = pending?.contentStr ?? (typeof currentCard.content === 'string'
+          ? currentCard.content
+          : JSON.stringify(currentCard.content ?? ''));
+        if (contentStr === lastSyncedContent.current.get(currentCard._id)) return;
+        syncCardToCalendar(
+          { ...currentCard, content: contentStr },
+          currentCard.workspaceId as Id<'workspaces'>,
+          latestEventsRef.current
+        ).catch((err) => {
+          console.error('[NoteContent] Calendar sync failed:', err);
+        });
+        lastSyncedContent.current.set(currentCard._id, contentStr);
+        pendingSyncRef.current = null;
       }
     };
-  }, [card, hasCalendarFields, calendarEvents, syncCardToCalendar]);
+  }, [syncCardToCalendar]);
 
   // Sync local state when card changes (including external updates like Quick Convert)
   useEffect(() => {
@@ -103,7 +184,8 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
     setPlateContent(value);
     const jsonString = serializePlateContent(value);
     updateCard(card._id, { content: jsonString });
-  }, [card._id, updateCard]);
+    scheduleCalendarSync(jsonString);
+  }, [card._id, scheduleCalendarSync, updateCard]);
 
   // Calculate stats from Plate content
   const stats = useMemo(() => {
