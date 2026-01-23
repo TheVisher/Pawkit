@@ -44,6 +44,7 @@ export function MonthView() {
   const events = useCalendarEvents();
   const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
 
   const dailyNoteMap = useMemo(() => {
     const dates = new Map<string, string>();
@@ -181,14 +182,14 @@ export function MonthView() {
                 items={dayItems}
                 isCurrentMonth={isCurrentMonth}
                 isSelected={isSelected}
-                isToday={isTodayDate}
-                dailyNoteId={dailyNoteMap.get(dateKey)}
-                onDailyNoteClick={openCardDetail}
-                onClick={() => handleDayClick(date)}
-                onItemClick={openCardDetail}
-              />
-            </ContentAreaContextMenu>
-          );
+              isToday={isTodayDate}
+              dailyNoteId={dailyNoteMap.get(dateKey)}
+              onDailyNoteClick={openCardDetail}
+              onClick={() => handleDayClick(date)}
+              onItemClick={openCardDetailWithRect}
+            />
+          </ContentAreaContextMenu>
+        );
         })}
       </div>
     </div>

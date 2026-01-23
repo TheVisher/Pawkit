@@ -46,7 +46,7 @@ export function AgendaView() {
   const workspace = useCurrentWorkspace();
   const events = useCalendarEvents();
   const cards = useCards();
-  const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
 
   // Group items by day for the next 30 days
   const groupedItems = useMemo(() => {
@@ -163,12 +163,20 @@ export function AgendaView() {
                 {/* Events for this day */}
                 <div className="space-y-2">
                   {group.items.map((item) => (
-                    <EventItem
-                      key={item.id}
-                      item={item}
-                      onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                    />
-                  ))}
+                  <EventItem
+                    key={item.id}
+                    item={item}
+                    onClick={
+                      item.source?.cardId
+                        ? (event) => {
+                            if (!event) return;
+                            const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                            openCardDetailWithRect(item.source!.cardId!, rect);
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
                 </div>
               </div>
             </ContentAreaContextMenu>

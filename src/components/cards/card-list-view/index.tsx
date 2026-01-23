@@ -221,7 +221,10 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
           isDropTarget={isDropTarget}
         >
           <div
-            onClick={() => handleRowClick(card)}
+            onClick={(event) => {
+              const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+              handleRowClick(card, rect);
+            }}
             className={cn(
               'flex flex-1 cursor-pointer transition-colors',
               isSelected

@@ -32,7 +32,7 @@ interface DayCellProps extends React.HTMLAttributes<HTMLDivElement> {
   dailyNoteId?: string;
   onDailyNoteClick?: (cardId: string) => void;
   onClick: () => void;
-  onItemClick?: (cardId: string) => void;
+  onItemClick?: (cardId: string, rect: DOMRect) => void;
 }
 
 const MAX_VISIBLE_ITEMS = 3;
@@ -117,7 +117,15 @@ export const DayCell = forwardRef<HTMLDivElement, DayCellProps>(function DayCell
             key={item.id}
             item={item}
             compact
-            onClick={item.source?.cardId && onItemClick ? () => onItemClick(item.source!.cardId!) : undefined}
+            onClick={
+              item.source?.cardId && onItemClick
+                ? (event) => {
+                    if (!event) return;
+                    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                    onItemClick(item.source!.cardId!, rect);
+                  }
+                : undefined
+            }
           />
         ))}
 

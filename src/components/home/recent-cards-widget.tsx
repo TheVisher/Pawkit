@@ -6,7 +6,7 @@
  * Uses CSS auto-fill for immediate responsive columns without JS measurement
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { Layers } from 'lucide-react';
 
 import { Card as UICard, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ const MAX_CARD_WIDTH = 400; // Maximum card width to prevent overly large cards
 
 interface RecentCardItemProps {
   card: Card;
-  onClick: () => void;
+  onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 }
 
 function RecentCardItem({ card, onClick }: RecentCardItemProps) {
@@ -95,7 +95,7 @@ function RecentCardItem({ card, onClick }: RecentCardItemProps) {
 export function RecentCardsWidget() {
   const workspace = useCurrentWorkspace();
   const cards = useCards();
-  const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
 
   const recentCards = useMemo(() => {
     return cards
@@ -136,7 +136,10 @@ export function RecentCardsWidget() {
                 <RecentCardItem
                   key={card._id}
                   card={card}
-                  onClick={() => openCardDetail(card._id)}
+                  onClick={(event) => {
+                    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                    openCardDetailWithRect(card._id, rect);
+                  }}
                 />
               ))}
             </div>

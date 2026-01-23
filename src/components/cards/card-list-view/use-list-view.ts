@@ -12,6 +12,7 @@ import { type ColumnId, type SortDirection, DEFAULT_COLUMN_ORDER, DEFAULT_COLUMN
 
 export function useListView(cards: Card[], onReorder?: (reorderedIds: string[]) => void) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
   const workspace = useCurrentWorkspace();
   const { updateCard } = useMutations();
 
@@ -194,10 +195,14 @@ export function useListView(cards: Card[], onReorder?: (reorderedIds: string[]) 
   );
 
   const handleRowClick = useCallback(
-    (card: Card) => {
+    (card: Card, rect?: DOMRect) => {
+      if (rect) {
+        openCardDetailWithRect(card._id, rect);
+        return;
+      }
       openCardDetail(card._id);
     },
-    [openCardDetail]
+    [openCardDetail, openCardDetailWithRect]
   );
 
   // DnD monitor for row reordering

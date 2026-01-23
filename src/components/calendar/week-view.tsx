@@ -45,6 +45,7 @@ export function WeekView() {
   const events = useCalendarEvents();
   const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
 
   const dailyNoteMap = useMemo(() => {
     const dates = new Map<string, string>();
@@ -198,13 +199,21 @@ export function WeekView() {
                 <div className="border-r border-border-subtle last:border-r-0 p-1 min-h-[32px]">
                   <div className="flex flex-wrap gap-0.5">
                     {allDayItems.map((item) => (
-                      <EventItem
-                        key={item.id}
-                        item={item}
-                        compact
-                        onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                      />
-                    ))}
+                    <EventItem
+                      key={item.id}
+                      item={item}
+                      compact
+                      onClick={
+                        item.source?.cardId
+                          ? (event) => {
+                              if (!event) return;
+                              const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                              openCardDetailWithRect(item.source!.cardId!, rect);
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
                   </div>
                 </div>
               </ContentAreaContextMenu>
@@ -249,13 +258,21 @@ export function WeekView() {
                     >
                       <div className="space-y-0.5">
                         {hourItems.map((item) => (
-                          <EventItem
-                            key={item.id}
-                            item={item}
-                            compact
-                            onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                          />
-                        ))}
+                        <EventItem
+                          key={item.id}
+                          item={item}
+                          compact
+                          onClick={
+                            item.source?.cardId
+                              ? (event) => {
+                                  if (!event) return;
+                                  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                                  openCardDetailWithRect(item.source!.cardId!, rect);
+                                }
+                              : undefined
+                          }
+                        />
+                      ))}
                       </div>
                     </div>
                   </ContentAreaContextMenu>

@@ -41,6 +41,7 @@ export function DayView() {
   const cards = useCards();
   const { createCard, updateCard, restoreCard } = useMutations();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
 
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isTodayDate = isToday(currentDate);
@@ -236,13 +237,21 @@ export function DayView() {
                   {dayItems
                     .filter(item => item.isAllDay)
                     .map((item) => (
-                      <EventItem
-                        key={item.id}
-                        item={item}
-                        compact
-                        onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                      />
-                    ))}
+                    <EventItem
+                      key={item.id}
+                      item={item}
+                      compact
+                      onClick={
+                        item.source?.cardId
+                          ? (event) => {
+                              if (!event) return;
+                              const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                              openCardDetailWithRect(item.source!.cardId!, rect);
+                            }
+                          : undefined
+                      }
+                    />
+                  ))}
                 </div>
               </div>
             </ContentAreaContextMenu>
@@ -281,12 +290,20 @@ export function DayView() {
                   >
                     <div className="space-y-1">
                       {hourItems.map((item) => (
-                        <EventItem
-                          key={item.id}
-                          item={item}
-                          onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
-                        />
-                      ))}
+                      <EventItem
+                        key={item.id}
+                        item={item}
+                        onClick={
+                          item.source?.cardId
+                            ? (event) => {
+                                if (!event) return;
+                                const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                                openCardDetailWithRect(item.source!.cardId!, rect);
+                              }
+                            : undefined
+                        }
+                      />
+                    ))}
                     </div>
                   </div>
                 </ContentAreaContextMenu>

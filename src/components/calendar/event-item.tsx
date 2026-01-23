@@ -1,5 +1,6 @@
 'use client';
 
+import { type MouseEvent } from 'react';
 import { Calendar, Link, CheckSquare, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMutations } from '@/lib/contexts/convex-data-context';
@@ -29,7 +30,7 @@ interface CalendarItem {
 interface EventItemProps {
   item: CalendarItem;
   compact?: boolean;
-  onClick?: () => void;
+  onClick?: (event?: MouseEvent<HTMLDivElement>) => void;
 }
 
 // Default colors for different types
@@ -62,7 +63,7 @@ export function EventItem({ item, compact = false, onClick }: EventItemProps) {
     <div
       onClick={(e) => {
         e.stopPropagation();
-        onClick?.();
+        onClick?.(e);
       }}
       onContextMenu={(e) => e.stopPropagation()}
       className={cn(
@@ -86,7 +87,7 @@ export function EventItem({ item, compact = false, onClick }: EventItemProps) {
     <div
       onClick={(e) => {
         e.stopPropagation();
-        onClick?.();
+        onClick?.(e);
       }}
       onContextMenu={(e) => e.stopPropagation()}
       className={cn(
