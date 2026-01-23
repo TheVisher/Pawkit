@@ -116,20 +116,22 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
           showExpandedImage && "flex-1"
         )}
       >
-        {/* Header component */}
-        <CardDetailHeader
-          card={card}
-          title={title}
-          setTitle={setTitle}
-          onTitleBlur={handleTitleBlur}
-          imageError={imageError}
-          setImageError={setImageError}
-          showFullscreen={hasArticleContent}
-          onFullscreen={handleFullscreen}
-          showArticleMetadata={hasArticleContent}
-          onImageClick={toggleExpandedImage}
-          isImageExpanded={showExpandedImage}
-        />
+        {/* Header component - centered with max-width */}
+        <div className="max-w-[996px] mx-auto w-full px-6">
+          <CardDetailHeader
+            card={card}
+            title={title}
+            setTitle={setTitle}
+            onTitleBlur={handleTitleBlur}
+            imageError={imageError}
+            setImageError={setImageError}
+            showFullscreen={hasArticleContent}
+            onFullscreen={handleFullscreen}
+            showArticleMetadata={hasArticleContent}
+            onImageClick={toggleExpandedImage}
+            isImageExpanded={showExpandedImage}
+          />
+        </div>
 
         {/* Full image overlay - appears when expanded */}
         {currentImage && !imageError && (
@@ -234,17 +236,20 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
             : "flex-1 opacity-100"
         )}
       >
-        <ContentRouter
-          card={card}
-          title={title}
-          setTitle={setTitle}
-          onTitleBlur={handleTitleBlur}
-          onClose={onClose}
-          showFullReader={showFullReader}
-          setShowFullReader={setShowFullReader}
-          onRequestExpandImage={() => setShowExpandedImage(true)}
-          hasImage={!!currentImage && !imageError}
-        />
+        {/* Centered content container with comfortable reading width */}
+        <div className="max-w-[996px] mx-auto w-full h-full px-6 overflow-visible flex flex-col">
+          <ContentRouter
+            card={card}
+            title={title}
+            setTitle={setTitle}
+            onTitleBlur={handleTitleBlur}
+            onClose={onClose}
+            showFullReader={showFullReader}
+            setShowFullReader={setShowFullReader}
+            onRequestExpandImage={() => setShowExpandedImage(true)}
+            hasImage={!!currentImage && !imageError}
+          />
+        </div>
       </div>
     </div>
   );

@@ -1075,6 +1075,11 @@ html.visual-style-high-contrast.light .border-border-subtle\/50 {
     margin: 1.5rem 0;
 }
 
+/* Keep editor gutter controls inside the content panel so they don't get clipped */
+.content-panel-editor .slate-gutterLeft {
+    transform: translateX(0) !important;
+}
+
 .article-reader-content figure {
     margin: 1.5rem 0;
 }

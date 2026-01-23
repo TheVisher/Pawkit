@@ -220,13 +220,15 @@ export function NoteContent({ card, title, setTitle, onTitleBlur, className }: N
       </div>
 
       {/* Plate Editor - takes remaining space */}
-      <div className="flex-1 overflow-y-auto pb-8">
+      {/* Extra left padding (pl-14 = 56px) to accommodate editor gutter controls (+ and drag handle) */}
+      <div className="flex-1 overflow-y-auto pl-14 pb-8">
         <PawkitPlateEditor
           content={plateContent}
           onChange={handleContentChange}
           placeholder="Type '/' for commands or just start writing..."
           workspaceId={card.workspaceId}
           cardId={card._id}
+          className="content-panel-editor"
           variant="default"
         />
       </div>

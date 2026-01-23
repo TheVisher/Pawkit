@@ -105,7 +105,8 @@ const editorVariants = cva(
       variant: {
         // px-12 provides space for the drag handle on the left
         default: 'size-full px-12 pt-0 pb-16 text-base',
-        minimal: 'size-full px-8 py-2 text-base',
+        // pl-12 keeps the gutter controls inside the content panel
+        minimal: 'size-full pl-12 pr-6 py-2 text-base',
         // pl-10 provides space for drag handle + button, pr-2 keeps content width
         notes: 'size-full pl-10 pr-2 py-2 text-sm',
       },

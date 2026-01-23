@@ -341,11 +341,11 @@ export function ArticleContent({
   return (
     <div
       ref={scrollContainerRef}
-      className={cn('flex-1 overflow-y-auto', className)}
+      className={cn('flex-1 overflow-y-auto pl-14 pr-6', className)}
     >
       {hasArticleContent || !mightBeExtracting ? (
         // Article editor - metadata is in the header
-        <div className="px-6 pb-8 pt-4">
+        <div className="pb-8 pt-4">
           {/* Reading progress bar - uses ref for direct DOM updates to avoid re-renders */}
           <div className="sticky top-0 left-0 right-0 h-1 bg-[var(--border-subtle)] -mx-6 mb-4 z-10">
             <div
@@ -392,6 +392,7 @@ export function ArticleContent({
               placeholder="No content extracted. You can add your own notes here..."
               workspaceId={card.workspaceId}
               cardId={card._id}
+              className="content-panel-editor"
               variant="minimal"
             />
           </article>
