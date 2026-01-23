@@ -162,6 +162,9 @@ export function CardDetailHeader({
                         e.preventDefault();
                         e.currentTarget.blur();
                       }
+                      if (e.key !== 'Escape') {
+                        e.stopPropagation();
+                      }
                     }}
                   />
                 </div>
@@ -209,6 +212,9 @@ export function CardDetailHeader({
                     e.preventDefault();
                     e.currentTarget.blur();
                   }
+                  if (e.key !== 'Escape') {
+                    e.stopPropagation();
+                  }
                 }}
               />
             )}
@@ -243,6 +249,9 @@ export function CardDetailHeader({
               if (e.key === 'Enter') {
                 e.preventDefault();
                 e.currentTarget.blur();
+              }
+              if (e.key !== 'Escape') {
+                e.stopPropagation();
               }
             }}
           />

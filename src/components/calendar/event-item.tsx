@@ -1,10 +1,19 @@
 'use client';
 
-import { Calendar, FileText, Link, CheckSquare } from 'lucide-react';
+import { Calendar, Link, CheckSquare, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useMutations } from '@/lib/contexts/convex-data-context';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import type { Id } from '@/lib/types/convex';
 
 interface CalendarItem {
   id: string;
+  eventId?: Id<'calendarEvents'>;
   title: string;
   date: string;
   color?: string;
@@ -40,40 +49,46 @@ const TYPE_ICONS = {
 export function EventItem({ item, compact = false, onClick }: EventItemProps) {
   const backgroundColor = item.color || TYPE_COLORS[item.type] || TYPE_COLORS.event;
   const Icon = TYPE_ICONS[item.type] || Calendar;
+  const { deleteEvent } = useMutations();
+  const canDelete = item.type === 'event' && item.eventId;
 
-  if (compact) {
-    return (
-      <div
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick?.();
-        }}
-        className={cn(
-          'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] truncate',
-          'cursor-pointer transition-opacity hover:opacity-80'
-        )}
-        style={{
-          backgroundColor: `${backgroundColor}20`,
-          borderLeft: `2px solid ${backgroundColor}`,
-        }}
-        title={item.title}
-      >
-        <Icon
-          className="w-2.5 h-2.5 flex-shrink-0"
-          style={{ color: backgroundColor }}
-        />
-        <span className="truncate text-text-primary">{item.title}</span>
-      </div>
-    );
-  }
+  const handleDelete = async () => {
+    if (!item.eventId) return;
+    if (!confirm('Delete this calendar entry?')) return;
+    await deleteEvent(item.eventId);
+  };
 
-  // Full event item (for week/day views)
-  return (
+  const content = compact ? (
     <div
       onClick={(e) => {
         e.stopPropagation();
         onClick?.();
       }}
+      onContextMenu={(e) => e.stopPropagation()}
+      className={cn(
+        'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] truncate',
+        'cursor-pointer transition-opacity hover:opacity-80'
+      )}
+      style={{
+        backgroundColor: `${backgroundColor}20`,
+        borderLeft: `2px solid ${backgroundColor}`,
+      }}
+      title={item.title}
+    >
+      <Icon
+        className="w-2.5 h-2.5 flex-shrink-0"
+        style={{ color: backgroundColor }}
+      />
+      <span className="truncate text-text-primary">{item.title}</span>
+    </div>
+  ) : (
+    // Full event item (for week/day views)
+    <div
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      onContextMenu={(e) => e.stopPropagation()}
       className={cn(
         'flex items-start gap-2 p-2 rounded-lg cursor-pointer',
         'transition-all hover:scale-[1.02] hover:shadow-md'
@@ -98,5 +113,33 @@ export function EventItem({ item, compact = false, onClick }: EventItemProps) {
         )}
       </div>
     </div>
+  );
+
+  if (!canDelete) {
+    return content;
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        {content}
+      </ContextMenuTrigger>
+      <ContextMenuContent
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <ContextMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void handleDelete();
+          }}
+          className="text-red-500 focus:text-red-500"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete event
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }

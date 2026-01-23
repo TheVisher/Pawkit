@@ -900,6 +900,11 @@ function extractFieldValuesFromPlateJson(content: any[]): Record<string, string>
 }
 
 export function extractFieldValues(content: ContactContent): Record<string, string> {
+  // Handle Plate JSON arrays directly
+  if (Array.isArray(content)) {
+    return extractFieldValuesFromPlateJson(content);
+  }
+
   // Check if content is Plate JSON
   if (isPlateJson(content)) {
     const parsed = parseJsonContent(content);

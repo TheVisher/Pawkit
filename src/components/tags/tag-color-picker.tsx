@@ -19,13 +19,16 @@ import { Slider } from '@/components/ui/slider';
 
 interface TagColorPickerProps {
   tag: string;
-  currentHsl: string; // "hue sat light" format e.g., "270 60 50"
+  currentHsl?: string; // "hue sat light" format e.g., "270 60 50"
   onColorChange: (hsl: string | null) => void; // null to reset to auto
   isCustom: boolean; // Whether this tag has a custom color
 }
 
 // Parse HSL string "h s l" to object
-function parseHsl(hsl: string): { h: number; s: number; l: number } {
+function parseHsl(hsl: string | undefined | null): { h: number; s: number; l: number } {
+  if (!hsl) {
+    return { h: 0, s: 60, l: 50 }; // Default values
+  }
   const [h, s, l] = hsl.split(' ').map(Number);
   return { h: h || 0, s: s || 60, l: l || 50 };
 }
@@ -41,6 +44,7 @@ export function TagColorPicker({
   onColorChange,
   isCustom,
 }: TagColorPickerProps) {
+  void tag;
   const [showCustom, setShowCustom] = useState(false);
   const [hexInput, setHexInput] = useState('');
   const [hexError, setHexError] = useState(false);

@@ -18,12 +18,13 @@ import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { DayCell } from './day-cell';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
-import type { Card, CalendarEvent } from '@/lib/types/convex';
+import type { Card, Id } from '@/lib/types/convex';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 interface CalendarItem {
   id: string;
+  eventId?: Id<'calendarEvents'>;
   title: string;
   date: string;
   color?: string;
@@ -77,6 +78,7 @@ export function MonthView() {
       }
       map.get(dateKey)!.push({
         id: event.isOccurrence ? `${event._id}-${dateKey}` : event._id,
+        eventId: event.originalEventId ?? event._id,
         title: event.title,
         date: dateKey,
         color: event.color,

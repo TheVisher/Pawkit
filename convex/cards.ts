@@ -3,6 +3,7 @@ import {
   mutation,
   internalQuery,
   internalMutation,
+  MutationCtx,
 } from "./_generated/server";
 import { v } from "convex/values";
 import { requireWorkspaceAccess } from "./users";
@@ -68,6 +69,66 @@ function getContentText(content: unknown): string {
   }
 
   return "";
+}
+
+// =================================================================
+// CALENDAR EVENT CLEANUP
+// =================================================================
+
+async function softDeleteCardEvents(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  cardIds: Set<Id<"cards">>
+): Promise<number> {
+  const cardIdSet = new Set(Array.from(cardIds, (id) => String(id)));
+  const events = await ctx.db
+    .query("calendarEvents")
+    .withIndex("by_workspace", (q: any) => q.eq("workspaceId", workspaceId))
+    .collect();
+
+  const now = Date.now();
+  let deletedCount = 0;
+
+  for (const event of events) {
+    if (event.deleted) continue;
+    const source = event.source;
+    const parsedSource =
+      typeof source === "string"
+        ? (() => {
+            try {
+              return JSON.parse(source) as Record<string, unknown>;
+            } catch {
+              return null;
+            }
+          })()
+        : source;
+    const sourceRecord = (parsedSource && typeof parsedSource === "object"
+      ? (parsedSource as Record<string, unknown>)
+      : null);
+    const sourceType =
+      typeof sourceRecord?.type === "string" ? sourceRecord.type.toLowerCase() : null;
+    const rawCardId = sourceRecord?.cardId;
+    const normalizedCardId =
+      typeof rawCardId === "string"
+        ? rawCardId
+        : rawCardId && typeof rawCardId === "object"
+          ? (() => {
+              const maybeId = (rawCardId as Record<string, unknown>)._id
+                ?? (rawCardId as Record<string, unknown>).id;
+              return typeof maybeId === "string" ? maybeId : null;
+            })()
+          : null;
+    if (sourceType === "card" && normalizedCardId && cardIdSet.has(normalizedCardId)) {
+      await ctx.db.patch(event._id, {
+        deleted: true,
+        deletedAt: now,
+        updatedAt: now,
+      });
+      deletedCount++;
+    }
+  }
+
+  return deletedCount;
 }
 
 // =================================================================
@@ -460,6 +521,8 @@ export const remove = mutation({
 
     await requireWorkspaceAccess(ctx, card.workspaceId);
 
+    await softDeleteCardEvents(ctx, card.workspaceId, new Set([id]));
+
     await ctx.db.patch(id, {
       deleted: true,
       deletedAt: Date.now(),
@@ -532,6 +595,8 @@ export const permanentDelete = mutation({
       await ctx.storage.delete(card.storageId);
     }
 
+    await softDeleteCardEvents(ctx, card.workspaceId, new Set([id]));
+
     // Delete the card
     await ctx.db.delete(id);
   },
@@ -551,6 +616,8 @@ export const emptyTrash = mutation({
         q.eq("workspaceId", workspaceId).eq("deleted", true)
       )
       .collect();
+
+    const deletedCardIds = new Set<Id<"cards">>();
 
     for (const card of deletedCards) {
       // Delete associated collection notes
@@ -589,8 +656,14 @@ export const emptyTrash = mutation({
         await ctx.storage.delete(card.storageId);
       }
 
+      deletedCardIds.add(card._id);
+
       // Delete the card
       await ctx.db.delete(card._id);
+    }
+
+    if (deletedCardIds.size > 0) {
+      await softDeleteCardEvents(ctx, workspaceId, deletedCardIds);
     }
 
     return { deleted: deletedCards.length };
@@ -641,6 +714,8 @@ export const bulkDelete = mutation({
   handler: async (ctx, { cardIds }) => {
     const now = Date.now();
 
+    const cardIdsByWorkspace = new Map<Id<"workspaces">, Set<Id<"cards">>>();
+
     for (const cardId of cardIds) {
       const card = await ctx.db.get(cardId);
       if (!card) continue;
@@ -652,6 +727,14 @@ export const bulkDelete = mutation({
         deletedAt: now,
         updatedAt: now,
       });
+
+      const set = cardIdsByWorkspace.get(card.workspaceId) ?? new Set<Id<"cards">>();
+      set.add(cardId);
+      cardIdsByWorkspace.set(card.workspaceId, set);
+    }
+
+    for (const [workspaceId, ids] of cardIdsByWorkspace) {
+      await softDeleteCardEvents(ctx, workspaceId, ids);
     }
   },
 });

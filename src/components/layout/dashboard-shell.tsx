@@ -320,28 +320,29 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
     <WorkspaceProvider>
       <TagColorsProvider>
       <ConvexDataProvider>
-        <div className="h-screen w-screen bg-bg-base text-text-primary">
-        {/* Mobile bottom nav - only shows < 768px */}
-        <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
+        <TagColorsProvider>
+          <div className="h-screen w-screen bg-bg-base text-text-primary">
+          {/* Mobile bottom nav - only shows < 768px */}
+          <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
 
-        {/* Main layout with padding to show purple gradient background */}
-        <div
-          className="h-full flex flex-col"
-          style={{
-            // Animate padding for smooth full-screen transition
-            // On mobile (< lg), use 0 padding since sidebars are hidden
-            paddingTop: isDesktop ? (isFullScreen ? 0 : 16) : 0,
-            paddingLeft: isDesktop ? (isFullScreen ? 0 : 16) : 0,
-            paddingRight: isDesktop ? (isFullScreen ? 0 : 16) : 0,
-            paddingBottom: isDesktop
-              ? (isFullScreen ? 'var(--mobile-nav-height)' : 'calc(16px + var(--mobile-nav-height))')
-              : 'var(--mobile-nav-height)',
-            transition: 'padding 300ms ease-out, background-color 300ms ease-out',
-            backgroundColor: 'var(--bg-gradient-base)',
-            backgroundImage: 'var(--bg-gradient-image)',
-            backgroundAttachment: 'fixed'
-          }}
-        >
+          {/* Main layout with padding to show purple gradient background */}
+          <div
+            className="h-full flex flex-col"
+            style={{
+              // Animate padding for smooth full-screen transition
+              // On mobile (< lg), use 0 padding since sidebars are hidden
+              paddingTop: isDesktop ? (isFullScreen ? 0 : 16) : 0,
+              paddingLeft: isDesktop ? (isFullScreen ? 0 : 16) : 0,
+              paddingRight: isDesktop ? (isFullScreen ? 0 : 16) : 0,
+              paddingBottom: isDesktop
+                ? (isFullScreen ? 'var(--mobile-nav-height)' : 'calc(16px + var(--mobile-nav-height))')
+                : 'var(--mobile-nav-height)',
+              transition: 'padding 300ms ease-out, background-color 300ms ease-out',
+              backgroundColor: 'var(--bg-gradient-base)',
+              backgroundImage: 'var(--bg-gradient-image)',
+              backgroundAttachment: 'fixed'
+            }}
+          >
           {/* LEFT EDGE HOVER ZONE - Uses padding area when left sidebar is closed */}
           {!isLeftOpen && (
             <div
@@ -494,6 +495,7 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
         <CardPhotoPickerModal />
         <CardsDragHandler />
         </div>
+        </TagColorsProvider>
       </ConvexDataProvider>
       </TagColorsProvider>
     </WorkspaceProvider>

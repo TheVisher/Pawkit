@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Tag Colors Context
  * Provides custom tag colors from workspace preferences globally

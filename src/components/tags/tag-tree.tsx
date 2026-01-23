@@ -7,6 +7,7 @@ import { useCards } from '@/lib/contexts/convex-data-context';
 import { useViewStore } from '@/lib/stores/view-store';
 import { buildTagStats, type TagTreeNode } from '@/lib/utils/tag-hierarchy';
 import { getTagColor } from '@/lib/utils/tag-colors';
+import { useTagColors } from '@/lib/contexts/tag-colors-context';
 
 interface TagTreeItemProps {
   node: TagTreeNode;
@@ -29,7 +30,9 @@ function TagTreeItem({
   const isExpanded = expandedPaths.has(node.fullPath);
   const isSelected = selectedTags.includes(node.fullPath);
   const isVirtual = node.isVirtual;
-  const colors = getTagColor(node.fullPath);
+  const { getCustomColor } = useTagColors();
+  const customColor = getCustomColor(node.fullPath);
+  const colors = getTagColor(node.fullPath, customColor);
 
   return (
     <div>

@@ -200,6 +200,18 @@ export function ConvexDataProvider({ children }: ConvexDataProviderProps) {
       await updateCardMutation({ id, ...updates });
     },
     deleteCard: async (id) => {
+      if (calendarEvents && calendarEvents.length > 0) {
+        const eventsToDelete = calendarEvents.filter((event) => {
+          if (event.deleted) return false;
+          const source = event.source as { type?: string; cardId?: string } | undefined;
+          return source?.type === 'card' && source.cardId === id;
+        });
+        if (eventsToDelete.length > 0) {
+          await Promise.allSettled(
+            eventsToDelete.map((event) => deleteEventMutation({ id: event._id }))
+          );
+        }
+      }
       await deleteCardMutation({ id });
     },
     restoreCard: async (id) => {
@@ -252,6 +264,7 @@ export function ConvexDataProvider({ children }: ConvexDataProviderProps) {
     createCardMutation,
     updateCardMutation,
     deleteCardMutation,
+    calendarEvents,
     restoreCardMutation,
     permanentDeleteCardMutation,
     emptyTrashMutation,

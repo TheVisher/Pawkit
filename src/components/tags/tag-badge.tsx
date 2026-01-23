@@ -23,6 +23,8 @@ export interface TagBadgeProps {
   className?: string;
   /** Whether the badge is interactive (shows hover state) */
   interactive?: boolean;
+  /** Custom HSL color string (e.g., "270 60 50") - overrides deterministic color */
+  customColor?: string;
 }
 
 /**
@@ -77,12 +79,13 @@ export function TagBadge({
   showLeafOnly = false,
   className,
   interactive = false,
+  customColor: customColorProp,
 }: TagBadgeProps) {
   const displayName = showLeafOnly ? getTagName(tag) : tag;
 
   // Get custom color from workspace preferences if available
   const { getCustomColor } = useTagColors();
-  const customColor = getCustomColor(tag);
+  const customColor = customColorProp ?? getCustomColor(tag);
 
   const Icon = getSystemTagIcon(tag);
 

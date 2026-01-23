@@ -3,9 +3,11 @@
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { EventItem } from "./event-item";
+import type { Id } from "@/lib/types/convex";
 
 interface CalendarItem {
   id: string;
+  eventId?: Id<'calendarEvents'>;
   title: string;
   date: string;
   color?: string;

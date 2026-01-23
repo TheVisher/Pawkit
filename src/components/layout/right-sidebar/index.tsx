@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useMutation } from "convex/react";
 import { useRightSidebar, useRightSidebarSettings, useCardDetailSidebar, useUIStore } from "@/lib/stores/ui-store";
 import {
   useViewStore,
@@ -63,6 +64,7 @@ import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { SettingsPanel } from "./SettingsPanel";
 import { TagsSidebar } from "@/components/tags/tags-sidebar";
 import { useTagSidebar } from "@/lib/stores/ui-store";
+import { api } from "convex/_generated/api";
 
 export function RightSidebar() {
   const pathname = usePathname();
@@ -105,7 +107,6 @@ export function RightSidebar() {
   }, [allCards]);
   const tagStoreUniqueTags = tagStoreData.uniqueTags;
   const tagStoreTagCounts = tagStoreData.tagCounts;
-  const tagStoreTagColors = tagStoreData.tagColors;
   const [isTagProcessing, setIsTagProcessing] = useState(false);
 
   const activeCard = useMemo(
@@ -362,6 +363,38 @@ export function RightSidebar() {
     // In the new model, tags only exist on cards, so unused tags don't exist
     console.warn('[RightSidebar] Unused tags cleanup not needed - tags are derived from cards');
   }, []);
+
+  // Tag color handlers
+  const updateWorkspacePreferences = useMutation(api.workspaces.updatePreferences);
+
+  const handleSetTagColor = useCallback(async (tag: string, hsl: string | null) => {
+    if (!workspace) return;
+
+    const currentColors = (workspace.preferences?.tagColors as Record<string, string>) || {};
+    const newColors = { ...currentColors };
+
+    if (hsl === null) {
+      // Remove custom color (reset to auto)
+      delete newColors[tag];
+    } else {
+      newColors[tag] = hsl;
+    }
+
+    try {
+      await updateWorkspacePreferences({
+        id: workspace._id,
+        tagColors: newColors,
+      });
+    } catch (error) {
+      console.error('[RightSidebar] Failed to update tag color:', error);
+    }
+  }, [workspace, updateWorkspacePreferences]);
+
+  const getTagColor = useCallback((tag: string): string | undefined => {
+    if (!workspace) return undefined;
+    const tagColors = (workspace.preferences?.tagColors as Record<string, string>) || {};
+    return tagColors[tag];
+  }, [workspace]);
 
   // Cycle through themes
   const cycleTheme = () => {
@@ -647,13 +680,13 @@ export function RightSidebar() {
                 selectedTag={selectedTagForSidebar}
                 tagCounts={tagStoreTagCounts}
                 uniqueTags={tagStoreUniqueTags}
-                tagColors={tagStoreTagColors}
+                tagColors={(workspace?.preferences?.tagColors as Record<string, string>) || {}}
                 onClose={() => setSelectedTagForSidebar(null)}
                 onRenameTag={handleTagSidebarRename}
                 onDeleteTag={handleTagSidebarDelete}
                 onDeleteUnusedTags={handleDeleteUnusedTags}
-                onSetTagColor={() => {}}
-                getTagColor={() => undefined}
+                onSetTagColor={handleSetTagColor}
+                getTagColor={getTagColor}
                 isProcessing={isTagProcessing}
               />
             )}

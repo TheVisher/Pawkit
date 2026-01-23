@@ -15,12 +15,13 @@ import { useCards, useCalendarEvents } from '@/lib/contexts/convex-data-context'
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
-import type { CalendarEvent, Card } from '@/lib/types/convex';
+import type { CalendarEvent, Card, Id } from '@/lib/types/convex';
 
 const DAYS_TO_SHOW = 30; // Show next 30 days
 
 interface CalendarItem {
   id: string;
+  eventId?: Id<'calendarEvents'>;
   title: string;
   date: string;
   color?: string;
@@ -66,6 +67,7 @@ export function AgendaView() {
       if (itemsByDate.has(dateKey)) {
         itemsByDate.get(dateKey)!.push({
           id: event._id,
+          eventId: event._id,
           title: event.title,
           date: event.date,
           color: event.color,

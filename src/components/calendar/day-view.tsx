@@ -12,13 +12,14 @@ import { Button } from '@/components/ui/button';
 import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import { isPlateJson, parseJsonContent, extractPlateText, createEmptyPlateContent } from '@/lib/plate/html-to-plate';
-import type { Card, CalendarEvent } from '@/lib/types/convex';
+import type { Card, Id } from '@/lib/types/convex';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // px
 
 interface CalendarItem {
   id: string;
+  eventId?: Id<'calendarEvents'>;
   title: string;
   date: string;
   color?: string;
@@ -143,6 +144,7 @@ export function DayView() {
       .forEach((event) => {
         items.push({
           id: event.isOccurrence ? `${event._id}-${dateKey}` : event._id,
+          eventId: event.originalEventId ?? event._id,
           title: event.title,
           date: dateKey,
           color: event.color,
