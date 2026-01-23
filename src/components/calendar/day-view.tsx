@@ -162,6 +162,7 @@ export function DayView() {
       const isScheduledForThisDate = card.scheduledDates && card.scheduledDates.includes(dateKey);
 
       if (isScheduledForThisDate) {
+        if (card.isDailyNote || card.tags?.includes('daily-note')) return;
         items.push({
           id: `${card._id}-${dateKey}`, // Unique ID for each date occurrence
           title: card.title || card.url || 'Untitled',

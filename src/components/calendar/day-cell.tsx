@@ -1,9 +1,11 @@
 "use client";
 
 import { format } from "date-fns";
+import { FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EventItem } from "./event-item";
 import type { Id } from "@/lib/types/convex";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CalendarItem {
   id: string;
@@ -26,6 +28,8 @@ interface DayCellProps {
   isCurrentMonth: boolean;
   isSelected: boolean;
   isToday: boolean;
+  dailyNoteId?: string;
+  onDailyNoteClick?: (cardId: string) => void;
   onClick: () => void;
   onItemClick?: (cardId: string) => void;
 }
@@ -38,6 +42,8 @@ export function DayCell({
   isCurrentMonth,
   isSelected,
   isToday,
+  dailyNoteId,
+  onDailyNoteClick,
   onClick,
   onItemClick,
 }: DayCellProps) {
@@ -74,6 +80,25 @@ export function DayCell({
         >
           {dayNumber}
         </span>
+        {dailyNoteId && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDailyNoteClick?.(dailyNoteId);
+                }}
+                className="inline-flex items-center justify-center rounded-sm p-0.5 text-[var(--color-accent)] opacity-80 hover:opacity-100 hover:bg-bg-surface-2"
+              >
+                <FileText className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6}>
+              Daily note
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Events list */}

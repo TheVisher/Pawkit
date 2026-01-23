@@ -7,9 +7,9 @@ import {
   eachDayOfInterval,
   format,
   isToday,
-  isSameDay,
   parseISO,
 } from 'date-fns';
+import { FileText } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useCards, useCalendarEvents } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
@@ -17,6 +17,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
 import { expandRecurringEvents } from '@/lib/utils/expand-recurring-events';
 import type { Card, Id } from '@/lib/types/convex';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60; // px
@@ -43,6 +44,21 @@ export function WeekView() {
   const events = useCalendarEvents();
   const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+
+  const dailyNoteMap = useMemo(() => {
+    const dates = new Map<string, string>();
+    cards.forEach((card: Card) => {
+      if (card.deleted) return;
+      if (!card.isDailyNote && !card.tags?.includes('daily-note')) return;
+      const scheduledDates = card.scheduledDates ?? [];
+      scheduledDates.forEach((dateStr) => {
+        const parsed = new Date(dateStr);
+        if (Number.isNaN(parsed.getTime())) return;
+        dates.set(format(parsed, 'yyyy-MM-dd'), card._id);
+      });
+    });
+    return dates;
+  }, [cards]);
 
   // Get the 7 days of the week
   const weekDays = useMemo(() => {
@@ -89,6 +105,7 @@ export function WeekView() {
     cards.forEach((card: Card) => {
       // Skip cards with no scheduled dates
       if (!card.scheduledDates || card.scheduledDates.length === 0) return;
+      if (card.isDailyNote || card.tags?.includes('daily-note')) return;
 
       // Add card to each scheduled date
       card.scheduledDates.forEach((dateKey) => {
@@ -138,6 +155,27 @@ export function WeekView() {
                     {format(day, 'd')}
                   </span>
                 </div>
+                {dailyNoteMap.has(format(day, 'yyyy-MM-dd')) && (
+                  <div className="flex justify-center mt-1">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cardId = dailyNoteMap.get(format(day, 'yyyy-MM-dd'));
+                            if (cardId) openCardDetail(cardId);
+                          }}
+                          className="inline-flex items-center justify-center rounded-sm p-0.5 text-[var(--color-accent)] opacity-80 hover:opacity-100 hover:bg-bg-surface-2"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={6}>
+                        Daily note
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
               </div>
             </div>
           );

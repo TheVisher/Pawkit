@@ -44,6 +44,21 @@ export function MonthView() {
   const cards = useCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
+  const dailyNoteMap = useMemo(() => {
+    const dates = new Map<string, string>();
+    cards.forEach((card: Card) => {
+      if (card.deleted) return;
+      if (!card.isDailyNote && !card.tags?.includes('daily-note')) return;
+      const scheduledDates = card.scheduledDates ?? [];
+      scheduledDates.forEach((dateStr) => {
+        const parsed = new Date(dateStr);
+        if (Number.isNaN(parsed.getTime())) return;
+        dates.set(format(parsed, 'yyyy-MM-dd'), card._id);
+      });
+    });
+    return dates;
+  }, [cards]);
+
   // Calculate the 6-week grid (42 days)
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
@@ -93,6 +108,7 @@ export function MonthView() {
     cards.forEach((card: Card) => {
       // Skip cards with no scheduled dates
       if (!card.scheduledDates || card.scheduledDates.length === 0) return;
+      if (card.isDailyNote || card.tags?.includes('daily-note')) return;
 
       // Add card to each scheduled date
       card.scheduledDates.forEach((dateKey) => {
@@ -165,6 +181,8 @@ export function MonthView() {
               isCurrentMonth={isCurrentMonth}
               isSelected={isSelected}
               isToday={isTodayDate}
+              dailyNoteId={dailyNoteMap.get(dateKey)}
+              onDailyNoteClick={openCardDetail}
               onClick={() => handleDayClick(date)}
               onItemClick={openCardDetail}
             />

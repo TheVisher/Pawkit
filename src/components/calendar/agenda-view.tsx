@@ -83,6 +83,7 @@ export function AgendaView() {
     // Add scheduled cards (using scheduledDates array)
     cards
       .filter((card: Card) => card.scheduledDates && card.scheduledDates.length > 0)
+      .filter((card: Card) => !card.isDailyNote && !card.tags?.includes('daily-note'))
       .forEach((card: Card) => {
         const firstScheduledDate = card.scheduledDates![0];
         const dateKey = format(new Date(firstScheduledDate), 'yyyy-MM-dd');
