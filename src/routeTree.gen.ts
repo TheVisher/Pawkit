@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TrashRouteImport } from './routes/trash'
 import { Route as TagsRouteImport } from './routes/tags'
 import { Route as SignupRouteImport } from './routes/signup'
-import { Route as PawkitsRouteImport } from './routes/pawkits'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as HomeRouteImport } from './routes/home'
@@ -20,6 +19,8 @@ import { Route as EditorRouteImport } from './routes/editor'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PawkitsIndexRouteImport } from './routes/pawkits/index'
+import { Route as PawkitsSlugRouteImport } from './routes/pawkits/$slug'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
@@ -41,11 +42,6 @@ const TagsRoute = TagsRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PawkitsRoute = PawkitsRouteImport.update({
-  id: '/pawkits',
-  path: '/pawkits',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -81,6 +77,16 @@ const CalendarRoute = CalendarRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PawkitsIndexRoute = PawkitsIndexRouteImport.update({
+  id: '/pawkits/',
+  path: '/pawkits/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PawkitsSlugRoute = PawkitsSlugRouteImport.update({
+  id: '/pawkits/$slug',
+  path: '/pawkits/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
@@ -127,10 +133,11 @@ export interface FileRoutesByFullPath {
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
-  '/pawkits': typeof PawkitsRoute
   '/signup': typeof SignupRoute
   '/tags': typeof TagsRoute
   '/trash': typeof TrashRoute
+  '/pawkits/$slug': typeof PawkitsSlugRoute
+  '/pawkits/': typeof PawkitsIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -147,10 +154,11 @@ export interface FileRoutesByTo {
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
-  '/pawkits': typeof PawkitsRoute
   '/signup': typeof SignupRoute
   '/tags': typeof TagsRoute
   '/trash': typeof TrashRoute
+  '/pawkits/$slug': typeof PawkitsSlugRoute
+  '/pawkits': typeof PawkitsIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -168,10 +176,11 @@ export interface FileRoutesById {
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
-  '/pawkits': typeof PawkitsRoute
   '/signup': typeof SignupRoute
   '/tags': typeof TagsRoute
   '/trash': typeof TrashRoute
+  '/pawkits/$slug': typeof PawkitsSlugRoute
+  '/pawkits/': typeof PawkitsIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -190,10 +199,11 @@ export interface FileRouteTypes {
     | '/home'
     | '/library'
     | '/login'
-    | '/pawkits'
     | '/signup'
     | '/tags'
     | '/trash'
+    | '/pawkits/$slug'
+    | '/pawkits/'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -210,10 +220,11 @@ export interface FileRouteTypes {
     | '/home'
     | '/library'
     | '/login'
-    | '/pawkits'
     | '/signup'
     | '/tags'
     | '/trash'
+    | '/pawkits/$slug'
+    | '/pawkits'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -230,10 +241,11 @@ export interface FileRouteTypes {
     | '/home'
     | '/library'
     | '/login'
-    | '/pawkits'
     | '/signup'
     | '/tags'
     | '/trash'
+    | '/pawkits/$slug'
+    | '/pawkits/'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -251,10 +263,11 @@ export interface RootRouteChildren {
   HomeRoute: typeof HomeRoute
   LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
-  PawkitsRoute: typeof PawkitsRoute
   SignupRoute: typeof SignupRoute
   TagsRoute: typeof TagsRoute
   TrashRoute: typeof TrashRoute
+  PawkitsSlugRoute: typeof PawkitsSlugRoute
+  PawkitsIndexRoute: typeof PawkitsIndexRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -285,13 +298,6 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pawkits': {
-      id: '/pawkits'
-      path: '/pawkits'
-      fullPath: '/pawkits'
-      preLoaderRoute: typeof PawkitsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -341,6 +347,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pawkits/': {
+      id: '/pawkits/'
+      path: '/pawkits'
+      fullPath: '/pawkits/'
+      preLoaderRoute: typeof PawkitsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pawkits/$slug': {
+      id: '/pawkits/$slug'
+      path: '/pawkits/$slug'
+      fullPath: '/pawkits/$slug'
+      preLoaderRoute: typeof PawkitsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/start/server-funcs': {
@@ -403,10 +423,11 @@ const rootRouteChildren: RootRouteChildren = {
   HomeRoute: HomeRoute,
   LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
-  PawkitsRoute: PawkitsRoute,
   SignupRoute: SignupRoute,
   TagsRoute: TagsRoute,
   TrashRoute: TrashRoute,
+  PawkitsSlugRoute: PawkitsSlugRoute,
+  PawkitsIndexRoute: PawkitsIndexRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

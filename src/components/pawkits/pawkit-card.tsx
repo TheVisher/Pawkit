@@ -14,6 +14,23 @@ import { PawkitContextMenu } from '@/components/context-menus';
 import type { Collection } from '@/lib/types/convex';
 import type { SubPawkitSize, PawkitOverviewSize } from '@/lib/stores/view-store';
 
+// Helper to get all descendant slugs for leaf-only display logic
+function getDescendantSlugs(pawkitSlug: string, collections: Collection[]): string[] {
+  const pawkit = collections.find((c) => c.slug === pawkitSlug);
+  if (!pawkit) return [];
+
+  const descendants: string[] = [];
+  function findChildren(parentId: string) {
+    const children = collections.filter((c) => c.parentId === parentId && !c.deleted);
+    for (const child of children) {
+      descendants.push(child.slug);
+      findChildren(child._id);
+    }
+  }
+  findChildren(pawkit._id);
+  return descendants;
+}
+
 interface PawkitCardProps {
   collection: Collection;
   isActive?: boolean;
@@ -117,11 +134,22 @@ export function PawkitCard({
 
   // Get cards in this Pawkit (using tags)
   // A card is in a Pawkit if it has the Pawkit's slug as a tag
+  // Uses leaf-only display: excludes cards that have a descendant pawkit tag
   const collectionCards = useMemo(() => {
-    return cards.filter(
+    // Get descendant slugs for leaf-only display
+    const descendantSlugs = getDescendantSlugs(collection.slug, collections);
+
+    // Filter cards that have this pawkit's tag
+    const cardsWithTag = cards.filter(
       (card) => card.tags?.includes(collection.slug) && !card.deleted
     );
-  }, [cards, collection.slug]);
+
+    // Leaf-only: exclude cards that also have a descendant pawkit tag
+    return cardsWithTag.filter((card) => {
+      const hasDescendantTag = descendantSlugs.some((d) => card.tags?.includes(d));
+      return !hasDescendantTag;
+    });
+  }, [cards, collections, collection.slug]);
 
   // Get child collections count
   const childCount = useMemo(() => {
