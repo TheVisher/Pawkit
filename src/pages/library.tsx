@@ -28,7 +28,19 @@ import { CardGrid } from '@/components/cards/card-grid';
 import { EmptyState } from '@/components/cards/empty-state';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { ContentAreaContextMenu } from '@/components/context-menus';
-import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX } from 'lucide-react';
+import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX, X, FileText, Video, Image, FileIcon, Music, Filter } from 'lucide-react';
+import type { ContentType } from '@/lib/stores/view-store';
+
+// Content type display info
+const CONTENT_TYPE_INFO: Record<ContentType, { label: string; icon: typeof Bookmark }> = {
+  bookmarks: { label: 'Bookmarks', icon: Bookmark },
+  notes: { label: 'Notes', icon: FileText },
+  video: { label: 'Video', icon: Video },
+  images: { label: 'Images', icon: Image },
+  docs: { label: 'Docs', icon: FileIcon },
+  audio: { label: 'Audio', icon: Music },
+  other: { label: 'Other', icon: FileIcon },
+};
 import type { Card } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
 
@@ -132,7 +144,7 @@ function LibraryPageContent() {
   const layout = useLayout();
   const { sortBy, sortOrder } = useSorting();
   const { groupBy, dateGrouping } = useGrouping();
-  const { reorderCards, loadViewSettings } = useViewActions();
+  const { reorderCards, loadViewSettings, saveViewSettings } = useViewActions();
   const {
     contentTypeFilters,
     selectedTags,
@@ -151,7 +163,13 @@ function LibraryPageContent() {
   // Card order still needs individual selector (not included in batched hooks)
   const cardOrder = useViewStore((state) => state.cardOrder);
   const setSelectedTags = useViewStore((state) => state.setSelectedTags);
+  const clearTags = useViewStore((state) => state.clearTags);
+  const toggleContentType = useViewStore((state) => state.toggleContentType);
+  const clearContentTypes = useViewStore((state) => state.clearContentTypes);
   const openAddCard = useModalStore((state) => state.openAddCard);
+
+  // Card display settings
+  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
 
   // Load library-specific view settings on mount
   useEffect(() => {
@@ -160,6 +178,17 @@ function LibraryPageContent() {
     }
   }, [workspace, loadViewSettings]);
 
+  // Auto-save view settings when they change
+  useEffect(() => {
+    if (workspace) {
+      // Debounce save to avoid excessive writes
+      const timer = setTimeout(() => {
+        saveViewSettings(workspace._id);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [workspace, layout, sortBy, sortOrder, cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags, groupBy, dateGrouping, cardOrder, saveViewSettings]);
+
   // Handle tag query parameter from URL (e.g., /library?tag=mytag)
   useEffect(() => {
     const tagParam = searchParams.get('tag');
@@ -167,9 +196,6 @@ function LibraryPageContent() {
       setSelectedTags([tagParam]);
     }
   }, [searchParams, setSelectedTags]);
-
-  // Card display settings
-  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
 
   // Calculate duplicate card IDs (memoized) - skip expensive O(n²) calculation when filter is disabled
   const duplicateCardIds = useMemo(() => {
@@ -472,6 +498,55 @@ function LibraryPageContent() {
             </div>
           </div>
         </div>
+
+        {/* Active filter indicator */}
+        {(selectedTags.length > 0 || contentTypeFilters.length > 0) && (
+          <div className="px-4 md:px-6 pb-2">
+            <div className="flex items-center gap-2 text-sm flex-wrap">
+              <Filter className="h-3.5 w-3.5 text-text-muted" />
+              <span className="text-text-muted">Filtering by:</span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Content type filters */}
+                {contentTypeFilters.map((type) => {
+                  const info = CONTENT_TYPE_INFO[type];
+                  const Icon = info.icon;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => toggleContentType(type)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors"
+                    >
+                      <Icon className="h-3 w-3" />
+                      <span>{info.label}</span>
+                      <X className="h-3 w-3 opacity-60 hover:opacity-100" />
+                    </button>
+                  );
+                })}
+                {/* Tag filters */}
+                {selectedTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--color-accent)]/15 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/25 transition-colors"
+                  >
+                    <Tag className="h-3 w-3" />
+                    <span>{tag}</span>
+                    <X className="h-3 w-3 opacity-60 hover:opacity-100" />
+                  </button>
+                ))}
+                {/* Clear all button */}
+                {(selectedTags.length + contentTypeFilters.length) > 1 && (
+                  <button
+                    onClick={() => { clearTags(); clearContentTypes(); }}
+                    className="text-xs text-text-muted hover:text-text-primary transition-colors ml-1"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Page content - pt-4 creates spacing below header */}
         <div className="px-4 md:px-6 pt-4 pb-6">
