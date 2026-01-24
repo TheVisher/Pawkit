@@ -67,7 +67,6 @@ export function PawkitContextMenu({ collection, children, allCollections }: Pawk
       await createCollection({
         workspaceId: currentWorkspace._id,
         name: name.trim(),
-        slug,
         parentId: collection._id,
         isPrivate: false,
       });
@@ -85,7 +84,7 @@ export function PawkitContextMenu({ collection, children, allCollections }: Pawk
         toast({ type: 'error', message: 'A Pawkit with this name already exists' });
         return;
       }
-      await updateCollection(collection._id, { name: newName.trim(), slug: newSlug });
+      await updateCollection(collection._id, { name: newName.trim() });
       toast({ type: 'success', message: 'Renamed' });
     }
   };

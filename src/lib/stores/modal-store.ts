@@ -12,10 +12,16 @@ interface ModalStore {
   openAddCard: (tab?: 'bookmark' | 'note') => void;
   closeAddCard: () => void;
 
-  // Card Detail Modal
+  // Card Detail / Content Panel
   activeCardId: string | null;
+  cardOriginRect: DOMRect | null;
+  isAnimating: boolean;
+  isClosingPanel: boolean; // True during close animation
   openCardDetail: (id: string) => void;
+  openCardDetailWithRect: (id: string, rect: DOMRect) => void;
   closeCardDetail: () => void;
+  setIsAnimating: (animating: boolean) => void;
+  setIsClosingPanel: (closing: boolean) => void;
 
   // Create Pawkit Modal
   isCreatePawkitOpen: boolean;
@@ -57,12 +63,26 @@ export const useModalStore = create<ModalStore>((set) => ({
 
   closeAddCard: () => set({ isAddCardOpen: false }),
 
-  // Card Detail Modal
+  // Card Detail / Content Panel
   activeCardId: null,
+  cardOriginRect: null,
+  isAnimating: false,
+  isClosingPanel: false,
 
-  openCardDetail: (id) => set({ activeCardId: id }),
+  openCardDetail: (id) => set({ activeCardId: id, cardOriginRect: null, isClosingPanel: false }),
 
-  closeCardDetail: () => set({ activeCardId: null }),
+  openCardDetailWithRect: (id, rect) => set({
+    activeCardId: id,
+    cardOriginRect: rect,
+    isAnimating: true,
+    isClosingPanel: false
+  }),
+
+  closeCardDetail: () => set({ activeCardId: null, cardOriginRect: null, isAnimating: false, isClosingPanel: false }),
+
+  setIsAnimating: (animating) => set({ isAnimating: animating }),
+
+  setIsClosingPanel: (closing) => set({ isClosingPanel: closing }),
 
   // Create Pawkit Modal
   isCreatePawkitOpen: false,

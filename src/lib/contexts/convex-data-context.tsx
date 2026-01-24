@@ -70,14 +70,15 @@ interface MutationsContextValue {
   createCollection: (args: {
     workspaceId: Id<'workspaces'>;
     name: string;
-    slug: string;
+    slug?: string;
     parentId?: Id<'collections'>;
     icon?: string;
     isPrivate?: boolean;
+    isSystem?: boolean;
+    coverImage?: string;
   }) => Promise<Id<'collections'>>;
   updateCollection: (id: Id<'collections'>, updates: Partial<{
     name: string;
-    slug: string;
     icon: string;
     coverImage: string;
     coverImagePosition: number;
@@ -87,6 +88,8 @@ interface MutationsContextValue {
     hidePreview: boolean;
     useCoverAsBackground: boolean;
     pinned: boolean;
+    parentId: Id<'collections'> | undefined;
+    position: number;
   }>) => Promise<void>;
   deleteCollection: (id: Id<'collections'>) => Promise<void>;
   addCardToCollection: (collectionId: Id<'collections'>, cardId: Id<'cards'>) => Promise<void>;
@@ -232,10 +235,12 @@ export function ConvexDataProvider({ children }: ConvexDataProviderProps) {
 
     // Collection mutations
     createCollection: async (args) => {
-      return createCollectionMutation(args);
+      const { slug: _slug, ...rest } = args;
+      return createCollectionMutation(rest);
     },
     updateCollection: async (id, updates) => {
-      await updateCollectionMutation({ id, ...updates });
+      const { slug: _slug, ...rest } = updates;
+      await updateCollectionMutation({ id, ...rest });
     },
     deleteCollection: async (id) => {
       await deleteCollectionMutation({ id });

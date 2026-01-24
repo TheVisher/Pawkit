@@ -72,7 +72,7 @@ export type CardUpdate = Partial<
 export type CollectionInput = {
   workspaceId: Id<'workspaces'>;
   name: string;
-  slug: string;
+  slug?: string;
   parentId?: Id<'collections'>;
   position?: number;
   icon?: string;

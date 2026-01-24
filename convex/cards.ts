@@ -435,6 +435,7 @@ export const create = mutation({
     // Schedule metadata scraping for URL cards
     if (args.type === "url" && args.url) {
       await ctx.scheduler.runAfter(0, internal.metadata.scrape, { cardId });
+      await ctx.scheduler.runAfter(1000, internal.metadata.scrapeArticle, { cardId });
     }
 
     return cardId;

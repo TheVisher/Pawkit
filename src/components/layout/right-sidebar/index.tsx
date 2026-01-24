@@ -85,6 +85,7 @@ export function RightSidebar() {
 
   // Get active card from modal store
   const activeCardId = useModalStore((s) => s.activeCardId);
+  const isClosingPanel = useModalStore((s) => s.isClosingPanel);
   // Use DataContext for cards/collections - benefits from two-phase loading optimization
   const { cards: allCards, collections: allCollections } = useDataContext();
 
@@ -139,12 +140,13 @@ export function RightSidebar() {
     }
 
     // Expand sidebar when card detail opens, collapse when it closes
-    if (activeCardId && expandedMode !== 'card-detail' && expandedMode !== 'settings') {
+    // Don't re-expand if we're in the middle of closing the panel
+    if (activeCardId && expandedMode !== 'card-detail' && expandedMode !== 'settings' && !isClosingPanel) {
       setExpandedMode('card-detail');
     } else if (!activeCardId && expandedMode === 'card-detail') {
       setExpandedMode(null);
     }
-  }, [activeCardId, displayMode, expandedMode, setExpandedMode]);
+  }, [activeCardId, displayMode, expandedMode, setExpandedMode, isClosingPanel]);
 
   // Handle view transitions with animation
   useEffect(() => {

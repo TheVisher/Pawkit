@@ -16,7 +16,6 @@ import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
-import { slugify } from '@/lib/utils';
 
 interface CreatePawkitFormProps {
   onSuccess: () => void;
@@ -48,26 +47,13 @@ export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps)
         setError(null);
 
         try {
-            const slug = slugify(name);
-            const exists = collections.find(c => c.slug === slug && c.workspaceId === workspace._id && !c.deleted);
-            if (exists) {
-                setError('A pawkit with this name already exists');
-                setIsSubmitting(false);
-                return;
-            }
-
             await createCollection({
                 workspaceId: workspace._id,
                 name: name.trim(),
-                slug,
                 parentId: parentId === 'none' ? undefined : parentId,
                 isPrivate: false,
                 isSystem: false,
                 // icon intentionally left undefined - displays folder icon by default in UI
-                position: collections.length,
-                hidePreview: false,
-                useCoverAsBackground: false,
-                pinned: false,
             });
 
             toast({

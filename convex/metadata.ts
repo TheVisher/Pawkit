@@ -54,6 +54,8 @@ export const scrapeArticle = internalAction({
   handler: async (ctx, { cardId }) => {
     const card = await ctx.runQuery(internal.cards.getInternal, { cardId });
     if (!card?.url) return;
+    if (!shouldExtractArticle(card.url)) return;
+    if (card.articleContent || card.articleContentEdited) return;
 
     try {
       const article = await extractArticle(card.url);
@@ -129,6 +131,151 @@ function isYouTubeUrl(url: string): boolean {
   }
 }
 
+function isNyTimesUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname === "nytimes.com" || hostname.endsWith(".nytimes.com");
+  } catch {
+    return false;
+  }
+}
+
+function isWikipediaUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.endsWith(".wikipedia.org");
+  } catch {
+    return false;
+  }
+}
+
+function isRedditUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return (
+      hostname === "reddit.com" ||
+      hostname.endsWith(".reddit.com") ||
+      hostname === "redd.it"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if URL is an IMDb URL.
+ */
+function isImdbUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname === "imdb.com" || hostname.endsWith(".imdb.com");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a URL is likely to have readable article content.
+ */
+function shouldExtractArticle(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+
+    if (isYouTubeUrl(url) || isImdbUrl(url)) {
+      return false;
+    }
+
+    const nonArticleDomains = [
+      "twitter.com",
+      "x.com",
+      "instagram.com",
+      "facebook.com",
+      "tiktok.com",
+      "reddit.com",
+      "redd.it",
+      "maps.google.com",
+      "drive.google.com",
+      "docs.google.com",
+      "sheets.google.com",
+      "calendar.google.com",
+    ];
+
+    if (nonArticleDomains.some(d => hostname === d || hostname.endsWith("." + d))) {
+      return false;
+    }
+
+    const nonArticleExtensions = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".gif",
+      ".webp",
+      ".svg",
+      ".ico",
+      ".pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+      ".mp3",
+      ".mp4",
+      ".wav",
+      ".avi",
+      ".mov",
+      ".webm",
+      ".zip",
+      ".rar",
+      ".tar",
+      ".gz",
+      ".js",
+      ".css",
+      ".json",
+      ".xml",
+    ];
+
+    if (nonArticleExtensions.some(ext => path.endsWith(ext))) {
+      return false;
+    }
+
+    const nonArticlePatterns = [
+      /^\/api\//,
+      /^\/static\//,
+      /^\/assets\//,
+      /^\/cdn-cgi\//,
+      /\/feed\/?$/,
+      /\/rss\/?$/,
+      /^\/cart/,
+      /^\/checkout/,
+      /^\/account/,
+      /^\/login/,
+      /^\/signin/,
+      /^\/signup/,
+      /^\/search/,
+      /^\/s\?/,
+      /^\/pl\//,
+      /^\/dp\//,
+      /^\/gp\//,
+      /^\/ip\//,
+    ];
+
+    if (nonArticlePatterns.some(pattern => pattern.test(path))) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Extract YouTube video ID from various URL formats.
  */
@@ -154,6 +301,47 @@ function extractYouTubeVideoId(url: string): string | null {
     }
 
     return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractWikipediaTitle(url: string): { host: string; title: string } | null {
+  try {
+    const urlObj = new URL(url);
+    const match = urlObj.pathname.match(/\/wiki\/(.+)/i);
+    if (!match?.[1]) return null;
+    return { host: urlObj.host, title: decodeURIComponent(match[1]) };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract IMDb title ID (tt1234567) from URL.
+ */
+function extractImdbTitleId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const match = urlObj.pathname.match(/\/title\/(tt\d{5,})/i);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractRedditPostId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    if (hostname === "redd.it") {
+      const shortId = urlObj.pathname.replace("/", "").split("/")[0];
+      return shortId || null;
+    }
+
+    const match = urlObj.pathname.match(/\/comments\/([a-z0-9]+)\//i);
+    return match?.[1] || null;
   } catch {
     return null;
   }
@@ -210,12 +398,202 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
 }
 
 /**
+ * Fetch Reddit metadata using the public JSON endpoint.
+ */
+async function scrapeReddit(url: string): Promise<ScrapedMetadata> {
+  const postId = extractRedditPostId(url);
+  if (!postId) {
+    throw new Error("Invalid Reddit URL");
+  }
+
+  const apiUrl = `https://www.reddit.com/comments/${postId}.json?raw_json=1`;
+  const response = await fetch(apiUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch Reddit JSON: " + response.status);
+  }
+
+  const data = await response.json();
+  const post = data?.[0]?.data?.children?.[0]?.data;
+  if (!post) {
+    throw new Error("Reddit metadata not found");
+  }
+
+  const title: string | null = post?.title || null;
+  const selftext: string | null = post?.selftext || null;
+  const description =
+    selftext && selftext.trim().length > 0
+      ? selftext.trim().slice(0, 300)
+      : null;
+
+  let image: string | null = null;
+  const previewUrl = post?.preview?.images?.[0]?.source?.url;
+  if (previewUrl) {
+    image = decodeHtmlEntities(previewUrl);
+  } else if (typeof post?.thumbnail === "string" && post.thumbnail.startsWith("http")) {
+    image = post.thumbnail;
+  }
+
+  return {
+    title,
+    description,
+    image,
+    images: image ? [image] : [],
+    favicon: "https://www.reddit.com/favicon.ico",
+    domain: "reddit.com",
+    raw: {
+      reddit: post,
+      source: "reddit-json",
+    },
+  };
+}
+
+/**
+ * Fetch NYTimes metadata using the oEmbed endpoint.
+ */
+async function scrapeNyTimes(url: string): Promise<ScrapedMetadata> {
+  const oembedUrl = `https://www.nytimes.com/svc/oembed/json/?url=${encodeURIComponent(url)}`;
+  const response = await fetch(oembedUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch NYTimes oEmbed: " + response.status);
+  }
+
+  const data = await response.json();
+  if (data?.status && data.status !== "ok") {
+    throw new Error("NYTimes oEmbed error: " + data.status);
+  }
+
+  let image: string | null = data?.thumbnail_url || null;
+
+  if (!image) {
+    try {
+      const oembedHtmlUrl = `https://www.nytimes.com/svc/oembed/html/?url=${encodeURIComponent(url)}`;
+      const htmlResponse = await fetch(oembedHtmlUrl, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+          Accept: "text/html",
+        },
+        redirect: "follow",
+      });
+      if (htmlResponse.ok) {
+        const html = await htmlResponse.text();
+        const match = html.match(/<img[^>]*src=["']([^"']+)["']/i);
+        if (match?.[1]) {
+          image = match[1];
+        }
+      }
+    } catch {
+      // Ignore image extraction failures
+    }
+  }
+
+  if (image) {
+    image = resolveUrl(image, url);
+  }
+
+  return {
+    title: data?.title || null,
+    description: data?.summary || null,
+    image,
+    images: image ? [image] : [],
+    favicon: "https://www.nytimes.com/favicon.ico",
+    domain: "nytimes.com",
+    raw: {
+      nytimes: data,
+      source: "nytimes-oembed",
+    },
+  };
+}
+
+/**
+ * Fetch IMDb metadata using the public suggestion endpoint.
+ */
+async function scrapeImdb(url: string): Promise<ScrapedMetadata> {
+  const titleId = extractImdbTitleId(url);
+  if (!titleId) {
+    throw new Error("Invalid IMDb URL");
+  }
+
+  const suggestionUrl = `https://v2.sg.media-imdb.com/suggestion/${titleId[0]}/${titleId}.json`;
+  const response = await fetch(suggestionUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch IMDb metadata: " + response.status);
+  }
+
+  const data = await response.json();
+  const items = Array.isArray(data?.d) ? data.d : [];
+  const entry = items.find(
+    (item: { id?: string }) =>
+      item?.id === titleId ||
+      item?.id === `/title/${titleId}/` ||
+      item?.id === `/title/${titleId}` ||
+      (typeof item?.id === "string" && item.id.includes(titleId))
+  );
+
+  if (!entry) {
+    throw new Error("IMDb metadata not found for " + titleId);
+  }
+
+  const image = entry?.i?.imageUrl || null;
+  const descriptionParts: string[] = [];
+  if (entry?.y) descriptionParts.push(String(entry.y));
+  if (entry?.q) descriptionParts.push(String(entry.q));
+  if (entry?.s) descriptionParts.push(String(entry.s));
+
+  return {
+    title: entry?.l || `IMDb ${titleId}`,
+    description: descriptionParts.length ? descriptionParts.join(" • ") : null,
+    image,
+    images: image ? [image] : [],
+    favicon: "https://www.imdb.com/favicon.ico",
+    domain: "imdb.com",
+    raw: {
+      imdb: entry,
+      source: "imdb-suggestion",
+    },
+  };
+}
+
+/**
  * Scrape metadata from a URL.
  */
 async function scrapeUrl(url: string): Promise<ScrapedMetadata> {
   // Handle YouTube URLs specially (oEmbed + thumbnail generation)
   if (isYouTubeUrl(url)) {
     return scrapeYouTube(url);
+  }
+  if (isRedditUrl(url)) {
+    return scrapeReddit(url);
+  }
+  if (isNyTimesUrl(url)) {
+    return scrapeNyTimes(url);
+  }
+  if (isImdbUrl(url)) {
+    return scrapeImdb(url);
   }
 
   const response = await fetch(url, {
@@ -431,6 +809,107 @@ interface ArticleContent {
   publishedTime: string | null;
 }
 
+function buildLimitedHtml($: cheerio.CheerioAPI, root: cheerio.Cheerio<cheerio.Element>, maxChars: number): string {
+  const pieces: string[] = [];
+  let total = 0;
+  const children = root.children().toArray();
+
+  for (const child of children) {
+    const html = $.html(child) || "";
+    if (!html) continue;
+    if (total + html.length > maxChars) break;
+    pieces.push(html);
+    total += html.length;
+  }
+
+  return pieces.join("");
+}
+
+async function extractWikipediaArticle(url: string): Promise<ArticleContent> {
+  const target = extractWikipediaTitle(url);
+  if (!target) {
+    throw new Error("Invalid Wikipedia URL");
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const apiUrl = `https://${target.host}/api/rest_v1/page/html/${encodeURIComponent(target.title)}`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+        Accept: "text/html",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch Wikipedia article: " + response.status);
+    }
+
+    const rawHtml = await response.text();
+    const html = preprocessHtml(rawHtml);
+    const $ = cheerio.load(html);
+
+    const title =
+      $("title").first().text().trim() ||
+      $('meta[property="og:title"]').attr("content") ||
+      null;
+
+    const siteName = "Wikipedia";
+    const publishedTime =
+      $('meta[property="dc:modified"]').attr("content") ||
+      $('meta[property="dc:modified"]').attr("content") ||
+      null;
+
+    const body = $("body").first();
+    if (!body.length) {
+      return {
+        content: null,
+        textContent: null,
+        title,
+        byline: null,
+        siteName,
+        wordCount: 0,
+        readingTime: 0,
+        publishedTime,
+      };
+    }
+
+    // Remove common non-content elements
+    body.find("script, style, noscript, svg, nav, header, footer, aside").remove();
+    body.find(".toc, .mw-editsection, .reflist, .reference, .navbox, .metadata, .ambox, .shortdescription").remove();
+    body.find("sup.reference").remove();
+
+    const contentHtml = buildLimitedHtml($, body, 650000);
+    const textContent = cheerio.load(`<div>${contentHtml}</div>`)("div").text().trim().replace(/\s+/g, " ");
+    const wordCount = countWords(textContent);
+
+    return {
+      content: contentHtml,
+      textContent,
+      title,
+      byline: null,
+      siteName,
+      wordCount,
+      readingTime: calculateReadingTime(wordCount),
+      publishedTime,
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error("[ArticleExtractor] Wikipedia timeout");
+      throw new Error("Request timed out");
+    }
+    console.error("[ArticleExtractor] Wikipedia error:", error);
+    throw error;
+  }
+}
+
 /**
  * Count words in text
  */
@@ -506,6 +985,10 @@ function preprocessHtml(html: string): string {
  * Uses text density scoring to identify main content.
  */
 async function extractArticle(url: string): Promise<ArticleContent> {
+  if (isWikipediaUrl(url)) {
+    return extractWikipediaArticle(url);
+  }
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 

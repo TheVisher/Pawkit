@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
+import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
   Pin,
@@ -425,10 +426,25 @@ export function GridCard({
   }, [card.tags]);
 
 
+  // Handle click with FLIP animation support
+  // GridCard handles opening the card detail modal directly for FLIP animation
+  // The onClick prop should NOT open the modal - it's for additional behavior only
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
+  const handleCardClick = useCallback(() => {
+    // Capture bounding rect for FLIP animation
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      openCardDetailWithRect(card._id, rect);
+    }
+    // Note: We don't call onClick here anymore since it was typically used to open the modal
+    // which is now handled internally. If additional behavior is needed, it should be
+    // implemented differently (e.g., via a separate callback prop).
+  }, [card._id, openCardDetailWithRect]);
+
   return (
     <button
       ref={cardRef}
-      onClick={onClick}
+      onClick={handleCardClick}
       className={cn(
         'group relative w-full text-left',
         'transition-all duration-300 ease-out',

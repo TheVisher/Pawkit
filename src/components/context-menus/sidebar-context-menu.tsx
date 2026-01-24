@@ -47,7 +47,6 @@ export function SidebarContextMenu({ children }: SidebarContextMenuProps) {
       await createCollection({
         workspaceId: currentWorkspace._id,
         name: name.trim(),
-        slug,
         isPrivate: false,
       });
       toast({ type: 'success', message: `Created ${name}` });

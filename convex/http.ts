@@ -256,6 +256,40 @@ function isYouTubeUrl(url: string): boolean {
   }
 }
 
+function isNyTimesUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname === "nytimes.com" || hostname.endsWith(".nytimes.com");
+  } catch {
+    return false;
+  }
+}
+
+function isRedditUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return (
+      hostname === "reddit.com" ||
+      hostname.endsWith(".reddit.com") ||
+      hostname === "redd.it"
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isImdbUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname === "imdb.com" || hostname.endsWith(".imdb.com");
+  } catch {
+    return false;
+  }
+}
+
 function extractYouTubeVideoId(url: string): string | null {
   try {
     const urlObj = new URL(url);
@@ -278,6 +312,33 @@ function extractYouTubeVideoId(url: string): string | null {
     }
 
     return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractImdbTitleId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const match = urlObj.pathname.match(/\/title\/(tt\d{5,})/i);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractRedditPostId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    if (hostname === "redd.it") {
+      const shortId = urlObj.pathname.replace("/", "").split("/")[0];
+      return shortId || null;
+    }
+
+    const match = urlObj.pathname.match(/\/comments\/([a-z0-9]+)\//i);
+    return match?.[1] || null;
   } catch {
     return null;
   }
@@ -321,9 +382,174 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
   };
 }
 
+async function scrapeReddit(url: string): Promise<ScrapedMetadata> {
+  const postId = extractRedditPostId(url);
+  if (!postId) {
+    throw new Error("Invalid Reddit URL");
+  }
+
+  const apiUrl = `https://www.reddit.com/comments/${postId}.json?raw_json=1`;
+  const response = await fetch(apiUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch Reddit JSON: " + response.status);
+  }
+
+  const data = await response.json();
+  const post = data?.[0]?.data?.children?.[0]?.data;
+  if (!post) {
+    throw new Error("Reddit metadata not found");
+  }
+
+  const title: string | null = post?.title || null;
+  const selftext: string | null = post?.selftext || null;
+  const description =
+    selftext && selftext.trim().length > 0
+      ? selftext.trim().slice(0, 300)
+      : null;
+
+  let image: string | null = null;
+  const previewUrl = post?.preview?.images?.[0]?.source?.url;
+  if (previewUrl) {
+    image = decodeHtmlEntities(previewUrl);
+  } else if (typeof post?.thumbnail === "string" && post.thumbnail.startsWith("http")) {
+    image = post.thumbnail;
+  }
+
+  return {
+    title,
+    description,
+    image,
+    images: image ? [image] : [],
+    favicon: "https://www.reddit.com/favicon.ico",
+    domain: "reddit.com",
+  };
+}
+
+async function scrapeNyTimes(url: string): Promise<ScrapedMetadata> {
+  const oembedUrl = `https://www.nytimes.com/svc/oembed/json/?url=${encodeURIComponent(url)}`;
+  const response = await fetch(oembedUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch NYTimes oEmbed: " + response.status);
+  }
+
+  const data = await response.json();
+  if (data?.status && data.status !== "ok") {
+    throw new Error("NYTimes oEmbed error: " + data.status);
+  }
+
+  let image: string | null = data?.thumbnail_url || null;
+
+  if (!image) {
+    try {
+      const oembedHtmlUrl = `https://www.nytimes.com/svc/oembed/html/?url=${encodeURIComponent(url)}`;
+      const htmlResponse = await fetch(oembedHtmlUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+          Accept: "text/html",
+        },
+        redirect: "follow",
+      });
+      if (htmlResponse.ok) {
+        const html = await htmlResponse.text();
+        const match = html.match(/<img[^>]*src=["']([^"']+)["']/i);
+        if (match?.[1]) {
+          image = match[1];
+        }
+      }
+    } catch {
+      // Ignore image extraction failures
+    }
+  }
+
+  if (image) {
+    image = resolveUrl(image, url);
+  }
+
+  return {
+    title: data?.title || null,
+    description: data?.summary || null,
+    image,
+    images: image ? [image] : [],
+    favicon: "https://www.nytimes.com/favicon.ico",
+    domain: "nytimes.com",
+  };
+}
+
+async function scrapeImdb(url: string): Promise<ScrapedMetadata> {
+  const titleId = extractImdbTitleId(url);
+  if (!titleId) {
+    throw new Error("Invalid IMDb URL");
+  }
+
+  const suggestionUrl = `https://v2.sg.media-imdb.com/suggestion/${titleId[0]}/${titleId}.json`;
+  const response = await fetch(suggestionUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch IMDb metadata: " + response.status);
+  }
+
+  const data = await response.json();
+  const items = Array.isArray(data?.d) ? data.d : [];
+  const entry = items.find(
+    (item: { id?: string }) =>
+      item?.id === titleId ||
+      item?.id === `/title/${titleId}/` ||
+      item?.id === `/title/${titleId}` ||
+      (typeof item?.id === "string" && item.id.includes(titleId))
+  );
+
+  if (!entry) {
+    throw new Error("IMDb metadata not found for " + titleId);
+  }
+
+  const image = entry?.i?.imageUrl || null;
+  const descriptionParts: string[] = [];
+  if (entry?.y) descriptionParts.push(String(entry.y));
+  if (entry?.q) descriptionParts.push(String(entry.q));
+  if (entry?.s) descriptionParts.push(String(entry.s));
+
+  return {
+    title: entry?.l || `IMDb ${titleId}`,
+    description: descriptionParts.length ? descriptionParts.join(" • ") : null,
+    image,
+    images: image ? [image] : [],
+    favicon: "https://www.imdb.com/favicon.ico",
+    domain: "imdb.com",
+  };
+}
+
 async function scrapeUrl(url: string): Promise<ScrapedMetadata> {
   if (isYouTubeUrl(url)) {
     return scrapeYouTube(url);
+  }
+  if (isRedditUrl(url)) {
+    return scrapeReddit(url);
+  }
+  if (isNyTimesUrl(url)) {
+    return scrapeNyTimes(url);
+  }
+  if (isImdbUrl(url)) {
+    return scrapeImdb(url);
   }
 
   const response = await fetch(url, {

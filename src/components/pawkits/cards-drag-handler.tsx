@@ -1,15 +1,16 @@
 'use client';
 
 import { useDndMonitor, DragEndEvent } from '@dnd-kit/core';
-import { useMutations } from '@/lib/contexts/convex-data-context';
+import { useMutations, useCards } from '@/lib/contexts/convex-data-context';
 import { useToastStore } from '@/lib/stores/toast-store';
 
 export function CardsDragHandler() {
-    const { addCardToCollection } = useMutations();
+    const { updateCard } = useMutations();
+    const cards = useCards();
     const toast = useToastStore((state) => state.toast);
 
     useDndMonitor({
-        onDragEnd: (event: DragEndEvent) => {
+        onDragEnd: async (event: DragEndEvent) => {
             const { active, over } = event;
 
             if (!over) return;
@@ -28,7 +29,17 @@ export function CardsDragHandler() {
                     const collectionSlug = overData.slug as string;
                     const collectionName = overData.name || collectionSlug;
 
-                    addCardToCollection(cardId, collectionSlug);
+                    const card = cards.find((c) => c._id === cardId);
+                    if (!card) return;
+
+                    const currentTags = card.tags || [];
+                    if (currentTags.includes(collectionSlug)) {
+                        return;
+                    }
+
+                    await updateCard(card._id, {
+                        tags: [...currentTags, collectionSlug],
+                    });
 
                     toast({
                         type: 'success',

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from '@/components/ui/image';
 import { Pin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Card } from '@/lib/types/convex';
+import { useModalStore } from '@/lib/stores/modal-store';
 import {
   type CardDisplaySettings,
   DEFAULT_CARD_DISPLAY,
@@ -34,6 +35,7 @@ export function ListCard({
   onSystemTagClick,
 }: ListCardProps) {
   const [imageError, setImageError] = useState(false);
+  const cardRef = useRef<HTMLButtonElement>(null);
   const Icon = getCardIcon(card.type);
 
   // Reset image error state when card or image changes
@@ -46,9 +48,21 @@ export function ListCard({
 
   const hasFavicon = card.favicon && !imageError;
 
+  // Handle click with FLIP animation support
+  // ListCard handles opening the card detail modal directly for FLIP animation
+  const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
+  const handleCardClick = useCallback(() => {
+    // Capture bounding rect for FLIP animation
+    if (cardRef.current) {
+      const rect = cardRef.current.getBoundingClientRect();
+      openCardDetailWithRect(card._id, rect);
+    }
+  }, [card._id, openCardDetailWithRect]);
+
   return (
     <button
-      onClick={onClick}
+      ref={cardRef}
+      onClick={handleCardClick}
       className={cn(
         'group relative text-left w-full rounded-xl overflow-hidden',
         'flex items-center gap-4 p-3',
