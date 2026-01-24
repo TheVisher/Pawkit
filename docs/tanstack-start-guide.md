@@ -557,6 +557,51 @@ npm run build  # Build for production
 npm run start  # Start production server
 ```
 
+## Gotchas & Lessons Learned
+
+### Stale Params When Navigating Between Sibling Dynamic Routes
+
+**Problem:** When navigating between sibling dynamic routes (e.g., `/pawkits/test-a` → `/pawkits/test-b`), `Route.useParams()` can return stale values. The component doesn't remount—it only re-renders—and the params may not update correctly.
+
+**Symptoms:**
+- Clicking a link in the sidebar updates the URL and highlights the correct item
+- But the page content shows data from the previous route
+- Refreshing the page fixes it temporarily
+- Only happens when navigating directly between sibling routes (not when going through a different page first)
+
+**Root Cause:** TanStack Router reuses component instances when navigating between routes with the same component structure. Unlike Next.js where `useParams()` reliably updates, TanStack Router's `Route.useParams()` can have closure/memoization issues in this scenario.
+
+**Solution:** Derive the param from `useLocation().pathname` instead of `Route.useParams()`:
+
+```typescript
+// app/routes/pawkits/$slug.tsx
+import { createFileRoute, useLocation } from '@tanstack/react-router'
+import PawkitDetailPage from '@/pages/pawkit-detail'
+
+export const Route = createFileRoute('/pawkits/$slug')({
+  component: PawkitSlugRoute,
+})
+
+function PawkitSlugRoute() {
+  // Derive slug from pathname to ensure it's always current
+  const { pathname } = useLocation()
+  const slug = pathname.split('/pawkits/')[1]?.split('/')[0] || ''
+
+  // Key forces full remount when navigating between pawkits
+  return <PawkitDetailPage key={slug} slug={slug} />
+}
+```
+
+**Key points:**
+1. `useLocation().pathname` is always reactive and reflects the current URL
+2. Adding `key={slug}` forces React to remount the component when the slug changes
+3. Pass the param as a prop rather than having the child component use hooks to get it
+
+**When this applies:**
+- Dynamic routes where users navigate between different param values
+- Same component used for multiple param values (e.g., detail pages)
+- Navigation via `<Link>` components between sibling routes
+
 ## Resources
 
 - [TanStack Start Docs](https://tanstack.com/start/latest)
