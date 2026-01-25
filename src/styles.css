@@ -1305,3 +1305,23 @@ html.visual-style-high-contrast .react-resizable-handle::before {
 .tweet-compact [class*="videoButton"] {
     pointer-events: auto;
 }
+
+/* Tweet embeds - modal styling */
+.tweet-modal {
+    border-radius: 18px;
+    overflow: hidden;
+    background: var(--glass-panel-bg);
+    padding: 10px;
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.tweet-modal iframe {
+    display: block;
+    width: 100% !important;
+    border-radius: 14px;
+}
+
+.tweet-modal .twitter-tweet,
+.tweet-modal > * {
+    margin: 0 auto !important;
+}

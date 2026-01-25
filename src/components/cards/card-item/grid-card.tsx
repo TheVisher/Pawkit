@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
-import { Tweet } from 'react-tweet';
+import { TweetPreview } from './tweet-preview';
 import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
@@ -528,38 +528,7 @@ export function GridCard({
         >
           {/* Thumbnail image or placeholder */}
           {isTweet ? (
-            <div
-              className="h-full w-full"
-              onClick={(event) => {
-                const target = event.target as HTMLElement | null;
-                if (
-                  target?.closest('video') ||
-                  target?.closest('button') ||
-                  target?.closest('[aria-label="View video on X"]') ||
-                  target?.closest('[class*="videoButton"]')
-                ) {
-                  event.stopPropagation();
-                }
-              }}
-            >
-              <div
-                className="tweet-compact h-full w-full overflow-hidden rounded-lg"
-                style={{
-                  // Match tweet theme to app styling
-                  ['--tweet-container-margin' as never]: '0px',
-                  ['--tweet-border' as never]: '1px solid var(--glass-border)',
-                  ['--tweet-bg-color' as never]: 'var(--color-bg-surface-1)',
-                  ['--tweet-bg-color-hover' as never]: 'var(--color-bg-surface-2)',
-                  ['--tweet-font-color' as never]: 'var(--color-text-primary)',
-                  ['--tweet-link-color' as never]: 'var(--color-accent)',
-                }}
-              >
-                <Tweet
-                  id={tweetId!}
-                  apiUrl={buildConvexHttpUrl(`/api/tweet?id=${tweetId}`)}
-                />
-              </div>
-            </div>
+            <TweetPreview tweetId={tweetId!} />
           ) : hasImage ? (
             <Image
               src={card.image!}
