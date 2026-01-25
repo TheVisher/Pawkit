@@ -57,6 +57,14 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/api/tweet",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
 // =================================================================
 // METADATA SCRAPING HTTP ENDPOINT
 // =================================================================
@@ -176,6 +184,35 @@ http.route({
     } catch (error) {
       console.error("[Link Check API] Error:", error);
       return errorResponse("Internal server error", 500);
+    }
+  }),
+});
+
+// =================================================================
+// TWEET EMBED ENDPOINT
+// =================================================================
+
+http.route({
+  path: "/api/tweet",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    try {
+      const requestUrl = new URL(request.url);
+      const id = requestUrl.searchParams.get("id") || "";
+
+      if (!/^\d{5,40}$/.test(id)) {
+        return errorResponse("Invalid tweet id", 400);
+      }
+
+      const tweet = await fetchTweetFromSyndication(id);
+      if (!tweet) {
+        return errorResponse("Tweet not found", 404);
+      }
+
+      return jsonResponse({ data: tweet });
+    } catch (error) {
+      console.error("[Tweet API] Error:", error);
+      return errorResponse("Failed to fetch tweet", 500);
     }
   }),
 });
@@ -1014,6 +1051,63 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#x27;/g, "'")
     .replace(/&#x2F;/g, "/")
     .replace(/&nbsp;/g, " ");
+}
+
+const TWEET_FEATURES = [
+  "tfw_timeline_list:",
+  "tfw_follower_count_sunset:true",
+  "tfw_tweet_edit_backend:on",
+  "tfw_refsrc_session:on",
+  "tfw_fosnr_soft_interventions_enabled:on",
+  "tfw_show_birdwatch_pivots_enabled:on",
+  "tfw_show_business_verified_badge:on",
+  "tfw_duplicate_scribes_to_settings:on",
+  "tfw_use_profile_image_shape_enabled:on",
+  "tfw_show_blue_verified_badge:on",
+  "tfw_legacy_timeline_sunset:true",
+  "tfw_show_gov_verified_badge:on",
+  "tfw_show_business_affiliate_badge:on",
+  "tfw_tweet_edit_frontend:on",
+].join(";");
+
+function getTweetToken(id: string): string {
+  return (Number(id) / 1e15 * Math.PI).toString(36).replace(/(0+|\.)/g, "");
+}
+
+async function fetchTweetFromSyndication(id: string): Promise<unknown | null> {
+  const url = new URL("https://cdn.syndication.twimg.com/tweet-result");
+  url.searchParams.set("id", id);
+  url.searchParams.set("lang", "en");
+  url.searchParams.set("features", TWEET_FEATURES);
+  url.searchParams.set("token", getTweetToken(id));
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+      Accept: "application/json",
+    },
+    redirect: "follow",
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const isJson = contentType.includes("application/json");
+  const data = isJson ? await response.json() : null;
+
+  if (response.ok) {
+    if (data && typeof data === "object" && Object.keys(data).length === 0) {
+      return null;
+    }
+    if (data?.__typename === "TweetTombstone") {
+      return null;
+    }
+    return data;
+  }
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  throw new Error(`Tweet fetch failed: ${response.status}`);
 }
 
 interface ArticleContent {

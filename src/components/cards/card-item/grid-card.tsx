@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
+import { Tweet } from 'react-tweet';
 import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
@@ -46,6 +47,7 @@ import {
   isNoteCard,
 } from './types';
 import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
+import { extractTweetId } from '@/lib/utils/url-detection';
 
 // Icon mapping for action icons
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -138,7 +140,7 @@ export function GridCard({
   const [faviconError, setFaviconError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
-  const cardRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLButtonElement | HTMLDivElement>(null);
   const Icon = getCardIcon(card.type);
 
   // Reset error states when card or image/favicon changes
@@ -163,6 +165,9 @@ export function GridCard({
 
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !faviconError;
+  const tweetId = card.url ? extractTweetId(card.url) : null;
+  const isTweet = !!tweetId;
+  const showBlurBackground = hasImage && !isTweet;
 
   // Effect: Process cards without dominantColor/aspectRatio/blurDataUri using Web Worker
   // This runs once per card and persists the result to DB
@@ -430,7 +435,18 @@ export function GridCard({
   // GridCard handles opening the card detail modal directly for FLIP animation
   // The onClick prop should NOT open the modal - it's for additional behavior only
   const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
-  const handleCardClick = useCallback(() => {
+  const handleCardClick = useCallback((event?: React.MouseEvent) => {
+    if (isTweet && event?.target instanceof HTMLElement) {
+      const target = event.target;
+      if (
+        target.closest('video') ||
+        target.closest('button') ||
+        target.closest('[aria-label="View video on X"]') ||
+        target.closest('[class*="videoButton"]')
+      ) {
+        return;
+      }
+    }
     // Capture bounding rect for FLIP animation
     if (cardRef.current) {
       const rect = cardRef.current.getBoundingClientRect();
@@ -439,25 +455,10 @@ export function GridCard({
     // Note: We don't call onClick here anymore since it was typically used to open the modal
     // which is now handled internally. If additional behavior is needed, it should be
     // implemented differently (e.g., via a separate callback prop).
-  }, [card._id, openCardDetailWithRect]);
+  }, [card._id, isTweet, openCardDetailWithRect]);
 
-  return (
-    <button
-      ref={cardRef}
-      onClick={handleCardClick}
-      className={cn(
-        'group relative w-full text-left',
-        'transition-all duration-300 ease-out',
-        'hover:-translate-y-1',
-        'focus:outline-none',
-        uniformHeight && 'h-full'
-      )}
-      style={{
-        // CSS containment: isolate this card's layout/paint from affecting others
-        // Reduces paint scope and enables browser optimizations
-        contain: 'layout style paint',
-      }}
-    >
+  const cardShell = (
+    <>
       {/* Outer card container with configurable blurred padding */}
       <div
         className={cn(
@@ -475,7 +476,7 @@ export function GridCard({
         {/* Blurred thumbnail background using tiny data URI (~500 bytes)
             Data URIs don't trigger LCP measurement, so blur loads instantly with cards
             16x16 JPEG is visually identical when CSS blur(32px) is applied */}
-        {hasImage && (
+        {showBlurBackground && (
           <div className="absolute inset-0 overflow-hidden rounded-2xl">
             {/* Instant placeholder: solid color background using cached dominantColor
                 Renders immediately while blur data URI loads (Fabric-style UX) */}
@@ -505,7 +506,7 @@ export function GridCard({
         )}
 
         {/* Fallback background for cards without images */}
-        {!hasImage && (
+        {!showBlurBackground && (
           <div
             className="absolute inset-0 rounded-2xl"
             style={{
@@ -521,12 +522,45 @@ export function GridCard({
             uniformHeight && "h-full w-full"
           )}
           style={uniformHeight ? undefined : {
-            aspectRatio: hasImage ? thumbnailAspectRatio : undefined,
-            minHeight: hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
+            aspectRatio: !isTweet && hasImage ? thumbnailAspectRatio : undefined,
+            minHeight: !isTweet && hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
           }}
         >
           {/* Thumbnail image or placeholder */}
-          {hasImage ? (
+          {isTweet ? (
+            <div
+              className="h-full w-full"
+              onClick={(event) => {
+                const target = event.target as HTMLElement | null;
+                if (
+                  target?.closest('video') ||
+                  target?.closest('button') ||
+                  target?.closest('[aria-label="View video on X"]') ||
+                  target?.closest('[class*="videoButton"]')
+                ) {
+                  event.stopPropagation();
+                }
+              }}
+            >
+              <div
+                className="tweet-compact h-full w-full overflow-hidden rounded-lg"
+                style={{
+                  // Match tweet theme to app styling
+                  ['--tweet-container-margin' as never]: '0px',
+                  ['--tweet-border' as never]: '1px solid var(--glass-border)',
+                  ['--tweet-bg-color' as never]: 'var(--color-bg-surface-1)',
+                  ['--tweet-bg-color-hover' as never]: 'var(--color-bg-surface-2)',
+                  ['--tweet-font-color' as never]: 'var(--color-text-primary)',
+                  ['--tweet-link-color' as never]: 'var(--color-accent)',
+                }}
+              >
+                <Tweet
+                  id={tweetId!}
+                  apiUrl={buildConvexHttpUrl(`/api/tweet?id=${tweetId}`)}
+                />
+              </div>
+            </div>
+          ) : hasImage ? (
             <Image
               src={card.image!}
               alt={card.title || 'Card thumbnail'}
@@ -767,6 +801,59 @@ export function GridCard({
           }}
         />
       </div>
+    </>
+  );
+
+  if (isTweet) {
+    return (
+      <div
+        ref={cardRef}
+        role="button"
+        tabIndex={0}
+        onClick={handleCardClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleCardClick();
+          }
+        }}
+        className={cn(
+          'group relative w-full text-left',
+          'transition-all duration-300 ease-out',
+          'hover:-translate-y-1',
+          'focus:outline-none',
+          uniformHeight && 'h-full'
+        )}
+        style={{
+          // CSS containment: isolate this card's layout/paint from affecting others
+          // Reduces paint scope and enables browser optimizations
+          contain: 'layout style paint',
+        }}
+      >
+        {cardShell}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      ref={cardRef}
+      type="button"
+      onClick={handleCardClick}
+      className={cn(
+        'group relative w-full text-left',
+        'transition-all duration-300 ease-out',
+        'hover:-translate-y-1',
+        'focus:outline-none',
+        uniformHeight && 'h-full'
+      )}
+      style={{
+        // CSS containment: isolate this card's layout/paint from affecting others
+        // Reduces paint scope and enables browser optimizations
+        contain: 'layout style paint',
+      }}
+    >
+      {cardShell}
     </button>
   );
 }

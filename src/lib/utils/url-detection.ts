@@ -43,3 +43,27 @@ export function extractYouTubeVideoId(url: string): string | null {
 export function isYouTubeUrl(url: string): boolean {
   return extractYouTubeVideoId(url) !== null;
 }
+
+/**
+ * Extract X/Twitter status ID from URL
+ * Handles: x.com/{user}/status/{id}, twitter.com/{user}/status/{id}, x.com/i/web/status/{id}
+ */
+export function extractTweetId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    if (!hostname.includes('twitter.com') && !hostname.includes('x.com')) return null;
+
+    const match = urlObj.pathname.match(/\/status\/(\d+)/);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if URL is an X/Twitter status
+ */
+export function isTweetUrl(url: string): boolean {
+  return extractTweetId(url) !== null;
+}

@@ -6,9 +6,10 @@
  */
 
 import type { Card } from '@/lib/types/convex';
-import { isYouTubeUrl } from '@/lib/utils/url-detection';
+import { isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
 import { ArticleContent } from './article-content';
 import { NoteContent } from './note-content';
+import { TweetContent } from './tweet-content';
 import { VideoContent } from './video-content';
 
 interface ContentRouterProps {
@@ -54,6 +55,11 @@ export function ContentRouter({
     return <VideoContent card={card} className={className} />;
   }
 
+  // X/Twitter posts - embedded tweet
+  if (card.type === 'url' && card.url && isTweetUrl(card.url)) {
+    return <TweetContent card={card} className={className} />;
+  }
+
   // URL/article cards - reader focused
   if (card.type === 'url') {
     return (
@@ -92,4 +98,5 @@ export function ContentRouter({
 // Re-export content components
 export { ArticleContent } from './article-content';
 export { NoteContent } from './note-content';
+export { TweetContent } from './tweet-content';
 export { VideoContent } from './video-content';

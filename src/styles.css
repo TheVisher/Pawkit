@@ -1242,3 +1242,66 @@ html.visual-style-high-contrast .react-resizable-handle {
 html.visual-style-high-contrast .react-resizable-handle::before {
     opacity: 1;
 }
+
+/* Tweet embeds - compact grid styling */
+.tweet-compact .react-tweet-theme article {
+    padding: 0 !important;
+}
+
+.tweet-compact .react-tweet-theme article > * {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.tweet-compact .react-tweet-theme {
+    --tweet-container-margin: 0px;
+    --tweet-body-margin: 0px;
+    --tweet-quoted-container-margin: 0px;
+    --tweet-quoted-body-margin: 0px;
+    --tweet-border: 0px solid transparent;
+    --tweet-bg-color: transparent;
+    --tweet-bg-color-hover: transparent;
+    --tweet-font-color: var(--color-text-primary);
+    --tweet-font-color-secondary: var(--color-text-muted);
+    --tweet-color-blue-primary: var(--color-accent);
+    --tweet-color-blue-primary-hover: var(--color-accent);
+    --tweet-color-blue-secondary: var(--color-accent);
+    --tweet-color-blue-secondary-hover: var(--color-accent);
+    --tweet-twitter-icon-color: transparent;
+}
+
+.tweet-compact [class*="header"] {
+    padding-bottom: 0 !important;
+}
+
+.tweet-compact [class*="brand"],
+.tweet-compact [class*="follow"] {
+    display: none !important;
+}
+
+.tweet-compact [class*="media"] {
+    margin-top: 0 !important;
+}
+
+.tweet-compact [class*="in-reply-to"],
+.tweet-compact [class*="quoted"] {
+    margin: 0 !important;
+}
+
+.tweet-compact [class*="actions"],
+.tweet-compact [class*="info"],
+.tweet-compact [class*="replies"],
+.tweet-compact [class*="watchOnTwitter"],
+.tweet-compact [class*="viewReplies"] {
+    display: none !important;
+}
+
+.tweet-compact a,
+.tweet-compact button {
+    pointer-events: none;
+}
+
+.tweet-compact video,
+.tweet-compact [class*="videoButton"] {
+    pointer-events: auto;
+}
