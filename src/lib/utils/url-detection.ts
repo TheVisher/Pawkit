@@ -67,3 +67,31 @@ export function extractTweetId(url: string): string | null {
 export function isTweetUrl(url: string): boolean {
   return extractTweetId(url) !== null;
 }
+
+/**
+ * Extract Reddit post ID from URL
+ * Handles: reddit.com/r/{sub}/comments/{id}, redd.it/{id}
+ */
+export function extractRedditPostId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    if (hostname === 'redd.it') {
+      const shortId = urlObj.pathname.replace('/', '').split('/')[0];
+      return shortId || null;
+    }
+
+    const match = urlObj.pathname.match(/\/comments\/([a-z0-9]+)(?:\/|$)/i);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if URL is a Reddit post
+ */
+export function isRedditUrl(url: string): boolean {
+  return extractRedditPostId(url) !== null;
+}

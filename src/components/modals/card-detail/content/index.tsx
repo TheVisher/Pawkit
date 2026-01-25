@@ -6,9 +6,10 @@
  */
 
 import type { Card } from '@/lib/types/convex';
-import { isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
+import { isRedditUrl, isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
 import { ArticleContent } from './article-content';
 import { NoteContent } from './note-content';
+import { RedditContent } from './reddit-content';
 import { TweetContent } from './tweet-content';
 import { VideoContent } from './video-content';
 
@@ -60,6 +61,11 @@ export function ContentRouter({
     return <TweetContent card={card} className={className} />;
   }
 
+  // Reddit posts - custom render
+  if (card.type === 'url' && card.url && isRedditUrl(card.url)) {
+    return <RedditContent card={card} className={className} />;
+  }
+
   // URL/article cards - reader focused
   if (card.type === 'url') {
     return (
@@ -98,5 +104,6 @@ export function ContentRouter({
 // Re-export content components
 export { ArticleContent } from './article-content';
 export { NoteContent } from './note-content';
+export { RedditContent } from './reddit-content';
 export { TweetContent } from './tweet-content';
 export { VideoContent } from './video-content';

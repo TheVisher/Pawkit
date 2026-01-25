@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
 import { TweetPreview } from './tweet-preview';
+import { RedditPreview } from './reddit-preview';
 import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
@@ -47,7 +48,7 @@ import {
   isNoteCard,
 } from './types';
 import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
-import { extractTweetId } from '@/lib/utils/url-detection';
+import { extractRedditPostId, extractTweetId } from '@/lib/utils/url-detection';
 
 // Icon mapping for action icons
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -138,6 +139,7 @@ export function GridCard({
 }: GridCardProps) {
   const [imageError, setImageError] = useState(false);
   const [faviconError, setFaviconError] = useState(false);
+  const [faviconSrc, setFaviconSrc] = useState<string | null>(null);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
   const cardRef = useRef<HTMLButtonElement | HTMLDivElement>(null);
@@ -163,11 +165,33 @@ export function GridCard({
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
 
-  const hasImage = card.image && !imageError;
-  const hasFavicon = card.favicon && !faviconError;
   const tweetId = card.url ? extractTweetId(card.url) : null;
+  const redditPostId = card.url ? extractRedditPostId(card.url) : null;
   const isTweet = !!tweetId;
-  const showBlurBackground = hasImage && !isTweet;
+  const isReddit = !!redditPostId;
+  const isEmbedCard = isTweet || isReddit;
+  const hasImage = card.image && !imageError;
+  const fallbackFavicon = isReddit
+    ? 'https://www.reddit.com/favicon.ico'
+    : isTweet
+      ? 'https://abs.twimg.com/favicons/twitter.2.ico'
+      : null;
+
+  useEffect(() => {
+    setFaviconError(false);
+    setFaviconSrc(card.favicon || fallbackFavicon);
+  }, [card._id, card.favicon, fallbackFavicon]);
+
+  const hasFavicon = !!faviconSrc && !faviconError;
+  const showBlurBackground = hasImage && !isEmbedCard;
+
+  const handleFaviconError = useCallback(() => {
+    if (card.favicon && fallbackFavicon && faviconSrc === card.favicon) {
+      setFaviconSrc(fallbackFavicon);
+      return;
+    }
+    setFaviconError(true);
+  }, [card.favicon, fallbackFavicon, faviconSrc]);
 
   // Effect: Process cards without dominantColor/aspectRatio/blurDataUri using Web Worker
   // This runs once per card and persists the result to DB
@@ -522,13 +546,15 @@ export function GridCard({
             uniformHeight && "h-full w-full"
           )}
           style={uniformHeight ? undefined : {
-            aspectRatio: !isTweet && hasImage ? thumbnailAspectRatio : undefined,
-            minHeight: !isTweet && hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
+            aspectRatio: !isEmbedCard && hasImage ? thumbnailAspectRatio : undefined,
+            minHeight: !isEmbedCard && hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
           }}
         >
           {/* Thumbnail image or placeholder */}
           {isTweet ? (
             <TweetPreview tweetId={tweetId!} />
+          ) : isReddit ? (
+            <RedditPreview postId={redditPostId!} />
           ) : hasImage ? (
             <Image
               src={card.image!}
@@ -584,12 +610,12 @@ export function GridCard({
             >
               {hasFavicon ? (
                 <Image
-                  src={card.favicon!}
+                  src={faviconSrc!}
                   alt=""
                   width={64}
                   height={64}
                   className="rounded-xl"
-                  onError={() => setFaviconError(true)}
+                  onError={handleFaviconError}
                 />
               ) : (
                 <Icon className="w-16 h-16 text-text-muted" />
@@ -622,12 +648,12 @@ export function GridCard({
             >
               {hasFavicon ? (
                 <Image
-                  src={card.favicon!}
+                  src={faviconSrc!}
                   alt=""
                   width={18}
                   height={18}
                   className="rounded-sm"
-                  onError={() => setFaviconError(true)}
+                  onError={handleFaviconError}
                 />
               ) : (
                 <ExternalLink className="h-4.5 w-4.5" style={{ color: 'var(--color-text-primary)' }} />
@@ -773,7 +799,7 @@ export function GridCard({
     </>
   );
 
-  if (isTweet) {
+  if (isEmbedCard) {
     return (
       <div
         ref={cardRef}

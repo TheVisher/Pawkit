@@ -245,6 +245,9 @@ importers:
       framer-motion:
         specifier: ^12.27.0
         version: 12.28.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      hls.js:
+        specifier: ^1.6.15
+        version: 1.6.15
       lodash:
         specifier: ^4.17.21
         version: 4.17.23

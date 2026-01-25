@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { CardDetailHeader } from './header';
 import { ContentRouter } from './content/index';
 import { isSupertag } from '@/lib/tags/supertags';
-import { isTweetUrl } from '@/lib/utils/url-detection';
+import { isRedditUrl, isTweetUrl } from '@/lib/utils/url-detection';
 import type { CardDetailContentProps } from './types';
 
 export function CardDetailContent({ cardId, onClose, className }: CardDetailContentProps) {
@@ -47,6 +47,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   const isArticle = card?.type === 'url';
   const hasArticleContent = isArticle && !!card?.articleContent;
   const isTweetCard = !!card?.url && isTweetUrl(card.url);
+  const isRedditCard = !!card?.url && isRedditUrl(card.url);
 
   // Check if this is a contact card (has custom header in NoteContent)
   const isContactCard = useMemo(() => {
@@ -110,7 +111,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     >
       {/* Expandable header section - grows to fill modal */}
       {/* Contact cards have their own header in NoteContent, skip the default header */}
-      {!isContactCard && !isTweetCard && (
+      {!isContactCard && !isTweetCard && !isRedditCard && (
       <>
       <div
         className={cn(
@@ -249,7 +250,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
             showFullReader={showFullReader}
             setShowFullReader={setShowFullReader}
             onRequestExpandImage={() => setShowExpandedImage(true)}
-            hasImage={!isTweetCard && !!currentImage && !imageError}
+            hasImage={!isTweetCard && !isRedditCard && !!currentImage && !imageError}
           />
         </div>
       </div>

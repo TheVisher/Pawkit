@@ -65,6 +65,14 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/api/reddit",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
 // =================================================================
 // METADATA SCRAPING HTTP ENDPOINT
 // =================================================================
@@ -213,6 +221,37 @@ http.route({
     } catch (error) {
       console.error("[Tweet API] Error:", error);
       return errorResponse("Failed to fetch tweet", 500);
+    }
+  }),
+});
+
+// =================================================================
+// REDDIT POST ENDPOINT
+// =================================================================
+
+http.route({
+  path: "/api/reddit",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    try {
+      const requestUrl = new URL(request.url);
+      const idParam = requestUrl.searchParams.get("id");
+      const urlParam = requestUrl.searchParams.get("url");
+
+      const postId = idParam || (urlParam ? extractRedditPostId(urlParam) : null);
+      if (!postId) {
+        return errorResponse("Invalid reddit id", 400);
+      }
+
+      const post = await fetchRedditPost(postId);
+      if (!post) {
+        return errorResponse("Reddit post not found", 404);
+      }
+
+      return jsonResponse({ data: post });
+    } catch (error) {
+      console.error("[Reddit API] Error:", error);
+      return errorResponse("Failed to fetch reddit post", 500);
     }
   }),
 });
@@ -384,7 +423,7 @@ function extractRedditPostId(url: string): string | null {
       return shortId || null;
     }
 
-    const match = urlObj.pathname.match(/\/comments\/([a-z0-9]+)\//i);
+    const match = urlObj.pathname.match(/\/comments\/([a-z0-9]+)(?:\/|$)/i);
     return match?.[1] || null;
   } catch {
     return null;
@@ -1051,6 +1090,162 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#x27;/g, "'")
     .replace(/&#x2F;/g, "/")
     .replace(/&nbsp;/g, " ");
+}
+
+interface RedditMediaItem {
+  type: "image" | "video";
+  url: string;
+  width?: number;
+  height?: number;
+  videoUrl?: string;
+  hlsUrl?: string;
+}
+
+interface RedditPostData {
+  id: string;
+  title?: string;
+  selftext?: string;
+  author?: string;
+  subreddit?: string;
+  subreddit_name_prefixed?: string;
+  created_utc?: number;
+  score?: number;
+  num_comments?: number;
+  permalink?: string;
+  url?: string;
+  domain?: string;
+  media?: RedditMediaItem[];
+}
+
+function isRedditImageUrl(url: string): boolean {
+  return /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
+}
+
+function extractRedditMedia(post: any): RedditMediaItem[] {
+  const media: RedditMediaItem[] = [];
+  const videoUrl =
+    post?.media?.reddit_video?.fallback_url ||
+    post?.preview?.reddit_video_preview?.fallback_url ||
+    null;
+  const hlsUrl =
+    post?.media?.reddit_video?.hls_url ||
+    post?.preview?.reddit_video_preview?.hls_url ||
+    null;
+
+  if (post?.is_gallery && post?.media_metadata) {
+    const order =
+      post?.gallery_data?.items?.map((item: { media_id: string }) => item.media_id) ||
+      Object.keys(post.media_metadata);
+
+    for (const mediaId of order) {
+      const item = post.media_metadata?.[mediaId];
+      const url = item?.s?.u ? decodeHtmlEntities(item.s.u) : null;
+      if (url) {
+        media.push({
+          type: "image",
+          url,
+          width: item?.s?.x,
+          height: item?.s?.y,
+        });
+      }
+    }
+  }
+
+  if (media.length === 0) {
+    const preview = post?.preview?.images?.[0]?.source;
+    if (preview?.url) {
+      media.push({
+        type: post?.is_video ? "video" : "image",
+        url: decodeHtmlEntities(preview.url),
+        width: preview.width,
+        height: preview.height,
+        videoUrl: post?.is_video ? videoUrl || undefined : undefined,
+        hlsUrl: post?.is_video ? hlsUrl || undefined : undefined,
+      });
+    }
+  }
+
+  if (media.length === 0 && typeof post?.url === "string" && isRedditImageUrl(post.url)) {
+    media.push({
+      type: "image",
+      url: post.url,
+    });
+  }
+
+  if (
+    media.length === 0 &&
+    post?.is_video &&
+    typeof post?.thumbnail === "string" &&
+    post.thumbnail.startsWith("http")
+  ) {
+    media.push({
+      type: "video",
+      url: post.thumbnail,
+      videoUrl: videoUrl || undefined,
+      hlsUrl: hlsUrl || undefined,
+    });
+  }
+
+  return media;
+}
+
+async function fetchRedditPost(id: string): Promise<RedditPostData | null> {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+    Accept: "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
+
+  const fetchPostData = async (url: string, selector: (data: any) => any) => {
+    const response = await fetch(url, {
+      headers,
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return selector(data);
+  };
+
+  const post =
+    (await fetchPostData(
+      `https://www.reddit.com/comments/${id}.json?raw_json=1`,
+      (data) => data?.[0]?.data?.children?.[0]?.data
+    )) ||
+    (await fetchPostData(
+      `https://www.reddit.com/by_id/t3_${id}.json?raw_json=1`,
+      (data) => data?.data?.children?.[0]?.data
+    )) ||
+    (await fetchPostData(
+      `https://api.reddit.com/api/info/?id=t3_${id}`,
+      (data) => data?.data?.children?.[0]?.data
+    ));
+
+  if (!post) {
+    return null;
+  }
+
+  const media = extractRedditMedia(post);
+  const permalink = post?.permalink ? `https://www.reddit.com${post.permalink}` : undefined;
+
+  return {
+    id: post?.id || id,
+    title: post?.title,
+    selftext: post?.selftext,
+    author: post?.author,
+    subreddit: post?.subreddit,
+    subreddit_name_prefixed: post?.subreddit_name_prefixed,
+    created_utc: post?.created_utc,
+    score: post?.score,
+    num_comments: post?.num_comments,
+    permalink,
+    url: post?.url,
+    domain: post?.domain,
+    media,
+  };
 }
 
 const TWEET_FEATURES = [

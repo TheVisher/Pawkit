@@ -1325,3 +1325,11 @@ html.visual-style-high-contrast .react-resizable-handle::before {
 .tweet-modal > * {
     margin: 0 auto !important;
 }
+
+/* Reddit embeds - modal styling */
+.reddit-modal {
+    border-radius: 18px;
+    padding: 14px;
+    background: var(--glass-panel-bg);
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+}
