@@ -178,6 +178,16 @@ function isImdbUrl(url: string): boolean {
   }
 }
 
+function isDiggUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname === "digg.com" || hostname.endsWith(".digg.com");
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Check if a URL is likely to have readable article content.
  */
@@ -579,6 +589,206 @@ async function scrapeImdb(url: string): Promise<ScrapedMetadata> {
 }
 
 /**
+ * Fetch Digg post metadata by parsing __NEXT_DATA__.
+ */
+async function scrapeDigg(url: string): Promise<ScrapedMetadata> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    },
+    redirect: "follow",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch Digg page: " + response.status);
+  }
+
+  const html = await response.text();
+
+  // Extract __NEXT_DATA__ JSON from the page
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/);
+
+  let title: string | null = null;
+  let description: string | null = null;
+  let image: string | null = null;
+  const images: string[] = [];
+
+  if (nextDataMatch?.[1]) {
+    try {
+      const nextData = JSON.parse(nextDataMatch[1]);
+
+      // Navigate through Next.js data structure to find post data
+      const pageProps = nextData?.props?.pageProps;
+      const post = pageProps?.post || pageProps?.initialPost;
+
+      if (post) {
+        title = post.title || null;
+        description = post.body || post.text || null;
+        if (description && description.length > 300) {
+          description = description.slice(0, 300) + "...";
+        }
+
+        // Extract images from attachments array
+        const attachments = post.attachments || [];
+        for (const attachment of attachments) {
+          if (attachment?.url) {
+            images.push(attachment.url);
+          }
+        }
+
+        // Also check for direct image URL
+        if (post.image?.url) {
+          images.unshift(post.image.url);
+        }
+        if (post.imageUrl) {
+          images.unshift(post.imageUrl);
+        }
+
+        if (images.length > 0) {
+          image = images[0];
+        }
+      }
+
+      // Also check dehydratedState for post data (React Query cache)
+      const dehydratedState = pageProps?.dehydratedState;
+      if (dehydratedState?.queries) {
+        for (const query of dehydratedState.queries) {
+          const data = query?.state?.data;
+          if (data?.post || data?.item) {
+            const postData = data.post || data.item;
+            if (!title && postData?.title) {
+              title = postData.title;
+            }
+            if (!description && (postData?.body || postData?.text)) {
+              description = (postData.body || postData.text)?.slice(0, 300);
+            }
+            const atts = postData?.attachments || [];
+            for (const att of atts) {
+              if (att?.url && !images.includes(att.url)) {
+                images.push(att.url);
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse Digg __NEXT_DATA__:", e);
+    }
+  }
+
+  // Fallback to og:meta tags
+  if (!title) {
+    title = extractMetaContent(html, [
+      'meta[property="og:title"]',
+      'meta[name="twitter:title"]',
+      "title",
+    ]);
+  }
+
+  if (!description) {
+    description = extractMetaContent(html, [
+      'meta[property="og:description"]',
+      'meta[name="twitter:description"]',
+      'meta[name="description"]',
+    ]);
+  }
+
+  // Look for imgix URLs if we don't have images yet
+  if (images.length === 0) {
+    const imgixRegex = /https:\/\/digg-posts-prod[^"'\s]+/g;
+    const imgixMatches = html.match(imgixRegex);
+    if (imgixMatches) {
+      for (const imgUrl of imgixMatches) {
+        const cleanUrl = imgUrl.replace(/\\u002F/g, '/').replace(/\\/g, '');
+        if (!images.includes(cleanUrl) && images.length < 10) {
+          images.push(cleanUrl);
+        }
+      }
+    }
+  }
+
+  if (!image && images.length > 0) {
+    image = images[0];
+  }
+
+  return {
+    title,
+    description,
+    image,
+    images: [...new Set(images)],
+    favicon: "https://digg.com/favicon.ico",
+    domain: "digg.com",
+    raw: {
+      source: "digg-nextdata",
+    },
+  };
+}
+
+/**
+ * Extract external article URL from Digg's __NEXT_DATA__ for link posts.
+ */
+function extractDiggExternalUrl(html: string): string | null {
+  const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/i);
+  if (!nextDataMatch) return null;
+
+  try {
+    const data = JSON.parse(nextDataMatch[1]);
+    // Try to find the external URL in various possible locations
+    const post = data?.props?.pageProps?.post || data?.props?.pageProps?.initialPost;
+    if (post) {
+      // Check for external link URL
+      const externalUrl = post.url || post.externalUrl || post.link;
+      if (externalUrl && !externalUrl.includes('digg.com')) {
+        return externalUrl;
+      }
+    }
+  } catch {
+    // JSON parse failed
+  }
+
+  // Fallback: try to find external URLs in the raw JSON string
+  const urlMatch = nextDataMatch[1].match(/"url"\s*:\s*"(https?:\/\/(?!digg\.com)[^"]+)"/);
+  if (urlMatch) {
+    return urlMatch[1].replace(/\\u002F/g, '/');
+  }
+
+  return null;
+}
+
+/**
+ * Fetch og:image from an external URL.
+ */
+async function fetchExternalOgImage(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) return null;
+
+    const html = await response.text();
+    const ogImage = extractMetaContent(html, [
+      'meta[property="og:image"]',
+      'meta[name="twitter:image"]',
+      'meta[name="twitter:image:src"]',
+    ]);
+
+    if (ogImage) {
+      return resolveUrl(ogImage, url);
+    }
+  } catch {
+    // Fetch failed
+  }
+
+  return null;
+}
+
+/**
  * Scrape metadata from a URL.
  */
 async function scrapeUrl(url: string): Promise<ScrapedMetadata> {
@@ -595,6 +805,10 @@ async function scrapeUrl(url: string): Promise<ScrapedMetadata> {
   if (isImdbUrl(url)) {
     return scrapeImdb(url);
   }
+  // Digg: use default scraper for now
+  // if (isDiggUrl(url)) {
+  //   return scrapeDigg(url);
+  // }
 
   const response = await fetch(url, {
     headers: {
@@ -636,10 +850,40 @@ async function scrapeUrl(url: string): Promise<ScrapedMetadata> {
   // Extract all images
   const images = extractImages(html, url);
 
+  // Use og:image if available, otherwise fall back to first extracted image
+  const resolvedImage = image ? resolveUrl(image, url) : null;
+  let finalImage = resolvedImage || (images.length > 0 ? images[0] : null);
+
+  // For Digg link posts: if no image found, try to get og:image from the linked article
+  if (!finalImage && domain.includes('digg.com')) {
+    const externalUrl = extractDiggExternalUrl(html);
+    if (externalUrl) {
+      console.log("[scrapeUrl] Digg link post detected, fetching external article:", externalUrl);
+      try {
+        const externalImage = await fetchExternalOgImage(externalUrl);
+        if (externalImage) {
+          finalImage = externalImage;
+          images.unshift(externalImage);
+          console.log("[scrapeUrl] Got image from external article:", externalImage.slice(0, 80));
+        }
+      } catch (e) {
+        console.log("[scrapeUrl] Failed to fetch external article image:", e);
+      }
+    }
+  }
+
+  console.log("[scrapeUrl] Results for", url, {
+    title: title?.slice(0, 50),
+    ogImage: image?.slice(0, 100),
+    finalImage: finalImage?.slice(0, 100),
+    imagesCount: images.length,
+    firstImages: images.slice(0, 3).map(i => i.slice(0, 80)),
+  });
+
   return {
     title,
     description,
-    image: image ? resolveUrl(image, url) : null,
+    image: finalImage,
     images,
     favicon,
     domain,
@@ -759,14 +1003,85 @@ function extractImages(html: string, baseUrl: string): string[] {
   const imgRegex = /<img[^>]*src=["']([^"']+)["']/gi;
   let match;
   while ((match = imgRegex.exec(html)) !== null && images.length < 10) {
-    const src = match[1];
+    let src = match[1];
     if (src && !src.startsWith("data:")) {
+      // Check if this is a Next.js image proxy URL - extract the actual URL
+      // Handle both relative (/_next/image) and absolute (https://example.com/_next/image) URLs
+      const nextImageMatch = src.match(/_next\/image\?url=([^&]+)/);
+      if (nextImageMatch) {
+        try {
+          const decodedUrl = decodeURIComponent(nextImageMatch[1]);
+          // Skip community icons and static assets
+          if (decodedUrl.includes('/communities/') ||
+              decodedUrl.includes('/static/') ||
+              decodedUrl.includes('/icons/')) {
+            continue;
+          }
+          src = decodedUrl;
+        } catch {
+          // If decode fails, skip this URL entirely (it's a proxy URL that will CORS fail)
+          continue;
+        }
+      }
       const resolved = resolveUrl(src, baseUrl);
       if (resolved && !seen.has(resolved)) {
         images.push(resolved);
         seen.add(resolved);
       }
     }
+  }
+
+  // Fallback: Look for imgix URLs in raw HTML (for sites like Digg that store images in JSON)
+  // Only do this if we haven't found any images yet
+  if (images.length === 0) {
+    console.log("[extractImages] No og:image or img tags found, trying imgix fallback");
+    // First, look for _next/image URLs and extract the actual image URL from the url param
+    const nextImagePattern = /\/_next\/image\?url=([^&"'\s]+)/gi;
+    let nextMatch;
+    while ((nextMatch = nextImagePattern.exec(html)) !== null && images.length < 10) {
+      try {
+        const decodedUrl = decodeURIComponent(nextMatch[1]);
+        // Only include post images, not community icons or static assets
+        const isPostImage = decodedUrl.includes('imgix.net') &&
+          !decodedUrl.includes('/communities/') &&
+          !decodedUrl.includes('/static/') &&
+          !decodedUrl.includes('/icons/');
+        if (isPostImage && !seen.has(decodedUrl)) {
+          images.push(decodedUrl);
+          seen.add(decodedUrl);
+        }
+      } catch {
+        // Ignore decode errors
+      }
+    }
+
+    // Also try direct imgix URLs (JSON-escaped or not)
+    if (images.length === 0) {
+      const imgixPattern = /https:\\?\/\\?\/[a-z0-9-]+\.imgix\.net(?:\\?\/[^"'\s]+)+/gi;
+      const imgixMatches = html.match(imgixPattern);
+      if (imgixMatches) {
+        for (const match of imgixMatches.slice(0, 10)) {
+          let imgUrl = match.replace(/\\\//g, '/');
+          // Exclude community icons and static assets
+          const isPostImage = !imgUrl.includes('/communities/') &&
+            !imgUrl.includes('/static/') &&
+            !imgUrl.includes('/icons/');
+          if (isPostImage && !seen.has(imgUrl)) {
+            images.push(imgUrl);
+            seen.add(imgUrl);
+          }
+        }
+      }
+    }
+  }
+
+  // For Digg: prioritize post images (digg-posts-prod) over profile pictures (digg-accounts-prod)
+  if (images.some(img => img.includes('digg-posts-prod')) && images.some(img => img.includes('digg-accounts-prod'))) {
+    images.sort((a, b) => {
+      const aIsPost = a.includes('digg-posts-prod') ? 0 : 1;
+      const bIsPost = b.includes('digg-posts-prod') ? 0 : 1;
+      return aIsPost - bIsPost;
+    });
   }
 
   return images;
@@ -809,7 +1124,8 @@ interface ArticleContent {
   publishedTime: string | null;
 }
 
-function buildLimitedHtml($: cheerio.CheerioAPI, root: cheerio.Cheerio<cheerio.Element>, maxChars: number): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildLimitedHtml($: cheerio.CheerioAPI, root: any, maxChars: number): string {
   const pieces: string[] = [];
   let total = 0;
   const children = root.children().toArray();
@@ -981,6 +1297,132 @@ function preprocessHtml(html: string): string {
 }
 
 /**
+ * Extract Digg post content from __NEXT_DATA__.
+ */
+async function extractDiggArticle(url: string): Promise<ArticleContent> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch Digg page: " + response.status);
+    }
+
+    const html = await response.text();
+
+    // Extract __NEXT_DATA__ JSON
+    const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/);
+
+    let title: string | null = null;
+    let content: string | null = null;
+    let textContent: string | null = null;
+    let byline: string | null = null;
+    const images: string[] = [];
+
+    if (nextDataMatch?.[1]) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const pageProps = nextData?.props?.pageProps;
+        const post = pageProps?.post || pageProps?.initialPost;
+
+        if (post) {
+          title = post.title || null;
+          textContent = post.body || post.text || null;
+          byline = post.author?.username || post.authorUsername || null;
+
+          // Extract images from attachments
+          const attachments = post.attachments || [];
+          for (const attachment of attachments) {
+            if (attachment?.url) {
+              images.push(attachment.url);
+            }
+          }
+          if (post.image?.url) images.unshift(post.image.url);
+          if (post.imageUrl) images.unshift(post.imageUrl);
+
+          // Build HTML content with images and text
+          const contentParts: string[] = [];
+
+          // Add images
+          for (const imgUrl of images) {
+            contentParts.push(`<img src="${imgUrl}" alt="" />`);
+          }
+
+          // Add text content
+          if (textContent) {
+            // Convert line breaks to paragraphs
+            const paragraphs = textContent.split(/\n\n+/).filter(p => p.trim());
+            for (const p of paragraphs) {
+              contentParts.push(`<p>${p.replace(/\n/g, '<br/>')}</p>`);
+            }
+          }
+
+          content = contentParts.join('\n');
+        }
+
+        // Also check dehydratedState
+        const dehydratedState = pageProps?.dehydratedState;
+        if (dehydratedState?.queries && !content) {
+          for (const query of dehydratedState.queries) {
+            const data = query?.state?.data;
+            if (data?.post || data?.item) {
+              const postData = data.post || data.item;
+              if (!title) title = postData?.title || null;
+              if (!textContent) textContent = postData?.body || postData?.text || null;
+              if (!byline) byline = postData?.author?.username || null;
+
+              const atts = postData?.attachments || [];
+              for (const att of atts) {
+                if (att?.url && !images.includes(att.url)) {
+                  images.push(att.url);
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse Digg __NEXT_DATA__:", e);
+      }
+    }
+
+    // Fallback to og:meta for title
+    if (!title) {
+      const ogTitleMatch = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
+      title = ogTitleMatch?.[1] || null;
+    }
+
+    const wordCount = countWords(textContent || '');
+
+    return {
+      content,
+      textContent,
+      title,
+      byline,
+      siteName: "Digg",
+      wordCount,
+      readingTime: calculateReadingTime(wordCount),
+      publishedTime: null,
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+    throw error;
+  }
+}
+
+/**
  * Extract article content from a URL using Cheerio-based extraction.
  * Uses text density scoring to identify main content.
  */
@@ -988,6 +1430,10 @@ async function extractArticle(url: string): Promise<ArticleContent> {
   if (isWikipediaUrl(url)) {
     return extractWikipediaArticle(url);
   }
+  // Digg: use default extractor for now
+  // if (isDiggUrl(url)) {
+  //   return extractDiggArticle(url);
+  // }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
