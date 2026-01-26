@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
 import { TweetPreview } from './tweet-preview';
-import { RedditPreview } from './reddit-preview';
+import { RedditPreview, prefetchRedditPost } from './reddit-preview';
 import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
@@ -481,6 +481,12 @@ export function GridCard({
     // implemented differently (e.g., via a separate callback prop).
   }, [card._id, isTweet, openCardDetailWithRect]);
 
+  const handleRedditPrefetch = useCallback(() => {
+    if (redditPostId) {
+      prefetchRedditPost(redditPostId);
+    }
+  }, [redditPostId]);
+
   const cardShell = (
     <>
       {/* Outer card container with configurable blurred padding */}
@@ -787,14 +793,6 @@ export function GridCard({
           </div>
         )}
 
-        {/* Hover glow effect - gradient glow around the card */}
-        <div
-          className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10"
-          style={{
-            background: `radial-gradient(ellipse at center, hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4) 0%, transparent 70%)`,
-            filter: 'blur(20px)',
-          }}
-        />
       </div>
     </>
   );
@@ -806,6 +804,8 @@ export function GridCard({
         role="button"
         tabIndex={0}
         onClick={handleCardClick}
+        onPointerEnter={isReddit ? handleRedditPrefetch : undefined}
+        onFocus={isReddit ? handleRedditPrefetch : undefined}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
@@ -819,16 +819,23 @@ export function GridCard({
           'focus:outline-none',
           uniformHeight && 'h-full'
         )}
+      style={{
+        // CSS containment: isolate this card's layout/paint from affecting others
+        // Reduces paint scope and enables browser optimizations
+        contain: 'layout style',
+      }}
+    >
+      {/* Hover glow effect - accent glow around card edges */}
+      <div
+        className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10"
         style={{
-          // CSS containment: isolate this card's layout/paint from affecting others
-          // Reduces paint scope and enables browser optimizations
-          contain: 'layout style paint',
+          boxShadow: `0 0 20px hsl(var(--hue-accent) var(--sat-accent) 55% / 0.45)`,
         }}
-      >
-        {cardShell}
-      </div>
-    );
-  }
+      />
+      {cardShell}
+    </div>
+  );
+}
 
   return (
     <button
@@ -845,9 +852,16 @@ export function GridCard({
       style={{
         // CSS containment: isolate this card's layout/paint from affecting others
         // Reduces paint scope and enables browser optimizations
-        contain: 'layout style paint',
+        contain: 'layout style',
       }}
     >
+      {/* Hover glow effect - accent glow around card edges */}
+      <div
+        className="absolute inset-0 rounded-[22px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10"
+        style={{
+          boxShadow: `0 0 20px hsl(var(--hue-accent) var(--sat-accent) 55% / 0.45)`,
+        }}
+      />
       {cardShell}
     </button>
   );

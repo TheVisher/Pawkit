@@ -37,6 +37,10 @@ interface RedditPreviewProps {
   className?: string;
 }
 
+const redditPostCache = new Map<string, RedditPost>();
+const redditPostInFlight = new Map<string, Promise<RedditPost | null>>();
+let redditServerUnavailable = false;
+
 function formatCount(value?: number): string | null {
   if (value === undefined || value === null) return null;
   if (value >= 1_000_000) {
@@ -185,6 +189,49 @@ async function fetchRedditPostClient(postId: string): Promise<RedditPost | null>
   return normalizePost(post);
 }
 
+async function fetchRedditPostServer(postId: string, signal?: AbortSignal): Promise<RedditPost | null> {
+  if (redditServerUnavailable) return null;
+  try {
+    const res = await fetch(buildConvexHttpUrl(`/api/reddit?id=${postId}`), { signal });
+    if (!res.ok) {
+      if (res.status === 403 || res.status === 404) {
+        redditServerUnavailable = true;
+      }
+      return null;
+    }
+    const data = await res.json();
+    return (data?.data as RedditPost) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function getRedditPost(postId: string, signal?: AbortSignal): Promise<RedditPost | null> {
+  const cached = redditPostCache.get(postId);
+  if (cached) return cached;
+
+  const inFlight = redditPostInFlight.get(postId);
+  if (inFlight) return inFlight;
+
+  const promise = (async () => {
+    const clientFirst = await fetchRedditPostClient(postId);
+    if (clientFirst) return clientFirst;
+    return fetchRedditPostServer(postId, signal);
+  })();
+
+  redditPostInFlight.set(postId, promise);
+  const result = await promise;
+  redditPostInFlight.delete(postId);
+  if (result) {
+    redditPostCache.set(postId, result);
+  }
+  return result;
+}
+
+export function prefetchRedditPost(postId: string) {
+  void getRedditPost(postId);
+}
+
 function RedditVideo({
   poster,
   videoUrl,
@@ -242,26 +289,16 @@ export function RedditPreview({ postId, playVideo = false, className }: RedditPr
     let active = true;
     const controller = new AbortController();
 
+    const cached = redditPostCache.get(postId);
+    if (cached) {
+      setPost(cached);
+      setStatus('ready');
+      return;
+    }
+
     setStatus('loading');
     const load = async () => {
-      try {
-        const res = await fetch(buildConvexHttpUrl(`/api/reddit?id=${postId}`), {
-          signal: controller.signal,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const next = (data?.data as RedditPost) || null;
-          if (active) {
-            setPost(next);
-            setStatus(next ? 'ready' : 'error');
-          }
-          return;
-        }
-      } catch {
-        // Fall through to client fetch
-      }
-
-      const next = await fetchRedditPostClient(postId);
+      const next = await getRedditPost(postId, controller.signal);
       if (!active) return;
       setPost(next);
       setStatus(next ? 'ready' : 'error');
