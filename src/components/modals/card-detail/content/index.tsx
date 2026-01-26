@@ -6,10 +6,11 @@
  */
 
 import type { Card } from '@/lib/types/convex';
-import { isRedditUrl, isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
+import { isRedditUrl, isTikTokUrl, isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
 import { ArticleContent } from './article-content';
 import { NoteContent } from './note-content';
 import { RedditContent } from './reddit-content';
+import { TikTokContent } from './tiktok-content';
 import { TweetContent } from './tweet-content';
 import { VideoContent } from './video-content';
 
@@ -66,6 +67,11 @@ export function ContentRouter({
     return <RedditContent card={card} className={className} />;
   }
 
+  // TikTok posts - embed modal
+  if (card.type === 'url' && card.url && isTikTokUrl(card.url)) {
+    return <TikTokContent card={card} className={className} />;
+  }
+
   // URL/article cards - reader focused
   if (card.type === 'url') {
     return (
@@ -105,5 +111,6 @@ export function ContentRouter({
 export { ArticleContent } from './article-content';
 export { NoteContent } from './note-content';
 export { RedditContent } from './reddit-content';
+export { TikTokContent } from './tiktok-content';
 export { TweetContent } from './tweet-content';
 export { VideoContent } from './video-content';

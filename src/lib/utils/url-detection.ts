@@ -69,6 +69,19 @@ export function isTweetUrl(url: string): boolean {
 }
 
 /**
+ * Check if URL is a TikTok URL
+ */
+export function isTikTokUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes('tiktok.com');
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Extract Reddit post ID from URL
  * Handles: reddit.com/r/{sub}/comments/{id}, redd.it/{id}
  */

@@ -5,6 +5,7 @@ import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
 import { TweetPreview } from './tweet-preview';
 import { RedditPreview, prefetchRedditPost } from './reddit-preview';
+import { TikTokPreview, prefetchTikTokData } from './tiktok-preview';
 import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
@@ -48,7 +49,7 @@ import {
   isNoteCard,
 } from './types';
 import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
-import { extractRedditPostId, extractTweetId } from '@/lib/utils/url-detection';
+import { extractRedditPostId, extractTweetId, isTikTokUrl } from '@/lib/utils/url-detection';
 
 // Icon mapping for action icons
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -169,13 +170,16 @@ export function GridCard({
   const redditPostId = card.url ? extractRedditPostId(card.url) : null;
   const isTweet = !!tweetId;
   const isReddit = !!redditPostId;
-  const isEmbedCard = isTweet || isReddit;
+  const isTikTok = !!card.url && isTikTokUrl(card.url);
+  const isEmbedCard = isTweet || isReddit || isTikTok;
   const hasImage = card.image && !imageError;
   const fallbackFavicon = isReddit
     ? 'https://www.reddit.com/favicon.ico'
     : isTweet
       ? 'https://abs.twimg.com/favicons/twitter.2.ico'
-      : null;
+      : isTikTok
+        ? 'https://www.tiktok.com/favicon.ico'
+        : null;
 
   useEffect(() => {
     setFaviconError(false);
@@ -487,6 +491,12 @@ export function GridCard({
     }
   }, [redditPostId]);
 
+  const handleTikTokPrefetch = useCallback(() => {
+    if (card.url) {
+      prefetchTikTokData(card.url);
+    }
+  }, [card.url]);
+
   const cardShell = (
     <>
       {/* Outer card container with configurable blurred padding */}
@@ -561,6 +571,8 @@ export function GridCard({
             <TweetPreview tweetId={tweetId!} />
           ) : isReddit ? (
             <RedditPreview postId={redditPostId!} />
+          ) : isTikTok && card.url ? (
+            <TikTokPreview url={card.url} />
           ) : hasImage ? (
             <Image
               src={card.image!}
@@ -804,8 +816,8 @@ export function GridCard({
         role="button"
         tabIndex={0}
         onClick={handleCardClick}
-        onPointerEnter={isReddit ? handleRedditPrefetch : undefined}
-        onFocus={isReddit ? handleRedditPrefetch : undefined}
+        onPointerEnter={isReddit ? handleRedditPrefetch : isTikTok ? handleTikTokPrefetch : undefined}
+        onFocus={isReddit ? handleRedditPrefetch : isTikTok ? handleTikTokPrefetch : undefined}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();

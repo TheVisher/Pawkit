@@ -73,6 +73,14 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/api/tiktok",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
 // =================================================================
 // METADATA SCRAPING HTTP ENDPOINT
 // =================================================================
@@ -256,6 +264,44 @@ http.route({
   }),
 });
 
+// =================================================================
+// TIKTOK OEMBED ENDPOINT
+// =================================================================
+
+http.route({
+  path: "/api/tiktok",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    try {
+      const requestUrl = new URL(request.url);
+      const urlParam = requestUrl.searchParams.get("url");
+
+      if (!urlParam) {
+        return errorResponse("URL is required", 400);
+      }
+
+      const validated = validateExternalUrl(urlParam);
+      if (!validated.ok) {
+        return errorResponse(validated.error, 400);
+      }
+
+      if (!isTikTokUrl(validated.url)) {
+        return errorResponse("Not a TikTok URL", 400);
+      }
+
+      const data = await fetchTikTokOembed(validated.url);
+      if (!data) {
+        return errorResponse("TikTok oEmbed failed", 404);
+      }
+
+      return jsonResponse({ data });
+    } catch (error) {
+      console.error("[TikTok API] Error:", error);
+      return errorResponse("Failed to fetch TikTok", 500);
+    }
+  }),
+});
+
 export default http;
 
 // =================================================================
@@ -361,6 +407,16 @@ function isImdbUrl(url: string): boolean {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
     return hostname === "imdb.com" || hostname.endsWith(".imdb.com");
+  } catch {
+    return false;
+  }
+}
+
+function isTikTokUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes("tiktok.com");
   } catch {
     return false;
   }
@@ -1090,6 +1146,27 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&#x27;/g, "'")
     .replace(/&#x2F;/g, "/")
     .replace(/&nbsp;/g, " ");
+}
+
+async function fetchTikTokOembed(url: string): Promise<Record<string, unknown> | null> {
+  const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+  try {
+    const response = await fetch(oembedUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+        Accept: "application/json",
+      },
+      redirect: "follow",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return await response.json();
+  } catch {
+    return null;
+  }
 }
 
 interface RedditMediaItem {
