@@ -1410,3 +1410,59 @@ html.visual-style-high-contrast .react-resizable-handle::before {
     width: 100%;
     height: 100%;
 }
+
+/* Instagram embeds - modal styling */
+.instagram-modal {
+    border-radius: 18px;
+    padding: 12px;
+    background: var(--glass-panel-bg);
+    border: 1px solid color-mix(in oklab, var(--color-border-default) 55%, transparent);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.instagram-modal .instagram-media {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 auto !important;
+    border-radius: 14px !important;
+    background: transparent !important;
+}
+
+.instagram-modal iframe {
+    width: 100% !important;
+}
+
+/* Pinterest embeds - modal styling */
+.pinterest-modal {
+    border-radius: 18px;
+    padding: 12px;
+    background: var(--glass-panel-bg);
+    border: 1px solid color-mix(in oklab, var(--color-border-default) 55%, transparent);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+    width: min(92vw, 560px);
+}
+
+.pinterest-modal iframe {
+    width: 100% !important;
+    border: none;
+    border-radius: 14px;
+    background: var(--color-bg-surface-2);
+    min-height: 360px;
+}
+
+/* Facebook embeds - modal styling */
+.facebook-modal {
+    border-radius: 18px;
+    padding: 12px;
+    background: var(--glass-panel-bg);
+    border: 1px solid color-mix(in oklab, var(--color-border-default) 55%, transparent);
+    box-shadow: 0 22px 46px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+}
+
+.facebook-modal iframe {
+    width: 100% !important;
+    min-height: 420px;
+    border: none;
+    border-radius: 14px;
+    background: var(--color-bg-surface-2);
+}

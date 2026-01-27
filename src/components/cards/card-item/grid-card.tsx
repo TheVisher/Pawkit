@@ -4,8 +4,16 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from '@/components/ui/image';
 import DOMPurify from 'dompurify';
 import { TweetPreview } from './tweet-preview';
-import { RedditPreview, prefetchRedditPost } from './reddit-preview';
-import { TikTokPreview, prefetchTikTokData } from './tiktok-preview';
+import { RedditPreview } from './reddit-preview';
+import {
+  TikTokPreview,
+  prefetchTikTokData,
+  seedTikTokCache,
+  type TikTokOEmbed,
+} from './tiktok-preview';
+import { InstagramPreview, prefetchInstagramEmbed } from './instagram-preview';
+import { PinterestPreview, prefetchPinterestEmbed } from './pinterest-preview';
+import { FacebookPreview } from './facebook-preview';
 import { useModalStore } from '@/lib/stores/modal-store';
 import {
   Globe,
@@ -32,7 +40,7 @@ import {
 } from '@/lib/tags/supertags';
 import { cn } from '@/lib/utils';
 import { buildConvexHttpUrl } from '@/lib/convex-site-url';
-import type { Card } from '@/lib/types/convex';
+import type { Card, CardUpdate } from '@/lib/types/convex';
 import { TagBadgeList } from '@/components/tags/tag-badge';
 import { getSystemTagsForCard } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
@@ -49,7 +57,14 @@ import {
   isNoteCard,
 } from './types';
 import { isPlateJson, parseJsonContent, plateToHtml } from '@/lib/plate/html-to-plate';
-import { extractRedditPostId, extractTweetId, isTikTokUrl } from '@/lib/utils/url-detection';
+import {
+  extractRedditPostId,
+  extractTweetId,
+  isFacebookUrl,
+  isInstagramUrl,
+  isPinterestUrl,
+  isTikTokUrl,
+} from '@/lib/utils/url-detection';
 
 // Icon mapping for action icons
 const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
@@ -171,7 +186,11 @@ export function GridCard({
   const isTweet = !!tweetId;
   const isReddit = !!redditPostId;
   const isTikTok = !!card.url && isTikTokUrl(card.url);
-  const isEmbedCard = isTweet || isReddit || isTikTok;
+  const isInstagram = !!card.url && isInstagramUrl(card.url);
+  const instagramAspectRatio = card.aspectRatio || 4 / 5;
+  const isPinterest = !!card.url && isPinterestUrl(card.url);
+  const isFacebook = !!card.url && isFacebookUrl(card.url);
+  const isEmbedCard = isTweet || isReddit || isTikTok || isInstagram || isPinterest || isFacebook;
   const hasImage = card.image && !imageError;
   const fallbackFavicon = isReddit
     ? 'https://www.reddit.com/favicon.ico'
@@ -179,7 +198,13 @@ export function GridCard({
       ? 'https://abs.twimg.com/favicons/twitter.2.ico'
       : isTikTok
         ? 'https://www.tiktok.com/favicon.ico'
-        : null;
+        : isInstagram
+          ? 'https://www.instagram.com/favicon.ico'
+          : isPinterest
+            ? 'https://www.pinterest.com/favicon.ico'
+            : isFacebook
+              ? 'https://www.facebook.com/favicon.ico'
+            : null;
 
   useEffect(() => {
     setFaviconError(false);
@@ -196,6 +221,14 @@ export function GridCard({
     }
     setFaviconError(true);
   }, [card.favicon, fallbackFavicon, faviconSrc]);
+
+  const handleInstagramPrefetch = useCallback(() => {
+    prefetchInstagramEmbed();
+  }, []);
+
+  const handlePinterestPrefetch = useCallback(() => {
+    prefetchPinterestEmbed();
+  }, []);
 
   // Effect: Process cards without dominantColor/aspectRatio/blurDataUri using Web Worker
   // This runs once per card and persists the result to DB
@@ -485,17 +518,132 @@ export function GridCard({
     // implemented differently (e.g., via a separate callback prop).
   }, [card._id, isTweet, openCardDetailWithRect]);
 
-  const handleRedditPrefetch = useCallback(() => {
-    if (redditPostId) {
-      prefetchRedditPost(redditPostId);
+  const redditSubreddit = useMemo(() => {
+    if (!isReddit || !card.url) return null;
+    try {
+      const parsed = new URL(card.url);
+      const match = parsed.pathname.match(/\/r\/([^/]+)/i);
+      return match?.[1] || null;
+    } catch {
+      return null;
     }
-  }, [redditPostId]);
+  }, [card.url, isReddit]);
+
+  const redditPersistedRef = useRef(false);
+  useEffect(() => {
+    redditPersistedRef.current = false;
+  }, [card._id, redditPostId]);
+
+  const persistRedditPost = useCallback(
+    async (post: {
+      id: string;
+      title?: string;
+      selftext?: string;
+      domain?: string;
+      media?: Array<{ type: string; url: string }>;
+    }) => {
+      if (!isReddit || redditPersistedRef.current) return;
+
+      const imageUrls = (post.media || [])
+        .filter((item) => item.type === 'image' && item.url)
+        .map((item) => item.url);
+
+      const needsTitle = !card.title || card.title === card.url || card.title.startsWith('http');
+      const needsImage = !card.image && imageUrls.length > 0;
+      const needsDomain = !card.domain && post.domain;
+
+      if (!needsTitle && !needsImage && !needsDomain) {
+        redditPersistedRef.current = true;
+        return;
+      }
+
+      const updates: CardUpdate = {};
+
+      if (needsTitle && post.title) {
+        updates.title = post.title;
+      }
+
+      if (!card.description && post.selftext) {
+        updates.description = post.selftext.trim().slice(0, 280);
+      }
+
+      if (needsDomain && post.domain) {
+        updates.domain = post.domain;
+      }
+
+      if (needsImage && imageUrls[0]) {
+        updates.image = imageUrls[0];
+        updates.images = imageUrls;
+      }
+
+      const existingMetadata =
+        card.metadata && typeof card.metadata === 'object'
+          ? (card.metadata as Record<string, unknown>)
+          : {};
+      updates.metadata = {
+        ...existingMetadata,
+        reddit: post,
+      };
+
+      if (Object.keys(updates).length === 0) {
+        redditPersistedRef.current = true;
+        return;
+      }
+
+      redditPersistedRef.current = true;
+      try {
+        await updateCard(card._id, updates);
+      } catch (error) {
+        // Allow a retry later if the mutation fails.
+        redditPersistedRef.current = false;
+        console.warn('[GridCard] Failed to persist reddit metadata:', card._id, error);
+      }
+    },
+    [card._id, card.description, card.domain, card.image, card.metadata, card.title, card.url, isReddit, updateCard]
+  );
+
+  const redditFallback = useMemo(() => {
+    if (!isReddit) return undefined;
+    const images = card.images?.length ? card.images : card.image ? [card.image] : [];
+    const media = images.map((url) => ({ type: 'image', url }));
+    return {
+      id: redditPostId || undefined,
+      title: card.title || (redditSubreddit ? `r/${redditSubreddit}` : 'Reddit post'),
+      selftext: card.description,
+      permalink: card.url,
+      url: card.url,
+      domain: card.domain || 'reddit.com',
+      subreddit: redditSubreddit || undefined,
+      subreddit_name_prefixed: redditSubreddit ? `r/${redditSubreddit}` : undefined,
+      media,
+    };
+  }, [
+    card.description,
+    card.domain,
+    card.image,
+    card.images,
+    card.title,
+    card.url,
+    isReddit,
+    redditPostId,
+    redditSubreddit,
+  ]);
+
+  const tiktokInitialData = useMemo(() => {
+    if (!isTikTok || !card.metadata || typeof card.metadata !== 'object') return null;
+    const value = (card.metadata as Record<string, unknown>).tiktok;
+    if (!value || typeof value !== 'object') return null;
+    return value as TikTokOEmbed;
+  }, [card.metadata, isTikTok]);
 
   const handleTikTokPrefetch = useCallback(() => {
     if (card.url) {
+      if (tiktokInitialData) {
+        seedTikTokCache(card.url, tiktokInitialData);
+      }
       prefetchTikTokData(card.url);
     }
-  }, [card.url]);
+  }, [card.url, tiktokInitialData]);
 
   const cardShell = (
     <>
@@ -562,17 +710,39 @@ export function GridCard({
             uniformHeight && "h-full w-full"
           )}
           style={uniformHeight ? undefined : {
-            aspectRatio: !isEmbedCard && hasImage ? thumbnailAspectRatio : undefined,
-            minHeight: !isEmbedCard && hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
+            aspectRatio: !isEmbedCard && hasImage
+              ? thumbnailAspectRatio
+              : isInstagram
+                ? instagramAspectRatio
+                : isPinterest
+                  ? card.aspectRatio || 2 / 3
+                  : isFacebook
+                    ? card.aspectRatio || 1
+                  : undefined,
+            minHeight: !isEmbedCard && hasImage
+              ? undefined
+              : isInstagram
+                ? undefined
+                : isPinterest
+                  ? undefined
+                  : isFacebook
+                    ? undefined
+                : MIN_THUMBNAIL_HEIGHT,
           }}
         >
           {/* Thumbnail image or placeholder */}
           {isTweet ? (
             <TweetPreview tweetId={tweetId!} />
           ) : isReddit ? (
-            <RedditPreview postId={redditPostId!} />
+            <RedditPreview postId={redditPostId!} eager={false} fallback={redditFallback} url={card.url} />
           ) : isTikTok && card.url ? (
-            <TikTokPreview url={card.url} />
+            <TikTokPreview url={card.url} initialData={tiktokInitialData} />
+          ) : isInstagram ? (
+            <InstagramPreview title={card.title} image={card.image} aspectRatio={instagramAspectRatio} />
+          ) : isPinterest ? (
+            <PinterestPreview title={card.title} image={card.image} aspectRatio={card.aspectRatio || 2 / 3} />
+          ) : isFacebook ? (
+            <FacebookPreview title={card.title} image={card.image} aspectRatio={card.aspectRatio || 1} />
           ) : hasImage ? (
             <Image
               src={card.image!}
@@ -816,8 +986,24 @@ export function GridCard({
         role="button"
         tabIndex={0}
         onClick={handleCardClick}
-        onPointerEnter={isReddit ? handleRedditPrefetch : isTikTok ? handleTikTokPrefetch : undefined}
-        onFocus={isReddit ? handleRedditPrefetch : isTikTok ? handleTikTokPrefetch : undefined}
+        onPointerEnter={
+          isTikTok
+            ? handleTikTokPrefetch
+            : isInstagram
+              ? handleInstagramPrefetch
+              : isPinterest
+                ? handlePinterestPrefetch
+                : undefined
+        }
+        onFocus={
+          isTikTok
+            ? handleTikTokPrefetch
+            : isInstagram
+              ? handleInstagramPrefetch
+              : isPinterest
+                ? handlePinterestPrefetch
+                : undefined
+        }
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();

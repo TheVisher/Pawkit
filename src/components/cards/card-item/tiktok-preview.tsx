@@ -5,7 +5,7 @@ import Image from '@/components/ui/image';
 import { buildConvexHttpUrl } from '@/lib/convex-site-url';
 import { cn } from '@/lib/utils';
 
-type TikTokOEmbed = {
+export type TikTokOEmbed = {
   title?: string;
   author_name?: string;
   author_url?: string;
@@ -20,11 +20,17 @@ type TikTokOEmbed = {
 interface TikTokPreviewProps {
   url: string;
   className?: string;
+  initialData?: TikTokOEmbed | null;
 }
 
 const tiktokCache = new Map<string, TikTokOEmbed>();
 const tiktokInFlight = new Map<string, Promise<TikTokOEmbed | null>>();
 let tiktokServerUnavailable = false;
+
+export function seedTikTokCache(url: string, data: TikTokOEmbed | null | undefined) {
+  if (!data) return;
+  tiktokCache.set(url, data);
+}
 
 async function fetchTikTokServer(url: string, signal?: AbortSignal): Promise<TikTokOEmbed | null> {
   if (tiktokServerUnavailable) return null;
@@ -43,16 +49,6 @@ async function fetchTikTokServer(url: string, signal?: AbortSignal): Promise<Tik
   }
 }
 
-async function fetchTikTokClient(url: string): Promise<TikTokOEmbed | null> {
-  try {
-    const res = await fetch(`https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`);
-    if (!res.ok) return null;
-    return (await res.json()) as TikTokOEmbed;
-  } catch {
-    return null;
-  }
-}
-
 async function getTikTokData(url: string, signal?: AbortSignal): Promise<TikTokOEmbed | null> {
   const cached = tiktokCache.get(url);
   if (cached) return cached;
@@ -63,7 +59,7 @@ async function getTikTokData(url: string, signal?: AbortSignal): Promise<TikTokO
   const promise = (async () => {
     const server = await fetchTikTokServer(url, signal);
     if (server) return server;
-    return fetchTikTokClient(url);
+    return null;
   })();
 
   tiktokInFlight.set(url, promise);
@@ -79,7 +75,7 @@ export function prefetchTikTokData(url: string) {
   void getTikTokData(url);
 }
 
-export function TikTokPreview({ url, className }: TikTokPreviewProps) {
+export function TikTokPreview({ url, className, initialData }: TikTokPreviewProps) {
   const [data, setData] = useState<TikTokOEmbed | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
@@ -87,8 +83,10 @@ export function TikTokPreview({ url, className }: TikTokPreviewProps) {
     let active = true;
     const controller = new AbortController();
 
-    const cached = tiktokCache.get(url);
+    const cached = tiktokCache.get(url) || initialData || null;
     if (cached) {
+      // Seed the shared cache when we have persisted data.
+      seedTikTokCache(url, cached);
       setData(cached);
       setStatus('ready');
       return;
@@ -108,7 +106,7 @@ export function TikTokPreview({ url, className }: TikTokPreviewProps) {
       active = false;
       controller.abort();
     };
-  }, [url]);
+  }, [initialData, url]);
 
   const title = useMemo(() => data?.title?.trim() || '', [data?.title]);
   const author = data?.author_name?.trim() || '';

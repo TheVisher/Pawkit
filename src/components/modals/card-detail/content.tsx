@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { CardDetailHeader } from './header';
 import { ContentRouter } from './content/index';
 import { isSupertag } from '@/lib/tags/supertags';
-import { isRedditUrl, isTikTokUrl, isTweetUrl } from '@/lib/utils/url-detection';
+import { isFacebookUrl, isInstagramUrl, isPinterestUrl, isRedditUrl, isTikTokUrl, isTweetUrl } from '@/lib/utils/url-detection';
 import type { CardDetailContentProps } from './types';
 
 export function CardDetailContent({ cardId, onClose, className }: CardDetailContentProps) {
@@ -49,6 +49,9 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   const isTweetCard = !!card?.url && isTweetUrl(card.url);
   const isRedditCard = !!card?.url && isRedditUrl(card.url);
   const isTikTokCard = !!card?.url && isTikTokUrl(card.url);
+  const isInstagramCard = !!card?.url && isInstagramUrl(card.url);
+  const isPinterestCard = !!card?.url && isPinterestUrl(card.url);
+  const isFacebookCard = !!card?.url && isFacebookUrl(card.url);
 
   // Check if this is a contact card (has custom header in NoteContent)
   const isContactCard = useMemo(() => {
@@ -112,7 +115,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     >
       {/* Expandable header section - grows to fill modal */}
       {/* Contact cards have their own header in NoteContent, skip the default header */}
-      {!isContactCard && !isTweetCard && !isRedditCard && !isTikTokCard && (
+      {!isContactCard && !isTweetCard && !isRedditCard && !isTikTokCard && !isInstagramCard && !isPinterestCard && !isFacebookCard && (
       <>
       <div
         className={cn(

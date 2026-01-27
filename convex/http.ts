@@ -81,6 +81,22 @@ http.route({
   }),
 });
 
+http.route({
+  path: "/api/pinterest",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
+http.route({
+  path: "/api/facebook",
+  method: "OPTIONS",
+  handler: httpAction(async () => {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }),
+});
+
 // =================================================================
 // METADATA SCRAPING HTTP ENDPOINT
 // =================================================================
@@ -251,8 +267,11 @@ http.route({
         return errorResponse("Invalid reddit id", 400);
       }
 
-      const post = await fetchRedditPost(postId);
+      const post = await fetchRedditPost(postId, urlParam || undefined);
       if (!post) {
+        if (urlParam) {
+          return jsonResponse({ data: buildRedditFallback(postId, urlParam) });
+        }
         return errorResponse("Reddit post not found", 404);
       }
 
@@ -291,13 +310,99 @@ http.route({
 
       const data = await fetchTikTokOembed(validated.url);
       if (!data) {
-        return errorResponse("TikTok oEmbed failed", 404);
+        const fallback = buildTikTokFallback(validated.url);
+        if (!fallback) {
+          return errorResponse("TikTok oEmbed failed", 404);
+        }
+        return jsonResponse({ data: fallback });
       }
 
       return jsonResponse({ data });
     } catch (error) {
       console.error("[TikTok API] Error:", error);
       return errorResponse("Failed to fetch TikTok", 500);
+    }
+  }),
+});
+
+// =================================================================
+// PINTEREST RESOLVE ENDPOINT
+// =================================================================
+
+http.route({
+  path: "/api/pinterest",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    try {
+      const requestUrl = new URL(request.url);
+      const urlParam = requestUrl.searchParams.get("url");
+
+      if (!urlParam) {
+        return errorResponse("URL is required", 400);
+      }
+
+      const validated = validateExternalUrl(urlParam);
+      if (!validated.ok) {
+        return errorResponse(validated.error, 400);
+      }
+
+      if (!isPinterestUrl(validated.url)) {
+        return errorResponse("Not a Pinterest URL", 400);
+      }
+
+      const resolved = await resolvePinterestUrl(validated.url);
+      if (!resolved) {
+        const fallbackId = extractPinterestPinId(validated.url);
+        return jsonResponse({
+          data: {
+            url: validated.url,
+            id: fallbackId,
+          },
+        });
+      }
+
+      return jsonResponse({ data: resolved });
+    } catch (error) {
+      console.error("[Pinterest API] Error:", error);
+      return errorResponse("Failed to resolve Pinterest", 500);
+    }
+  }),
+});
+
+// =================================================================
+// FACEBOOK RESOLVE ENDPOINT
+// =================================================================
+
+http.route({
+  path: "/api/facebook",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    try {
+      const requestUrl = new URL(request.url);
+      const urlParam = requestUrl.searchParams.get("url");
+
+      if (!urlParam) {
+        return errorResponse("URL is required", 400);
+      }
+
+      const validated = validateExternalUrl(urlParam);
+      if (!validated.ok) {
+        return errorResponse(validated.error, 400);
+      }
+
+      if (!isFacebookUrl(validated.url)) {
+        return errorResponse("Not a Facebook URL", 400);
+      }
+
+      const resolved = await resolveFacebookUrl(validated.url);
+      if (!resolved) {
+        return jsonResponse({ data: { url: validated.url } });
+      }
+
+      return jsonResponse({ data: resolved });
+    } catch (error) {
+      console.error("[Facebook API] Error:", error);
+      return errorResponse("Failed to resolve Facebook", 500);
     }
   }),
 });
@@ -419,6 +524,76 @@ function isTikTokUrl(url: string): boolean {
     return hostname.includes("tiktok.com");
   } catch {
     return false;
+  }
+}
+
+function extractPinterestPinId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    if (hostname === "pin.it") return null;
+    if (!hostname.includes("pinterest.")) return null;
+    const match = urlObj.pathname.match(/\/pin\/([^/?#]+)/);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+function isPinterestUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    if (hostname === "pin.it") return true;
+    return hostname.includes("pinterest.") && /\/pin\//.test(urlObj.pathname);
+  } catch {
+    return false;
+  }
+}
+
+function isFacebookUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes("facebook.com") || hostname === "fb.watch" || hostname === "fb.com";
+  } catch {
+    return false;
+  }
+}
+
+async function resolveFacebookUrl(url: string): Promise<{ url: string } | null> {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  };
+
+  try {
+    const res = await fetch(url, { redirect: "follow", headers });
+    const resolvedUrl = res.url || url;
+    return { url: resolvedUrl };
+  } catch {
+    return null;
+  }
+}
+
+async function resolvePinterestUrl(url: string): Promise<{ url: string; id?: string | null } | null> {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  };
+
+  try {
+    const res = await fetch(url, { redirect: "follow", headers });
+    const resolvedUrl = res.url || url;
+    const id = extractPinterestPinId(resolvedUrl) || extractPinterestPinId(url);
+
+    if (id || resolvedUrl) {
+      return { url: resolvedUrl, id };
+    }
+
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -1169,6 +1344,40 @@ async function fetchTikTokOembed(url: string): Promise<Record<string, unknown> |
   }
 }
 
+function extractTikTokVideoId(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/video\/(\d+)/);
+    if (match?.[1]) return match[1];
+    const itemId = parsed.searchParams.get("item_id");
+    return itemId || null;
+  } catch {
+    return null;
+  }
+}
+
+function extractTikTokAuthor(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const match = parsed.pathname.match(/\/@([^/]+)/);
+    return match?.[1] || null;
+  } catch {
+    return null;
+  }
+}
+
+function buildTikTokFallback(url: string): Record<string, unknown> | null {
+  const videoId = extractTikTokVideoId(url);
+  if (!videoId) return null;
+  const author = extractTikTokAuthor(url);
+  return {
+    title: "TikTok video",
+    author_name: author || undefined,
+    provider_name: "TikTok",
+    embed_product_id: videoId,
+  };
+}
+
 interface RedditMediaItem {
   type: "image" | "video";
   url: string;
@@ -1266,7 +1475,176 @@ function extractRedditMedia(post: any): RedditMediaItem[] {
   return media;
 }
 
-async function fetchRedditPost(id: string): Promise<RedditPostData | null> {
+function normalizeRedditEmbedUrl(rawUrl: string): string | null {
+  try {
+    const parsedUrl = new URL(rawUrl);
+    parsedUrl.search = "";
+    parsedUrl.hash = "";
+    return parsedUrl.toString();
+  } catch {
+    return null;
+  }
+}
+
+function buildRedditFallback(postId: string, rawUrl: string): RedditPostData {
+  const normalizedUrl = normalizeRedditEmbedUrl(rawUrl) || rawUrl;
+  let subreddit: string | undefined;
+  let subreddit_name_prefixed: string | undefined;
+
+  try {
+    const parsedUrl = new URL(normalizedUrl);
+    const match = parsedUrl.pathname.match(/\/r\/([^/]+)/i);
+    if (match?.[1]) {
+      subreddit = match[1];
+      subreddit_name_prefixed = `r/${match[1]}`;
+    }
+  } catch {
+    // ignore parsing errors
+  }
+
+  return {
+    id: postId,
+    subreddit,
+    subreddit_name_prefixed,
+    permalink: normalizedUrl,
+    url: normalizedUrl,
+    domain: "reddit.com",
+    media: [],
+  };
+}
+
+async function fetchRedditOembed(url: string): Promise<RedditPostData | null> {
+  const normalizedUrl = normalizeRedditEmbedUrl(url) || url;
+  const candidates = [normalizedUrl, url].filter((value, index, array) => array.indexOf(value) === index);
+
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(
+        `https://www.reddit.com/oembed?url=${encodeURIComponent(candidate)}`,
+        {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+            Accept: "application/json",
+          },
+          redirect: "follow",
+        }
+      );
+
+      if (!response.ok) {
+        continue;
+      }
+
+      const data = await response.json();
+      const parsedUrl = new URL(candidate);
+      const subredditMatch = parsedUrl.pathname.match(/\/r\/([^/]+)/i);
+      const postIdMatch = parsedUrl.pathname.match(/\/comments\/([a-z0-9]+)/i);
+      const postId = postIdMatch?.[1];
+
+      const thumbnail = data?.thumbnail_url || null;
+      const media: RedditMediaItem[] = thumbnail
+        ? [
+            {
+              type: "image" as const,
+              url: thumbnail,
+            },
+          ]
+        : [];
+
+      return {
+        id: postId || "",
+        title: data?.title || undefined,
+        author: data?.author_name ? data.author_name.replace(/^u\//i, "") : undefined,
+        subreddit: subredditMatch?.[1],
+        subreddit_name_prefixed: subredditMatch ? `r/${subredditMatch[1]}` : undefined,
+        permalink: candidate,
+        url: candidate,
+        domain: "reddit.com",
+        media,
+      };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
+}
+
+async function fetchRedditPreviewFromHtml(id: string, rawUrl: string): Promise<RedditPostData | null> {
+  const normalizedUrl = normalizeRedditEmbedUrl(rawUrl) || rawUrl;
+  // Try old.reddit.com which has less strict bot detection
+  const oldRedditUrl = normalizedUrl.replace("www.reddit.com", "old.reddit.com");
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Cache-Control": "no-cache",
+  };
+
+  // Try both old.reddit and www.reddit
+  const urlsToTry = [oldRedditUrl, normalizedUrl];
+
+  for (const urlToFetch of urlsToTry) {
+    try {
+      console.log("[fetchRedditPreviewFromHtml] Fetching:", urlToFetch);
+      const response = await fetch(urlToFetch, {
+        headers,
+        redirect: "follow",
+      });
+      console.log("[fetchRedditPreviewFromHtml] Response status:", response.status);
+      if (!response.ok) continue;
+
+      const html = await response.text();
+      console.log("[fetchRedditPreviewFromHtml] HTML length:", html.length);
+      const previewMatches = html.match(/https:\/\/preview\.redd\.it\/[^"'\s<>]+/g) || [];
+      console.log("[fetchRedditPreviewFromHtml] Preview matches:", previewMatches.length, previewMatches.slice(0, 2));
+      const previewUrls = Array.from(
+        new Set(previewMatches.map((value) => decodeHtmlEntities(value)))
+      ).slice(0, 8);
+
+      if (previewUrls.length === 0) {
+        console.log("[fetchRedditPreviewFromHtml] No preview URLs found, trying next URL");
+        continue;
+      }
+
+      let subreddit: string | undefined;
+      let subreddit_name_prefixed: string | undefined;
+      try {
+        const parsedUrl = new URL(normalizedUrl);
+        const match = parsedUrl.pathname.match(/\/r\/([^/]+)/i);
+        if (match?.[1]) {
+          subreddit = match[1];
+          subreddit_name_prefixed = `r/${match[1]}`;
+        }
+      } catch {
+        // ignore parsing errors
+      }
+
+      const media: RedditMediaItem[] = previewUrls.map((url) => ({
+        type: "image" as const,
+        url,
+      }));
+
+      console.log("[fetchRedditPreviewFromHtml] Success! Found", media.length, "images");
+      return {
+        id,
+        subreddit,
+        subreddit_name_prefixed,
+        permalink: normalizedUrl,
+        url: normalizedUrl,
+        domain: "reddit.com",
+        media,
+      };
+    } catch (e) {
+      console.log("[fetchRedditPreviewFromHtml] Error fetching:", e);
+      continue;
+    }
+  }
+
+  console.log("[fetchRedditPreviewFromHtml] All URLs failed");
+  return null;
+}
+
+async function fetchRedditPost(id: string, url?: string): Promise<RedditPostData | null> {
   const headers = {
     "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
     Accept: "application/json",
@@ -1302,6 +1680,14 @@ async function fetchRedditPost(id: string): Promise<RedditPostData | null> {
     ));
 
   if (!post) {
+    if (url) {
+      const oembed = await fetchRedditOembed(url);
+      if (oembed?.media?.length) {
+        return oembed;
+      }
+      const htmlPreview = await fetchRedditPreviewFromHtml(id, url);
+      return htmlPreview || oembed;
+    }
     return null;
   }
 

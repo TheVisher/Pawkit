@@ -6,9 +6,12 @@
  */
 
 import type { Card } from '@/lib/types/convex';
-import { isRedditUrl, isTikTokUrl, isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
+import { isFacebookUrl, isInstagramUrl, isPinterestUrl, isRedditUrl, isTikTokUrl, isYouTubeUrl, isTweetUrl } from '@/lib/utils/url-detection';
 import { ArticleContent } from './article-content';
+import { FacebookContent } from './facebook-content';
+import { InstagramContent } from './instagram-content';
 import { NoteContent } from './note-content';
+import { PinterestContent } from './pinterest-content';
 import { RedditContent } from './reddit-content';
 import { TikTokContent } from './tiktok-content';
 import { TweetContent } from './tweet-content';
@@ -72,6 +75,21 @@ export function ContentRouter({
     return <TikTokContent card={card} className={className} />;
   }
 
+  // Instagram posts - embed modal
+  if (card.type === 'url' && card.url && isInstagramUrl(card.url)) {
+    return <InstagramContent card={card} className={className} />;
+  }
+
+  // Pinterest pins - embed modal
+  if (card.type === 'url' && card.url && isPinterestUrl(card.url)) {
+    return <PinterestContent card={card} className={className} />;
+  }
+
+  // Facebook posts - embed modal
+  if (card.type === 'url' && card.url && isFacebookUrl(card.url)) {
+    return <FacebookContent card={card} className={className} />;
+  }
+
   // URL/article cards - reader focused
   if (card.type === 'url') {
     return (
@@ -109,7 +127,10 @@ export function ContentRouter({
 
 // Re-export content components
 export { ArticleContent } from './article-content';
+export { FacebookContent } from './facebook-content';
+export { InstagramContent } from './instagram-content';
 export { NoteContent } from './note-content';
+export { PinterestContent } from './pinterest-content';
 export { RedditContent } from './reddit-content';
 export { TikTokContent } from './tiktok-content';
 export { TweetContent } from './tweet-content';

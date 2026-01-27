@@ -34,12 +34,15 @@ type RedditPost = {
 interface RedditPreviewProps {
   postId: string;
   playVideo?: boolean;
+  eager?: boolean;
+  fallback?: Partial<RedditPost>;
+  url?: string;
+  onPersist?: (post: RedditPost) => void;
   className?: string;
 }
 
 const redditPostCache = new Map<string, RedditPost>();
 const redditPostInFlight = new Map<string, Promise<RedditPost | null>>();
-let redditServerUnavailable = false;
 
 function formatCount(value?: number): string | null {
   if (value === undefined || value === null) return null;
@@ -54,151 +57,18 @@ function formatCount(value?: number): string | null {
   return `${value}`;
 }
 
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
-    .replace(/&#x27;/g, "'")
-    .replace(/&#x2F;/g, '/')
-    .replace(/&nbsp;/g, ' ');
-}
-
-function isImageUrl(url: string): boolean {
-  return /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
-}
-
-function extractMedia(post: any): RedditMedia[] {
-  const media: RedditMedia[] = [];
-  const videoUrl =
-    post?.media?.reddit_video?.fallback_url ||
-    post?.preview?.reddit_video_preview?.fallback_url ||
-    null;
-  const hlsUrl =
-    post?.media?.reddit_video?.hls_url ||
-    post?.preview?.reddit_video_preview?.hls_url ||
-    null;
-
-  if (post?.is_gallery && post?.media_metadata) {
-    const order =
-      post?.gallery_data?.items?.map((item: { media_id: string }) => item.media_id) ||
-      Object.keys(post.media_metadata);
-
-    for (const mediaId of order) {
-      const item = post.media_metadata?.[mediaId];
-      const url = item?.s?.u ? decodeHtmlEntities(item.s.u) : null;
-      if (url) {
-        media.push({
-          type: 'image',
-          url,
-          width: item?.s?.x,
-          height: item?.s?.y,
-        });
-      }
-    }
-  }
-
-  if (media.length === 0) {
-    const preview = post?.preview?.images?.[0]?.source;
-    if (preview?.url) {
-      media.push({
-        type: post?.is_video ? 'video' : 'image',
-        url: decodeHtmlEntities(preview.url),
-        width: preview.width,
-        height: preview.height,
-        videoUrl: post?.is_video ? videoUrl || undefined : undefined,
-        hlsUrl: post?.is_video ? hlsUrl || undefined : undefined,
-      });
-    }
-  }
-
-  if (media.length === 0 && typeof post?.url === 'string' && isImageUrl(post.url)) {
-    media.push({
-      type: 'image',
-      url: post.url,
-    });
-  }
-
-  if (
-    media.length === 0 &&
-    post?.is_video &&
-    typeof post?.thumbnail === 'string' &&
-    post.thumbnail.startsWith('http')
-  ) {
-    media.push({
-      type: 'video',
-      url: post.thumbnail,
-      videoUrl: videoUrl || undefined,
-      hlsUrl: hlsUrl || undefined,
-    });
-  }
-
-  return media;
-}
-
-function normalizePost(post: any): RedditPost | null {
-  if (!post) return null;
-  const media = extractMedia(post);
-  const permalink = post?.permalink ? `https://www.reddit.com${post.permalink}` : undefined;
-
-  return {
-    id: post?.id,
-    title: post?.title,
-    selftext: post?.selftext,
-    author: post?.author,
-    subreddit: post?.subreddit,
-    subreddit_name_prefixed: post?.subreddit_name_prefixed,
-    created_utc: post?.created_utc,
-    score: post?.score,
-    num_comments: post?.num_comments,
-    permalink,
-    url: post?.url,
-    domain: post?.domain,
-    media,
-  };
-}
-
-async function fetchRedditPostClient(postId: string): Promise<RedditPost | null> {
-  const tryFetch = async (url: string, selector: (data: any) => any) => {
-    try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!res.ok) return null;
-      const data = await res.json();
-      return selector(data);
-    } catch {
-      return null;
-    }
-  };
-
-  const post =
-    (await tryFetch(
-      `https://www.reddit.com/comments/${postId}.json?raw_json=1`,
-      (data) => data?.[0]?.data?.children?.[0]?.data
-    )) ||
-    (await tryFetch(
-      `https://www.reddit.com/by_id/t3_${postId}.json?raw_json=1`,
-      (data) => data?.data?.children?.[0]?.data
-    )) ||
-    (await tryFetch(
-      `https://api.reddit.com/api/info/?id=t3_${postId}`,
-      (data) => data?.data?.children?.[0]?.data
-    ));
-
-  return normalizePost(post);
-}
-
-async function fetchRedditPostServer(postId: string, signal?: AbortSignal): Promise<RedditPost | null> {
-  if (redditServerUnavailable) return null;
+async function fetchRedditPostServer(
+  postId: string,
+  url?: string,
+  signal?: AbortSignal
+): Promise<RedditPost | null> {
   try {
-    const res = await fetch(buildConvexHttpUrl(`/api/reddit?id=${postId}`), { signal });
-    if (!res.ok) {
-      if (res.status === 403 || res.status === 404) {
-        redditServerUnavailable = true;
-      }
-      return null;
+    const params = new URLSearchParams({ id: postId });
+    if (url) {
+      params.set('url', url);
     }
+    const res = await fetch(buildConvexHttpUrl(`/api/reddit?${params.toString()}`), { signal });
+    if (!res.ok) return null;
     const data = await res.json();
     return (data?.data as RedditPost) || null;
   } catch {
@@ -206,7 +76,99 @@ async function fetchRedditPostServer(postId: string, signal?: AbortSignal): Prom
   }
 }
 
-async function getRedditPost(postId: string, signal?: AbortSignal): Promise<RedditPost | null> {
+// Client-side fallback - browsers can fetch from Reddit directly
+async function fetchRedditPostClient(
+  postId: string,
+  url?: string,
+  signal?: AbortSignal
+): Promise<RedditPost | null> {
+  // Try JSON endpoint first
+  const jsonUrls = [
+    `https://www.reddit.com/comments/${postId}.json?raw_json=1`,
+    url ? `${url.replace(/\/$/, '')}.json?raw_json=1` : null,
+  ].filter(Boolean) as string[];
+
+  for (const jsonUrl of jsonUrls) {
+    try {
+      const res = await fetch(jsonUrl, { signal });
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const post = data?.[0]?.data?.children?.[0]?.data;
+      if (!post) continue;
+
+      // Extract media from preview images
+      const media: RedditMedia[] = [];
+      const preview = post.preview?.images?.[0];
+      if (preview?.source?.url) {
+        media.push({
+          type: 'image',
+          url: preview.source.url.replace(/&amp;/g, '&'),
+          width: preview.source.width,
+          height: preview.source.height,
+        });
+      }
+
+      // Check for gallery images
+      if (post.gallery_data?.items && post.media_metadata) {
+        for (const item of post.gallery_data.items) {
+          const meta = post.media_metadata[item.media_id];
+          if (meta?.s?.u) {
+            media.push({
+              type: 'image',
+              url: meta.s.u.replace(/&amp;/g, '&'),
+              width: meta.s.x,
+              height: meta.s.y,
+            });
+          }
+        }
+      }
+
+      // Check for video
+      if (post.is_video && post.media?.reddit_video) {
+        const video = post.media.reddit_video;
+        media.unshift({
+          type: 'video',
+          url: video.fallback_url || preview?.source?.url?.replace(/&amp;/g, '&') || '',
+          width: video.width,
+          height: video.height,
+          videoUrl: video.fallback_url,
+          hlsUrl: video.hls_url,
+        });
+      }
+
+      // Fallback to thumbnail
+      if (media.length === 0 && post.thumbnail && post.thumbnail.startsWith('http')) {
+        media.push({ type: 'image', url: post.thumbnail });
+      }
+
+      return {
+        id: post.id || postId,
+        title: post.title,
+        selftext: post.selftext,
+        author: post.author,
+        subreddit: post.subreddit,
+        subreddit_name_prefixed: post.subreddit_name_prefixed,
+        score: post.score,
+        num_comments: post.num_comments,
+        created_utc: post.created_utc,
+        permalink: post.permalink ? `https://www.reddit.com${post.permalink}` : undefined,
+        url: post.url,
+        domain: post.domain,
+        media,
+      };
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function getRedditPost(
+  postId: string,
+  url?: string,
+  signal?: AbortSignal
+): Promise<RedditPost | null> {
   const cached = redditPostCache.get(postId);
   if (cached) return cached;
 
@@ -214,9 +176,23 @@ async function getRedditPost(postId: string, signal?: AbortSignal): Promise<Redd
   if (inFlight) return inFlight;
 
   const promise = (async () => {
-    const clientFirst = await fetchRedditPostClient(postId);
-    if (clientFirst) return clientFirst;
-    return fetchRedditPostServer(postId, signal);
+    // Try server first
+    const serverResult = await fetchRedditPostServer(postId, url, signal);
+
+    // If server returned data with media, use it
+    if (serverResult?.media?.length) {
+      return serverResult;
+    }
+
+    // Otherwise try client-side fetch (browsers can access Reddit directly)
+    const clientResult = await fetchRedditPostClient(postId, url, signal);
+    if (clientResult?.media?.length) {
+      // Merge with server data if available
+      return serverResult ? { ...serverResult, media: clientResult.media } : clientResult;
+    }
+
+    // Return whatever we got
+    return clientResult || serverResult;
   })();
 
   redditPostInFlight.set(postId, promise);
@@ -228,8 +204,8 @@ async function getRedditPost(postId: string, signal?: AbortSignal): Promise<Redd
   return result;
 }
 
-export function prefetchRedditPost(postId: string) {
-  void getRedditPost(postId);
+export function prefetchRedditPost(postId: string, url?: string) {
+  void fetchRedditPostServer(postId, url);
 }
 
 function RedditVideo({
@@ -281,9 +257,39 @@ function RedditVideo({
   );
 }
 
-export function RedditPreview({ postId, playVideo = false, className }: RedditPreviewProps) {
+export function RedditPreview({
+  postId,
+  playVideo = false,
+  eager = true,
+  fallback,
+  url,
+  onPersist,
+  className,
+}: RedditPreviewProps) {
   const [post, setPost] = useState<RedditPost | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const persistedRef = useRef(false);
+
+  const fallbackPost = useMemo<RedditPost | null>(() => {
+    if (!fallback) return null;
+    return {
+      id: fallback.id || postId,
+      title: fallback.title,
+      selftext: fallback.selftext,
+      author: fallback.author,
+      subreddit: fallback.subreddit,
+      subreddit_name_prefixed: fallback.subreddit_name_prefixed,
+      created_utc: fallback.created_utc,
+      score: fallback.score,
+      num_comments: fallback.num_comments,
+      permalink: fallback.permalink,
+      url: fallback.url,
+      domain: fallback.domain,
+      media: fallback.media || [],
+    };
+  }, [fallback, postId]);
+
+  const resolvedUrl = url || fallbackPost?.permalink || fallbackPost?.url;
 
   useEffect(() => {
     let active = true;
@@ -296,12 +302,25 @@ export function RedditPreview({ postId, playVideo = false, className }: RedditPr
       return;
     }
 
+    if (!eager) {
+      setPost(fallbackPost);
+      setStatus(fallbackPost ? 'ready' : 'error');
+      return () => {
+        active = false;
+        controller.abort();
+      };
+    }
+
     setStatus('loading');
     const load = async () => {
-      const next = await getRedditPost(postId, controller.signal);
+      const next = await getRedditPost(postId, resolvedUrl, controller.signal);
       if (!active) return;
       setPost(next);
-      setStatus(next ? 'ready' : 'error');
+      setStatus(next ? 'ready' : fallbackPost ? 'ready' : 'error');
+      if (next && onPersist && !persistedRef.current) {
+        persistedRef.current = true;
+        onPersist(next);
+      }
     };
 
     load();
@@ -310,21 +329,24 @@ export function RedditPreview({ postId, playVideo = false, className }: RedditPr
       active = false;
       controller.abort();
     };
-  }, [postId]);
+  }, [eager, fallbackPost, onPersist, postId, resolvedUrl]);
 
-  const media = post?.media || [];
-  const score = formatCount(post?.score);
-  const comments = formatCount(post?.num_comments);
-  const subredditLabel = post?.subreddit_name_prefixed || (post?.subreddit ? `r/${post.subreddit}` : null);
-  const authorLabel = post?.author ? `u/${post.author}` : null;
-  const showDomain = post?.domain && !post.domain.startsWith('self.');
+  const resolvedPost = post || fallbackPost;
+
+  const media = resolvedPost?.media || [];
+  const score = formatCount(resolvedPost?.score);
+  const comments = formatCount(resolvedPost?.num_comments);
+  const subredditLabel =
+    resolvedPost?.subreddit_name_prefixed || (resolvedPost?.subreddit ? `r/${resolvedPost.subreddit}` : null);
+  const authorLabel = resolvedPost?.author ? `u/${resolvedPost.author}` : null;
+  const showDomain = resolvedPost?.domain && !resolvedPost.domain.startsWith('self.');
 
   const bodyText = useMemo(() => {
-    if (!post?.selftext) return '';
-    return post.selftext.trim();
-  }, [post?.selftext]);
+    if (!resolvedPost?.selftext) return '';
+    return resolvedPost.selftext.trim();
+  }, [resolvedPost?.selftext]);
 
-  if (!post || status !== 'ready') {
+  if (!resolvedPost || status !== 'ready') {
     return (
       <div
         className={cn(
@@ -346,9 +368,9 @@ export function RedditPreview({ postId, playVideo = false, className }: RedditPr
         {authorLabel && <span>{authorLabel}</span>}
       </div>
 
-      {post.title && (
+      {resolvedPost.title && (
         <div className="text-sm font-semibold text-text-primary">
-          {post.title}
+          {resolvedPost.title}
         </div>
       )}
 
@@ -408,7 +430,7 @@ export function RedditPreview({ postId, playVideo = false, className }: RedditPr
         <div className="flex flex-wrap items-center gap-3 text-[11px] text-text-muted">
           {score && <span>{score} upvotes</span>}
           {comments && <span>{comments} comments</span>}
-          {showDomain && <span className="uppercase tracking-wide">{post?.domain}</span>}
+          {showDomain && <span className="uppercase tracking-wide">{resolvedPost?.domain}</span>}
         </div>
       )}
     </div>
