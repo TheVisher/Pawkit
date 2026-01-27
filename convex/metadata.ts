@@ -409,6 +409,9 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
 
 /**
  * Fetch Reddit metadata using the public JSON endpoint.
+ * Note: Reddit often blocks server-side requests with 403.
+ * When this happens, we return minimal metadata and let the
+ * client-side RedditPreview component fetch the actual data.
  */
 async function scrapeReddit(url: string): Promise<ScrapedMetadata> {
   const postId = extractRedditPostId(url);
@@ -416,53 +419,78 @@ async function scrapeReddit(url: string): Promise<ScrapedMetadata> {
     throw new Error("Invalid Reddit URL");
   }
 
-  const apiUrl = `https://www.reddit.com/comments/${postId}.json?raw_json=1`;
-  const response = await fetch(apiUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
-      Accept: "application/json",
-    },
-    redirect: "follow",
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch Reddit JSON: " + response.status);
-  }
-
-  const data = await response.json();
-  const post = data?.[0]?.data?.children?.[0]?.data;
-  if (!post) {
-    throw new Error("Reddit metadata not found");
-  }
-
-  const title: string | null = post?.title || null;
-  const selftext: string | null = post?.selftext || null;
-  const description =
-    selftext && selftext.trim().length > 0
-      ? selftext.trim().slice(0, 300)
-      : null;
-
-  let image: string | null = null;
-  const previewUrl = post?.preview?.images?.[0]?.source?.url;
-  if (previewUrl) {
-    image = decodeHtmlEntities(previewUrl);
-  } else if (typeof post?.thumbnail === "string" && post.thumbnail.startsWith("http")) {
-    image = post.thumbnail;
-  }
-
-  return {
-    title,
-    description,
-    image,
-    images: image ? [image] : [],
+  // Minimal fallback metadata for when Reddit blocks us
+  const fallbackMetadata: ScrapedMetadata = {
+    title: null,
+    description: null,
+    image: null,
+    images: [],
     favicon: "https://www.reddit.com/favicon.ico",
     domain: "reddit.com",
     raw: {
-      reddit: post,
-      source: "reddit-json",
+      redditPostId: postId,
+      source: "reddit-fallback",
+      clientFetchRequired: true,
     },
   };
+
+  try {
+    const apiUrl = `https://www.reddit.com/comments/${postId}.json?raw_json=1`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
+        Accept: "application/json",
+      },
+      redirect: "follow",
+    });
+
+    // Reddit often blocks server-side requests with 403
+    // Return fallback metadata instead of throwing
+    if (!response.ok) {
+      console.log("[scrapeReddit] Reddit returned " + response.status + ", using fallback metadata");
+      return fallbackMetadata;
+    }
+
+    const data = await response.json();
+    const post = data?.[0]?.data?.children?.[0]?.data;
+    if (!post) {
+      console.log("[scrapeReddit] No post data found, using fallback metadata");
+      return fallbackMetadata;
+    }
+
+    const title: string | null = post?.title || null;
+    const selftext: string | null = post?.selftext || null;
+    const description =
+      selftext && selftext.trim().length > 0
+        ? selftext.trim().slice(0, 300)
+        : null;
+
+    let image: string | null = null;
+    const previewUrl = post?.preview?.images?.[0]?.source?.url;
+    if (previewUrl) {
+      image = decodeHtmlEntities(previewUrl);
+    } else if (typeof post?.thumbnail === "string" && post.thumbnail.startsWith("http")) {
+      image = post.thumbnail;
+    }
+
+    return {
+      title,
+      description,
+      image,
+      images: image ? [image] : [],
+      favicon: "https://www.reddit.com/favicon.ico",
+      domain: "reddit.com",
+      raw: {
+        reddit: post,
+        source: "reddit-json",
+      },
+    };
+  } catch (error) {
+    // Network errors, timeouts, etc. - use fallback
+    console.log("[scrapeReddit] Error fetching Reddit data:", error);
+    return fallbackMetadata;
+  }
 }
 
 /**

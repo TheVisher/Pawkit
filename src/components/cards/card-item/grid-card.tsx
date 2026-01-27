@@ -734,7 +734,7 @@ export function GridCard({
           {isTweet ? (
             <TweetPreview tweetId={tweetId!} />
           ) : isReddit ? (
-            <RedditPreview postId={redditPostId!} eager={false} fallback={redditFallback} url={card.url} />
+            <RedditPreview postId={redditPostId!} eager={false} fallback={redditFallback} url={card.url} onPersist={persistRedditPost} />
           ) : isTikTok && card.url ? (
             <TikTokPreview url={card.url} initialData={tiktokInitialData} />
           ) : isInstagram ? (
