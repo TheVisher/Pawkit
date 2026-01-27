@@ -14,3 +14,4 @@ todos.json
 .next
 .vercel
 src/generated
+.playwright-mcp
