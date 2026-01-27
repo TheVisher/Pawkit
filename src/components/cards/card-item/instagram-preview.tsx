@@ -34,8 +34,8 @@ export function InstagramPreview({ title, image, aspectRatio, className }: Insta
           className
         )}
       >
-        <Instagram className="h-5 w-5" />
-        Instagram
+        <Instagram className="h-6 w-6" />
+        <span>Instagram</span>
       </div>
     );
   }

@@ -529,106 +529,6 @@ export function GridCard({
     }
   }, [card.url, isReddit]);
 
-  const redditPersistedRef = useRef(false);
-  useEffect(() => {
-    redditPersistedRef.current = false;
-  }, [card._id, redditPostId]);
-
-  const persistRedditPost = useCallback(
-    async (post: {
-      id: string;
-      title?: string;
-      selftext?: string;
-      domain?: string;
-      media?: Array<{ type: string; url: string }>;
-    }) => {
-      if (!isReddit || redditPersistedRef.current) return;
-
-      const imageUrls = (post.media || [])
-        .filter((item) => item.type === 'image' && item.url)
-        .map((item) => item.url);
-
-      const needsTitle = !card.title || card.title === card.url || card.title.startsWith('http');
-      const needsImage = !card.image && imageUrls.length > 0;
-      const needsDomain = !card.domain && post.domain;
-
-      if (!needsTitle && !needsImage && !needsDomain) {
-        redditPersistedRef.current = true;
-        return;
-      }
-
-      const updates: CardUpdate = {};
-
-      if (needsTitle && post.title) {
-        updates.title = post.title;
-      }
-
-      if (!card.description && post.selftext) {
-        updates.description = post.selftext.trim().slice(0, 280);
-      }
-
-      if (needsDomain && post.domain) {
-        updates.domain = post.domain;
-      }
-
-      if (needsImage && imageUrls[0]) {
-        updates.image = imageUrls[0];
-        updates.images = imageUrls;
-      }
-
-      const existingMetadata =
-        card.metadata && typeof card.metadata === 'object'
-          ? (card.metadata as Record<string, unknown>)
-          : {};
-      updates.metadata = {
-        ...existingMetadata,
-        reddit: post,
-      };
-
-      if (Object.keys(updates).length === 0) {
-        redditPersistedRef.current = true;
-        return;
-      }
-
-      redditPersistedRef.current = true;
-      try {
-        await updateCard(card._id, updates);
-      } catch (error) {
-        // Allow a retry later if the mutation fails.
-        redditPersistedRef.current = false;
-        console.warn('[GridCard] Failed to persist reddit metadata:', card._id, error);
-      }
-    },
-    [card._id, card.description, card.domain, card.image, card.metadata, card.title, card.url, isReddit, updateCard]
-  );
-
-  const redditFallback = useMemo(() => {
-    if (!isReddit) return undefined;
-    const images = card.images?.length ? card.images : card.image ? [card.image] : [];
-    const media = images.map((url) => ({ type: 'image', url }));
-    return {
-      id: redditPostId || undefined,
-      title: card.title || (redditSubreddit ? `r/${redditSubreddit}` : 'Reddit post'),
-      selftext: card.description,
-      permalink: card.url,
-      url: card.url,
-      domain: card.domain || 'reddit.com',
-      subreddit: redditSubreddit || undefined,
-      subreddit_name_prefixed: redditSubreddit ? `r/${redditSubreddit}` : undefined,
-      media,
-    };
-  }, [
-    card.description,
-    card.domain,
-    card.image,
-    card.images,
-    card.title,
-    card.url,
-    isReddit,
-    redditPostId,
-    redditSubreddit,
-  ]);
-
   const tiktokInitialData = useMemo(() => {
     if (!isTikTok || !card.metadata || typeof card.metadata !== 'object') return null;
     const value = (card.metadata as Record<string, unknown>).tiktok;
@@ -734,7 +634,7 @@ export function GridCard({
           {isTweet ? (
             <TweetPreview tweetId={tweetId!} />
           ) : isReddit ? (
-            <RedditPreview postId={redditPostId!} eager={false} fallback={redditFallback} url={card.url} onPersist={persistRedditPost} />
+            <RedditPreview title={card.title} image={card.image} aspectRatio={card.aspectRatio} subreddit={redditSubreddit} />
           ) : isTikTok && card.url ? (
             <TikTokPreview url={card.url} initialData={tiktokInitialData} />
           ) : isInstagram ? (

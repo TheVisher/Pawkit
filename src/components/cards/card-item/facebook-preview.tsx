@@ -21,8 +21,8 @@ export function FacebookPreview({ title, image, aspectRatio, className }: Facebo
           className
         )}
       >
-        <Facebook className="h-5 w-5" />
-        Facebook
+        <Facebook className="h-6 w-6" />
+        <span>Facebook</span>
       </div>
     );
   }

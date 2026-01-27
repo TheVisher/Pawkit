@@ -5,6 +5,20 @@ import Image from '@/components/ui/image';
 import { buildConvexHttpUrl } from '@/lib/convex-site-url';
 import { cn } from '@/lib/utils';
 
+// X (Twitter) icon as inline SVG
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
 type TweetMedia = {
   type: 'photo' | 'video' | 'animated_gif';
   media_url_https: string;
@@ -130,7 +144,16 @@ export function TweetPreview({ tweetId, className }: TweetPreviewProps) {
 
   if (!tweet) {
     return (
-      <div className={cn('h-full w-full rounded-lg bg-[var(--color-bg-surface-2)]', className)} />
+      <div
+        className={cn(
+          'h-full w-full min-h-[160px] rounded-lg bg-[var(--color-bg-surface-2)]',
+          'flex flex-col items-center justify-center gap-2 text-xs text-text-muted',
+          className
+        )}
+      >
+        <XIcon className="h-6 w-6" />
+        <span>X</span>
+      </div>
     );
   }
 
