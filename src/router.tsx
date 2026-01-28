@@ -10,7 +10,7 @@ export const getRouter = () => {
     context: {},
 
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 30000, // Remember prefetched routes for 30 seconds
   })
 
   return router

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback, startTransition } from 'react';
+import { useEffect, useState, useRef, useCallback, startTransition, lazy, Suspense } from 'react';
 import { useConvexAuth } from 'convex/react';
 import { useRouter } from '@/lib/navigation';
 import { WorkspaceProvider } from '@/lib/stores/workspace-store';
@@ -11,11 +11,6 @@ import { useActiveToast } from '@/lib/stores/toast-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
-import { AddCardModal } from '@/components/modals/add-card-modal';
-import { ContentPanel } from '@/components/content-panel';
-import { CreatePawkitModal } from '@/components/modals/create-pawkit-modal';
-import { CoverImagePickerModal } from '@/components/modals/cover-image-picker-modal';
-import { CardPhotoPickerModal } from '@/components/modals/card-photo-picker-modal';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
@@ -25,6 +20,13 @@ import { ConvexDataProvider } from '@/lib/contexts/convex-data-context';
 import { TagColorsProvider } from '@/lib/contexts/tag-colors-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
+
+// Lazy-loaded modals - these are heavy components that aren't needed on initial render
+const AddCardModal = lazy(() => import('@/components/modals/add-card-modal').then(m => ({ default: m.AddCardModal })));
+const ContentPanel = lazy(() => import('@/components/content-panel').then(m => ({ default: m.ContentPanel })));
+const CreatePawkitModal = lazy(() => import('@/components/modals/create-pawkit-modal').then(m => ({ default: m.CreatePawkitModal })));
+const CoverImagePickerModal = lazy(() => import('@/components/modals/cover-image-picker-modal').then(m => ({ default: m.CoverImagePickerModal })));
+const CardPhotoPickerModal = lazy(() => import('@/components/modals/card-photo-picker-modal').then(m => ({ default: m.CardPhotoPickerModal })));
 
 const log = createModuleLogger('DashboardShell');
 
@@ -488,11 +490,22 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
           </aside>
         </div>
 
-        <AddCardModal />
-        <ContentPanel />
-        <CreatePawkitModal />
-        <CoverImagePickerModal />
-        <CardPhotoPickerModal />
+        {/* Lazy-loaded modals - wrapped in Suspense with null fallback since they render conditionally */}
+        <Suspense fallback={null}>
+          <AddCardModal />
+        </Suspense>
+        <Suspense fallback={null}>
+          <ContentPanel />
+        </Suspense>
+        <Suspense fallback={null}>
+          <CreatePawkitModal />
+        </Suspense>
+        <Suspense fallback={null}>
+          <CoverImagePickerModal />
+        </Suspense>
+        <Suspense fallback={null}>
+          <CardPhotoPickerModal />
+        </Suspense>
         <CardsDragHandler />
         </div>
         </TagColorsProvider>
