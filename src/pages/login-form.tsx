@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 // Whitelist of allowed redirect paths to prevent open redirect attacks
-const ALLOWED_REDIRECT_PATHS = ['/dashboard', '/library', '/home', '/calendar', '/notes', '/favorites'];
+const ALLOWED_REDIRECT_PATHS = ['/dashboard', '/library', '/home', '/calendar', '/notes', '/favorites', '/extension/connect'];
 
 /**
  * Normalize a path to prevent directory traversal and other bypass attempts

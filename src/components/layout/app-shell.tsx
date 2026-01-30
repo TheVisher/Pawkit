@@ -9,10 +9,12 @@ type AppShellProps = {
 
 const isStandaloneRoute = (pathname: string) => {
   return (
+    pathname === '/' ||
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/editor') ||
-    pathname.startsWith('/demo')
+    pathname.startsWith('/demo') ||
+    pathname.startsWith('/extension')
   );
 };
 
