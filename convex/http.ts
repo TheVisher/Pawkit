@@ -2,6 +2,8 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { auth } from "./auth";
 import * as cheerio from "cheerio";
+import { internal } from "./_generated/api";
+import { getClientIp, RATE_LIMITS } from "./rateLimit";
 
 const http = httpRouter();
 
@@ -12,88 +14,170 @@ auth.addHttpRoutes(http);
 // CORS HELPERS
 // =================================================================
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+// Allowed origins for CORS - add your production domain here
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://pawkit.app",
+  "https://www.pawkit.app",
+  "https://getpawkit.com",
+  "https://www.getpawkit.com",
+];
 
-function jsonResponse(data: unknown, status = 200): Response {
+function getCorsHeaders(requestOrigin?: string | null) {
+  // Check if the request origin is in our allowed list
+  const origin = requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)
+    ? requestOrigin
+    : ALLOWED_ORIGINS[0]; // Default to first allowed origin
+
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
+  };
+}
+
+function jsonResponse(data: unknown, status = 200, requestOrigin?: string | null): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
       "Content-Type": "application/json",
-      ...corsHeaders,
+      ...getCorsHeaders(requestOrigin),
     },
   });
 }
 
-function errorResponse(error: string, status = 400): Response {
-  return jsonResponse({ error }, status);
+function errorResponse(error: string, status = 400, requestOrigin?: string | null): Response {
+  return jsonResponse({ error }, status, requestOrigin);
+}
+
+function rateLimitResponse(retryAfter: number, requestOrigin?: string | null): Response {
+  return new Response(JSON.stringify({ error: "Too many requests" }), {
+    status: 429,
+    headers: {
+      "Content-Type": "application/json",
+      "Retry-After": String(retryAfter),
+      ...getCorsHeaders(requestOrigin),
+    },
+  });
+}
+
+/**
+ * Check and record rate limit for a request.
+ * Returns null if allowed, or a Response if rate limited.
+ */
+async function checkRateLimit(
+  ctx: any,
+  request: Request,
+  endpoint: string,
+  origin: string | null
+): Promise<Response | null> {
+  const ip = getClientIp(request);
+  const now = Date.now();
+
+  try {
+    // Check current rate limit status
+    const result = await ctx.runQuery(internal.rateLimit.checkRateLimit, {
+      ip,
+      endpoint,
+      now,
+    });
+
+    if (!result.allowed) {
+      return rateLimitResponse(result.retryAfter || 60, origin);
+    }
+
+    // Record this request (non-blocking, don't fail if recording fails due to OCC)
+    try {
+      await ctx.runMutation(internal.rateLimit.recordRequest, {
+        ip,
+        endpoint,
+        now,
+      });
+    } catch (recordError) {
+      // Log but don't fail the request - rate limit recording is best-effort
+      console.warn("[Rate Limit] Failed to record request:", recordError);
+    }
+
+    return null; // Allowed
+  } catch (error) {
+    // If rate limit check fails, allow the request through (fail open)
+    console.warn("[Rate Limit] Check failed, allowing request:", error);
+    return null;
+  }
 }
 
 // OPTIONS preflight handler for all API routes
 http.route({
   path: "/api/metadata",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/article",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/link-check",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/tweet",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/reddit",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/tiktok",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/pinterest",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
 http.route({
   path: "/api/facebook",
   method: "OPTIONS",
-  handler: httpAction(async () => {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
   }),
 });
 
@@ -105,26 +189,31 @@ http.route({
   path: "/api/metadata",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/metadata", origin);
+      if (rateLimited) return rateLimited;
+
       const body = await request.json();
       const { url } = body as { url?: string };
 
       if (!url || typeof url !== "string") {
-        return errorResponse("URL is required");
+        return errorResponse("URL is required", 400, origin);
       }
 
       const validated = validateExternalUrl(url);
       if (!validated.ok) {
-        return errorResponse(validated.error);
+        return errorResponse(validated.error, 400, origin);
       }
 
       // Scrape metadata
       const metadata = await scrapeUrl(validated.url);
 
-      return jsonResponse(metadata);
+      return jsonResponse(metadata, 200, origin);
     } catch (error) {
       console.error("[Metadata API] Error:", error);
-      return errorResponse("Failed to fetch metadata", 500);
+      return errorResponse("Failed to fetch metadata", 500, origin);
     }
   }),
 });
@@ -137,26 +226,31 @@ http.route({
   path: "/api/article",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/article", origin);
+      if (rateLimited) return rateLimited;
+
       const body = await request.json();
       const { url } = body as { url?: string };
 
       if (!url || typeof url !== "string") {
-        return errorResponse("URL is required");
+        return errorResponse("URL is required", 400, origin);
       }
 
       const validated = validateExternalUrl(url);
       if (!validated.ok) {
-        return errorResponse(validated.error);
+        return errorResponse(validated.error, 400, origin);
       }
 
       // Extract article
       const article = await extractArticle(validated.url);
 
-      return jsonResponse({ success: true, article });
+      return jsonResponse({ success: true, article }, 200, origin);
     } catch (error) {
       console.error("[Article API] Error:", error);
-      return errorResponse("Failed to extract article", 500);
+      return errorResponse("Failed to extract article", 500, origin);
     }
   }),
 });
@@ -169,7 +263,12 @@ http.route({
   path: "/api/link-check",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/link-check", origin);
+      if (rateLimited) return rateLimited;
+
       const body = await request.json();
       const { url, urls } = body as { url?: string; urls?: string[] };
 
@@ -177,11 +276,11 @@ http.route({
       if (url && typeof url === "string") {
         const validated = validateExternalUrl(url);
         if (!validated.ok) {
-          return errorResponse(validated.error);
+          return errorResponse(validated.error, 400, origin);
         }
 
         const result = await checkLink(validated.url);
-        return jsonResponse({ url, ...result });
+        return jsonResponse({ url, ...result }, 200, origin);
       }
 
       // Batch URL check
@@ -197,7 +296,7 @@ http.route({
           .filter((u): u is string => Boolean(u));
 
         if (urlsToCheck.length === 0) {
-          return errorResponse("No valid URLs provided");
+          return errorResponse("No valid URLs provided", 400, origin);
         }
 
         const results: Record<string, unknown> = {};
@@ -209,13 +308,13 @@ http.route({
           results,
           checked: urlsToCheck.length,
           truncated: urls.length > MAX_BATCH,
-        });
+        }, 200, origin);
       }
 
-      return errorResponse("Either url or urls parameter is required");
+      return errorResponse("Either url or urls parameter is required", 400, origin);
     } catch (error) {
       console.error("[Link Check API] Error:", error);
-      return errorResponse("Internal server error", 500);
+      return errorResponse("Internal server error", 500, origin);
     }
   }),
 });
@@ -227,24 +326,29 @@ http.route({
 http.route({
   path: "/api/tweet",
   method: "GET",
-  handler: httpAction(async (_ctx, request) => {
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/tweet", origin);
+      if (rateLimited) return rateLimited;
+
       const requestUrl = new URL(request.url);
       const id = requestUrl.searchParams.get("id") || "";
 
       if (!/^\d{5,40}$/.test(id)) {
-        return errorResponse("Invalid tweet id", 400);
+        return errorResponse("Invalid tweet id", 400, origin);
       }
 
       const tweet = await fetchTweetFromSyndication(id);
       if (!tweet) {
-        return errorResponse("Tweet not found", 404);
+        return errorResponse("Tweet not found", 404, origin);
       }
 
-      return jsonResponse({ data: tweet });
+      return jsonResponse({ data: tweet }, 200, origin);
     } catch (error) {
       console.error("[Tweet API] Error:", error);
-      return errorResponse("Failed to fetch tweet", 500);
+      return errorResponse("Failed to fetch tweet", 500, origin);
     }
   }),
 });
@@ -256,29 +360,34 @@ http.route({
 http.route({
   path: "/api/reddit",
   method: "GET",
-  handler: httpAction(async (_ctx, request) => {
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/reddit", origin);
+      if (rateLimited) return rateLimited;
+
       const requestUrl = new URL(request.url);
       const idParam = requestUrl.searchParams.get("id");
       const urlParam = requestUrl.searchParams.get("url");
 
       const postId = idParam || (urlParam ? extractRedditPostId(urlParam) : null);
       if (!postId) {
-        return errorResponse("Invalid reddit id", 400);
+        return errorResponse("Invalid reddit id", 400, origin);
       }
 
       const post = await fetchRedditPost(postId, urlParam || undefined);
       if (!post) {
         if (urlParam) {
-          return jsonResponse({ data: buildRedditFallback(postId, urlParam) });
+          return jsonResponse({ data: buildRedditFallback(postId, urlParam) }, 200, origin);
         }
-        return errorResponse("Reddit post not found", 404);
+        return errorResponse("Reddit post not found", 404, origin);
       }
 
-      return jsonResponse({ data: post });
+      return jsonResponse({ data: post }, 200, origin);
     } catch (error) {
       console.error("[Reddit API] Error:", error);
-      return errorResponse("Failed to fetch reddit post", 500);
+      return errorResponse("Failed to fetch reddit post", 500, origin);
     }
   }),
 });
@@ -290,37 +399,42 @@ http.route({
 http.route({
   path: "/api/tiktok",
   method: "GET",
-  handler: httpAction(async (_ctx, request) => {
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/tiktok", origin);
+      if (rateLimited) return rateLimited;
+
       const requestUrl = new URL(request.url);
       const urlParam = requestUrl.searchParams.get("url");
 
       if (!urlParam) {
-        return errorResponse("URL is required", 400);
+        return errorResponse("URL is required", 400, origin);
       }
 
       const validated = validateExternalUrl(urlParam);
       if (!validated.ok) {
-        return errorResponse(validated.error, 400);
+        return errorResponse(validated.error, 400, origin);
       }
 
       if (!isTikTokUrl(validated.url)) {
-        return errorResponse("Not a TikTok URL", 400);
+        return errorResponse("Not a TikTok URL", 400, origin);
       }
 
       const data = await fetchTikTokOembed(validated.url);
       if (!data) {
         const fallback = buildTikTokFallback(validated.url);
         if (!fallback) {
-          return errorResponse("TikTok oEmbed failed", 404);
+          return errorResponse("TikTok oEmbed failed", 404, origin);
         }
-        return jsonResponse({ data: fallback });
+        return jsonResponse({ data: fallback }, 200, origin);
       }
 
-      return jsonResponse({ data });
+      return jsonResponse({ data }, 200, origin);
     } catch (error) {
       console.error("[TikTok API] Error:", error);
-      return errorResponse("Failed to fetch TikTok", 500);
+      return errorResponse("Failed to fetch TikTok", 500, origin);
     }
   }),
 });
@@ -332,22 +446,27 @@ http.route({
 http.route({
   path: "/api/pinterest",
   method: "GET",
-  handler: httpAction(async (_ctx, request) => {
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/pinterest", origin);
+      if (rateLimited) return rateLimited;
+
       const requestUrl = new URL(request.url);
       const urlParam = requestUrl.searchParams.get("url");
 
       if (!urlParam) {
-        return errorResponse("URL is required", 400);
+        return errorResponse("URL is required", 400, origin);
       }
 
       const validated = validateExternalUrl(urlParam);
       if (!validated.ok) {
-        return errorResponse(validated.error, 400);
+        return errorResponse(validated.error, 400, origin);
       }
 
       if (!isPinterestUrl(validated.url)) {
-        return errorResponse("Not a Pinterest URL", 400);
+        return errorResponse("Not a Pinterest URL", 400, origin);
       }
 
       const resolved = await resolvePinterestUrl(validated.url);
@@ -358,13 +477,13 @@ http.route({
             url: validated.url,
             id: fallbackId,
           },
-        });
+        }, 200, origin);
       }
 
-      return jsonResponse({ data: resolved });
+      return jsonResponse({ data: resolved }, 200, origin);
     } catch (error) {
       console.error("[Pinterest API] Error:", error);
-      return errorResponse("Failed to resolve Pinterest", 500);
+      return errorResponse("Failed to resolve Pinterest", 500, origin);
     }
   }),
 });
@@ -376,33 +495,359 @@ http.route({
 http.route({
   path: "/api/facebook",
   method: "GET",
-  handler: httpAction(async (_ctx, request) => {
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
     try {
+      // Rate limiting
+      const rateLimited = await checkRateLimit(ctx, request, "/api/facebook", origin);
+      if (rateLimited) return rateLimited;
+
       const requestUrl = new URL(request.url);
       const urlParam = requestUrl.searchParams.get("url");
 
       if (!urlParam) {
-        return errorResponse("URL is required", 400);
+        return errorResponse("URL is required", 400, origin);
       }
 
       const validated = validateExternalUrl(urlParam);
       if (!validated.ok) {
-        return errorResponse(validated.error, 400);
+        return errorResponse(validated.error, 400, origin);
       }
 
       if (!isFacebookUrl(validated.url)) {
-        return errorResponse("Not a Facebook URL", 400);
+        return errorResponse("Not a Facebook URL", 400, origin);
       }
 
       const resolved = await resolveFacebookUrl(validated.url);
       if (!resolved) {
-        return jsonResponse({ data: { url: validated.url } });
+        return jsonResponse({ data: { url: validated.url } }, 200, origin);
       }
 
-      return jsonResponse({ data: resolved });
+      return jsonResponse({ data: resolved }, 200, origin);
     } catch (error) {
       console.error("[Facebook API] Error:", error);
-      return errorResponse("Failed to resolve Facebook", 500);
+      return errorResponse("Failed to resolve Facebook", 500, origin);
+    }
+  }),
+});
+
+// =================================================================
+// BROWSER EXTENSION API ENDPOINTS
+// =================================================================
+
+// CORS for extension endpoints (allow extension origin)
+const EXTENSION_ALLOWED_ORIGINS = [
+  ...ALLOWED_ORIGINS,
+  // Chrome extensions use chrome-extension:// protocol
+  // Firefox extensions use moz-extension:// protocol
+];
+
+function getExtensionCorsHeaders(requestOrigin?: string | null) {
+  // Allow any chrome-extension:// or moz-extension:// origin
+  if (requestOrigin && (
+    requestOrigin.startsWith("chrome-extension://") ||
+    requestOrigin.startsWith("moz-extension://")
+  )) {
+    return {
+      "Access-Control-Allow-Origin": requestOrigin,
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+    };
+  }
+  // Fall back to regular CORS
+  return getCorsHeaders(requestOrigin);
+}
+
+function extensionJsonResponse(data: unknown, status = 200, requestOrigin?: string | null): Response {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...getExtensionCorsHeaders(requestOrigin),
+    },
+  });
+}
+
+function extensionErrorResponse(error: string, status = 400, requestOrigin?: string | null): Response {
+  return extensionJsonResponse({ error }, status, requestOrigin);
+}
+
+/**
+ * Extract Bearer token from Authorization header
+ */
+function extractBearerToken(request: Request): string | null {
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null;
+  }
+  return authHeader.substring(7);
+}
+
+/**
+ * Validate extension token and return user data
+ */
+async function validateExtensionAuth(
+  ctx: any,
+  request: Request
+): Promise<{ user: { id: string; email: string | null; serverSync: boolean } } | null> {
+  const token = extractBearerToken(request);
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const user = await ctx.runQuery(internal.users.validateExtensionToken, { token });
+    return user ? { user } : null;
+  } catch (error) {
+    console.error("[Extension Auth] Token validation error:", error);
+    return null;
+  }
+}
+
+// OPTIONS preflight for extension endpoints
+http.route({
+  path: "/api/auth/extension",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getExtensionCorsHeaders(origin) });
+  }),
+});
+
+http.route({
+  path: "/api/workspaces",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getExtensionCorsHeaders(origin) });
+  }),
+});
+
+http.route({
+  path: "/api/cards",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getExtensionCorsHeaders(origin) });
+  }),
+});
+
+http.route({
+  path: "/api/collections",
+  method: "OPTIONS",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    return new Response(null, { status: 204, headers: getExtensionCorsHeaders(origin) });
+  }),
+});
+
+/**
+ * POST /api/auth/extension
+ * Validate extension token and return user info.
+ *
+ * Request body: { token: string }
+ * Response: { authenticated: boolean, user?: { id, email } }
+ */
+http.route({
+  path: "/api/auth/extension",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    try {
+      const body = await request.json();
+      const { token } = body as { token?: string };
+
+      if (!token) {
+        return extensionErrorResponse("Token is required", 400, origin);
+      }
+
+      const user = await ctx.runQuery(internal.users.validateExtensionToken, { token });
+
+      if (!user) {
+        return extensionJsonResponse({ authenticated: false }, 200, origin);
+      }
+
+      return extensionJsonResponse({
+        authenticated: true,
+        user: {
+          id: user.id,
+          email: user.email,
+        },
+      }, 200, origin);
+    } catch (error) {
+      console.error("[Extension Auth] Error:", error);
+      return extensionErrorResponse("Authentication failed", 500, origin);
+    }
+  }),
+});
+
+/**
+ * GET /api/workspaces
+ * Get user's workspaces.
+ * Requires Bearer token authentication.
+ *
+ * Response: { workspaces: [{ id, name, isDefault }] }
+ */
+http.route({
+  path: "/api/workspaces",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    try {
+      const auth = await validateExtensionAuth(ctx, request);
+      if (!auth) {
+        return extensionErrorResponse("Unauthorized", 401, origin);
+      }
+
+      // Get user's workspaces
+      const workspaces = await ctx.runQuery(internal.workspaces.listByUserId, {
+        userId: auth.user.id,
+      });
+
+      return extensionJsonResponse({
+        workspaces: workspaces.map((w: any) => ({
+          id: w._id,
+          name: w.name,
+          isDefault: w.isDefault || false,
+        })),
+      }, 200, origin);
+    } catch (error) {
+      console.error("[Extension Workspaces] Error:", error);
+      return extensionErrorResponse("Failed to fetch workspaces", 500, origin);
+    }
+  }),
+});
+
+/**
+ * POST /api/cards
+ * Create a new card.
+ * Requires Bearer token authentication.
+ *
+ * Request body: { workspaceId, type, url, title, description, image, favicon, collectionId? }
+ * Response: { card: { id } }
+ */
+http.route({
+  path: "/api/cards",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    try {
+      const auth = await validateExtensionAuth(ctx, request);
+      if (!auth) {
+        return extensionErrorResponse("Unauthorized", 401, origin);
+      }
+
+      const body = await request.json();
+      const {
+        workspaceId,
+        type = "url",
+        url,
+        title,
+        description,
+        image,
+        favicon,
+        collectionId,
+      } = body as {
+        workspaceId: string;
+        type?: string;
+        url?: string;
+        title?: string;
+        description?: string;
+        image?: string;
+        favicon?: string;
+        collectionId?: string;
+      };
+
+      if (!workspaceId) {
+        return extensionErrorResponse("workspaceId is required", 400, origin);
+      }
+
+      // Verify user owns workspace
+      const workspace = await ctx.runQuery(internal.workspaces.getById, {
+        workspaceId,
+        userId: auth.user.id,
+      });
+
+      if (!workspace) {
+        return extensionErrorResponse("Workspace not found or access denied", 403, origin);
+      }
+
+      // Create the card
+      const cardId = await ctx.runMutation(internal.cards.createFromExtension, {
+        workspaceId,
+        type,
+        url,
+        title,
+        description,
+        image,
+        favicon,
+        collectionId,
+      });
+
+      return extensionJsonResponse({
+        card: { id: cardId },
+      }, 201, origin);
+    } catch (error) {
+      console.error("[Extension Cards] Error:", error);
+      const message = error instanceof Error ? error.message : "Failed to create card";
+      return extensionErrorResponse(message, 500, origin);
+    }
+  }),
+});
+
+/**
+ * GET /api/collections
+ * Get collections for a workspace.
+ * Requires Bearer token authentication.
+ *
+ * Query params: workspaceId
+ * Response: { collections: [{ id, name, icon, slug }] }
+ */
+http.route({
+  path: "/api/collections",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    const origin = request.headers.get("origin");
+    try {
+      const auth = await validateExtensionAuth(ctx, request);
+      if (!auth) {
+        return extensionErrorResponse("Unauthorized", 401, origin);
+      }
+
+      const requestUrl = new URL(request.url);
+      const workspaceId = requestUrl.searchParams.get("workspaceId");
+
+      if (!workspaceId) {
+        return extensionErrorResponse("workspaceId is required", 400, origin);
+      }
+
+      // Verify user owns workspace
+      const workspace = await ctx.runQuery(internal.workspaces.getById, {
+        workspaceId,
+        userId: auth.user.id,
+      });
+
+      if (!workspace) {
+        return extensionErrorResponse("Workspace not found or access denied", 403, origin);
+      }
+
+      // Get collections
+      const collections = await ctx.runQuery(internal.collections.listByWorkspace, {
+        workspaceId,
+      });
+
+      return extensionJsonResponse({
+        collections: collections.map((c: any) => ({
+          id: c._id,
+          name: c.name,
+          icon: c.icon || null,
+          slug: c.slug,
+        })),
+      }, 200, origin);
+    } catch (error) {
+      console.error("[Extension Collections] Error:", error);
+      return extensionErrorResponse("Failed to fetch collections", 500, origin);
     }
   }),
 });
@@ -568,9 +1013,29 @@ async function resolveFacebookUrl(url: string): Promise<{ url: string } | null> 
   };
 
   try {
-    const res = await fetch(url, { redirect: "follow", headers });
-    const resolvedUrl = res.url || url;
-    return { url: resolvedUrl };
+    // Use manual redirect to validate each redirect location for SSRF
+    const res = await fetch(url, { redirect: "manual", headers });
+
+    // Handle redirects manually with SSRF validation
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (location) {
+        const absoluteUrl = new URL(location, url).href;
+        // Validate redirect target for SSRF
+        const validated = validateExternalUrl(absoluteUrl);
+        if (!validated.ok) {
+          return { url }; // Return original URL if redirect target is invalid
+        }
+        // Only allow Facebook domains
+        const redirectHost = new URL(validated.url).hostname.toLowerCase();
+        if (!redirectHost.includes("facebook.com") && redirectHost !== "fb.watch" && redirectHost !== "fb.com") {
+          return { url }; // Return original URL if redirected outside Facebook
+        }
+        return { url: validated.url };
+      }
+    }
+
+    return { url };
   } catch {
     return null;
   }
@@ -583,8 +1048,28 @@ async function resolvePinterestUrl(url: string): Promise<{ url: string; id?: str
   };
 
   try {
-    const res = await fetch(url, { redirect: "follow", headers });
-    const resolvedUrl = res.url || url;
+    // Use manual redirect to validate each redirect location for SSRF
+    const res = await fetch(url, { redirect: "manual", headers });
+
+    let resolvedUrl = url;
+
+    // Handle redirects manually with SSRF validation
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get("location");
+      if (location) {
+        const absoluteUrl = new URL(location, url).href;
+        // Validate redirect target for SSRF
+        const validated = validateExternalUrl(absoluteUrl);
+        if (validated.ok) {
+          // Only allow Pinterest domains
+          const redirectHost = new URL(validated.url).hostname.toLowerCase();
+          if (redirectHost.includes("pinterest.") || redirectHost === "pin.it") {
+            resolvedUrl = validated.url;
+          }
+        }
+      }
+    }
+
     const id = extractPinterestPinId(resolvedUrl) || extractPinterestPinId(url);
 
     if (id || resolvedUrl) {
@@ -856,7 +1341,13 @@ async function scrapeImdb(url: string): Promise<ScrapedMetadata> {
 }
 
 async function scrapeDigg(url: string): Promise<ScrapedMetadata> {
-  const response = await fetch(url, {
+  // SSRF validation
+  const validated = validateExternalUrl(url);
+  if (!validated.ok) {
+    throw new Error(validated.error);
+  }
+
+  const response = await fetch(validated.url, {
     headers: {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -1024,8 +1515,14 @@ function extractDiggExternalUrl(html: string): string | null {
  * Fetch og:image from an external URL.
  */
 async function fetchExternalOgImage(url: string): Promise<string | null> {
+  // SSRF validation
+  const validated = validateExternalUrl(url);
+  if (!validated.ok) {
+    return null;
+  }
+
   try {
-    const response = await fetch(url, {
+    const response = await fetch(validated.url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)",
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -1584,25 +2081,26 @@ async function fetchRedditPreviewFromHtml(id: string, rawUrl: string): Promise<R
   const urlsToTry = [oldRedditUrl, normalizedUrl];
 
   for (const urlToFetch of urlsToTry) {
+    // SSRF validation for each URL
+    const validated = validateExternalUrl(urlToFetch);
+    if (!validated.ok) {
+      continue;
+    }
+
     try {
-      console.log("[fetchRedditPreviewFromHtml] Fetching:", urlToFetch);
-      const response = await fetch(urlToFetch, {
+      const response = await fetch(validated.url, {
         headers,
         redirect: "follow",
       });
-      console.log("[fetchRedditPreviewFromHtml] Response status:", response.status);
       if (!response.ok) continue;
 
       const html = await response.text();
-      console.log("[fetchRedditPreviewFromHtml] HTML length:", html.length);
       const previewMatches = html.match(/https:\/\/preview\.redd\.it\/[^"'\s<>]+/g) || [];
-      console.log("[fetchRedditPreviewFromHtml] Preview matches:", previewMatches.length, previewMatches.slice(0, 2));
       const previewUrls = Array.from(
         new Set(previewMatches.map((value) => decodeHtmlEntities(value)))
       ).slice(0, 8);
 
       if (previewUrls.length === 0) {
-        console.log("[fetchRedditPreviewFromHtml] No preview URLs found, trying next URL");
         continue;
       }
 
@@ -1624,7 +2122,6 @@ async function fetchRedditPreviewFromHtml(id: string, rawUrl: string): Promise<R
         url,
       }));
 
-      console.log("[fetchRedditPreviewFromHtml] Success! Found", media.length, "images");
       return {
         id,
         subreddit,
@@ -1634,13 +2131,11 @@ async function fetchRedditPreviewFromHtml(id: string, rawUrl: string): Promise<R
         domain: "reddit.com",
         media,
       };
-    } catch (e) {
-      console.log("[fetchRedditPreviewFromHtml] Error fetching:", e);
+    } catch {
       continue;
     }
   }
 
-  console.log("[fetchRedditPreviewFromHtml] All URLs failed");
   return null;
 }
 

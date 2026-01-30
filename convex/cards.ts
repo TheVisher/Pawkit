@@ -9,6 +9,7 @@ import { v } from "convex/values";
 import { requireWorkspaceAccess } from "./users";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { validateExternalUrl } from "./urlValidation";
 
 // =================================================================
 // CONTENT HELPERS
@@ -400,6 +401,14 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     await requireWorkspaceAccess(ctx, args.workspaceId);
+
+    // SSRF protection: Validate URL before creating card
+    if (args.url && args.type === "url") {
+      const validated = validateExternalUrl(args.url);
+      if (!validated.ok) {
+        throw new Error(validated.error);
+      }
+    }
 
     const now = Date.now();
     const contentText =
@@ -808,5 +817,98 @@ export const updateLinkStatus = internalMutation({
       redirectUrl,
       updatedAt: Date.now(),
     });
+  },
+});
+
+/**
+ * Internal mutation to create a card from the browser extension.
+ * Skips workspace access check since it's done in the HTTP handler.
+ */
+export const createFromExtension = internalMutation({
+  args: {
+    workspaceId: v.string(),
+    type: v.string(),
+    url: v.optional(v.string()),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    image: v.optional(v.string()),
+    favicon: v.optional(v.string()),
+    collectionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const workspaceId = args.workspaceId as Id<"workspaces">;
+
+    // SSRF protection: Validate URL before creating card
+    if (args.url && args.type === "url") {
+      const validated = validateExternalUrl(args.url);
+      if (!validated.ok) {
+        throw new Error(validated.error);
+      }
+    }
+
+    // Extract domain from URL
+    let domain: string | undefined;
+    if (args.url) {
+      try {
+        domain = new URL(args.url).hostname;
+      } catch {
+        // Ignore URL parsing errors
+      }
+    }
+
+    // Create the card
+    const cardId = await ctx.db.insert("cards", {
+      workspaceId,
+      type: args.type,
+      url: args.url,
+      title: args.title || args.url || "Untitled",
+      description: args.description,
+      image: args.image,
+      favicon: args.favicon,
+      domain,
+      status: args.image ? "READY" : "PENDING",
+      deleted: false,
+      pinned: false,
+      tags: [],
+      scheduledDates: [],
+      isFileCard: false,
+      source: { type: "webext" },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Add to collection if specified
+    if (args.collectionId) {
+      const collectionId = args.collectionId as Id<"collections">;
+      const collection = await ctx.db.get(collectionId);
+
+      if (collection && collection.workspaceId === workspaceId && !collection.deleted) {
+        // Get max position
+        const notes = await ctx.db
+          .query("collectionNotes")
+          .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
+          .collect();
+        const maxPos = notes.length > 0 ? Math.max(...notes.map((n) => n.position)) + 1 : 0;
+
+        await ctx.db.insert("collectionNotes", {
+          collectionId,
+          cardId,
+          position: maxPos,
+          createdAt: now,
+        });
+      }
+    }
+
+    // Schedule metadata scraping if needed
+    if (args.url && !args.image) {
+      try {
+        await ctx.scheduler.runAfter(0, internal.metadata.scrape, { cardId });
+      } catch {
+        // Ignore scheduling errors
+      }
+    }
+
+    return cardId;
   },
 });

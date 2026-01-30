@@ -165,7 +165,8 @@ export function FacebookContent({ card, className }: FacebookContentProps) {
             <iframe
               src={embedUrl}
               title="Facebook post"
-              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              sandbox="allow-scripts allow-same-origin allow-popups"
+              allow="autoplay; encrypted-media"
               loading="lazy"
               onLoad={() => setStatus('loading')}
               onError={() => setStatus('error')}

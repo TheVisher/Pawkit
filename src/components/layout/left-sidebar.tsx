@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
 import { usePathname, useRouter } from "@/lib/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -99,11 +100,11 @@ export function LeftSidebar() {
     e.stopPropagation();
     const ws = workspaces.find((w) => w._id === id);
     if (ws?.isDefault) {
-      alert("Cannot delete default workspace. Set another workspace as default first.");
+      toast.error("Cannot delete default workspace. Set another workspace as default first.");
       return;
     }
     if (workspaces.length <= 1) {
-      alert("Cannot delete your only workspace");
+      toast.error("Cannot delete your only workspace");
       return;
     }
     const confirmed = confirm(`Delete "${ws?.name}"?\n\nThis will permanently delete this workspace and all its contents.`);

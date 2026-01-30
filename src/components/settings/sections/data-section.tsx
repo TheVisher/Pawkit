@@ -2,6 +2,7 @@
 
 import { Cloud, Download, HardDrive, Plus, Trash2, AlertTriangle, Database, Server } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -90,7 +91,7 @@ export function DataSection() {
       window.location.reload();
     } catch (error) {
       console.error('Delete failed:', error);
-      alert(`Failed to delete data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to delete data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsDeleting(false);
     }

@@ -13,6 +13,42 @@ interface PinterestContentProps {
   className?: string;
 }
 
+/**
+ * Validate that a URL is a valid Pinterest embed URL.
+ * Only allows https://assets.pinterest.com/ext/embed.html?id={pinId}
+ */
+function isValidPinterestEmbedUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Only allow HTTPS
+    if (parsed.protocol !== 'https:') return false;
+    // Only allow assets.pinterest.com
+    if (parsed.hostname !== 'assets.pinterest.com') return false;
+    // Only allow /ext/embed.html path
+    if (parsed.pathname !== '/ext/embed.html') return false;
+    // Must have id parameter
+    const id = parsed.searchParams.get('id');
+    if (!id || !/^[a-zA-Z0-9]+$/.test(id)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate that a permalink URL is a valid Pinterest URL.
+ */
+function isValidPinterestPermalink(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname.includes('pinterest.') || hostname === 'pin.it';
+  } catch {
+    return false;
+  }
+}
+
 export function PinterestContent({ card, className }: PinterestContentProps) {
   const embedRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
@@ -87,8 +123,9 @@ export function PinterestContent({ card, className }: PinterestContentProps) {
     const load = async () => {
       const persistedId = persistedPinterest?.id;
       if (persistedId) {
-        if (active) {
-          setIframeUrl(`https://assets.pinterest.com/ext/embed.html?id=${persistedId}`);
+        const embedUrl = `https://assets.pinterest.com/ext/embed.html?id=${persistedId}`;
+        if (active && isValidPinterestEmbedUrl(embedUrl)) {
+          setIframeUrl(embedUrl);
         }
         return;
       }
@@ -96,7 +133,10 @@ export function PinterestContent({ card, className }: PinterestContentProps) {
       let resolvedUrl = persistedPinterest?.url || card.url!;
       const directId = extractPinterestPinId(card.url!);
       if (directId) {
-        if (active) setIframeUrl(`https://assets.pinterest.com/ext/embed.html?id=${directId}`);
+        const embedUrl = `https://assets.pinterest.com/ext/embed.html?id=${directId}`;
+        if (active && isValidPinterestEmbedUrl(embedUrl)) {
+          setIframeUrl(embedUrl);
+        }
         void persistPinterest({ id: directId, url: resolvedUrl });
         return;
       }
@@ -111,7 +151,10 @@ export function PinterestContent({ card, className }: PinterestContentProps) {
             resolvedUrl = nextUrl;
           }
           if (resolvedId) {
-            if (active) setIframeUrl(`https://assets.pinterest.com/ext/embed.html?id=${resolvedId}`);
+            const embedUrl = `https://assets.pinterest.com/ext/embed.html?id=${resolvedId}`;
+            if (active && isValidPinterestEmbedUrl(embedUrl)) {
+              setIframeUrl(embedUrl);
+            }
             void persistPinterest({ id: resolvedId, url: resolvedUrl });
             return;
           }
@@ -123,7 +166,8 @@ export function PinterestContent({ card, className }: PinterestContentProps) {
       if (!active) return;
       setIframeUrl(null);
       const permalink = getPinterestEmbedUrl(resolvedUrl);
-      if (!permalink) {
+      // Validate permalink URL before using
+      if (!permalink || !isValidPinterestPermalink(permalink)) {
         setStatus('error');
         return;
       }
@@ -238,7 +282,8 @@ export function PinterestContent({ card, className }: PinterestContentProps) {
             <iframe
               src={iframeUrl}
               title="Pinterest pin"
-              allow="clipboard-write; fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-popups"
+              allow="fullscreen"
               loading="lazy"
               style={iframeHeight ? { height: `${iframeHeight}px` } : undefined}
               onLoad={() => setStatus('loading')}

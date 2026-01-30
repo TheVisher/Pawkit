@@ -7,6 +7,8 @@ import { ThemeProvider } from '../components/providers/theme-provider'
 import { DebugProvider } from '../components/debug'
 import { AppShell } from '../components/layout/app-shell'
 import { AppDndProvider } from '../lib/contexts/dnd-context'
+import { ErrorBoundary } from '../components/error-boundary'
+import { Toaster } from 'sonner'
 
 import appCss from '../styles.css?url'
 
@@ -46,20 +48,30 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <ConvexClientProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <DebugProvider>
-              <AppDndProvider>
-                <AppShell>{children}</AppShell>
-              </AppDndProvider>
-              <TanStackDevtools
-                config={{
-                  position: 'bottom-right',
-                }}
-                plugins={[
-                  {
-                    name: 'Tanstack Router',
-                    render: <TanStackRouterDevtoolsPanel />,
-                  },
-                ]}
-              />
+              <ErrorBoundary>
+                <AppDndProvider>
+                  <AppShell>{children}</AppShell>
+                </AppDndProvider>
+                <Toaster
+                  position="bottom-right"
+                  toastOptions={{
+                    className: 'bg-zinc-900 border-zinc-800 text-zinc-100',
+                  }}
+                />
+              </ErrorBoundary>
+              {import.meta.env.DEV && (
+                <TanStackDevtools
+                  config={{
+                    position: 'bottom-right',
+                  }}
+                  plugins={[
+                    {
+                      name: 'Tanstack Router',
+                      render: <TanStackRouterDevtoolsPanel />,
+                    },
+                  ]}
+                />
+              )}
             </DebugProvider>
           </ThemeProvider>
         </ConvexClientProvider>

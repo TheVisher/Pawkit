@@ -1,11 +1,14 @@
 'use client';
 
-import { User, Mail, Shield, AlertTriangle, Trash2, UserX } from 'lucide-react';
+import { User, Mail, Shield, AlertTriangle, Trash2, UserX, Key, Copy, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import {
   Dialog,
   DialogContent,
@@ -24,16 +27,47 @@ export function AccountSection() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [extensionToken, setExtensionToken] = useState<string | null>(null);
+  const [isGeneratingToken, setIsGeneratingToken] = useState(false);
+
+  const generateExtensionToken = useMutation(api.users.generateExtensionToken);
 
   const handleDeleteAccount = async () => {
     if (confirmText !== 'DELETE') return;
 
-    alert('Account deletion is not available yet.');
+    toast.info('Account deletion is not available yet.');
   };
 
   const closeDialog = () => {
     setShowDeleteDialog(false);
     setConfirmText('');
+  };
+
+  const handleGenerateToken = async () => {
+    setIsGeneratingToken(true);
+    try {
+      const result = await generateExtensionToken();
+      if (result?.token) {
+        setExtensionToken(result.token);
+        toast.success('Extension token generated');
+      } else {
+        toast.error('Failed to generate extension token');
+      }
+    } catch (error) {
+      toast.error(`Failed to generate token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGeneratingToken(false);
+    }
+  };
+
+  const handleCopyToken = async () => {
+    if (!extensionToken) return;
+    try {
+      await navigator.clipboard.writeText(extensionToken);
+      toast.success('Token copied to clipboard');
+    } catch (error) {
+      toast.error(`Failed to copy token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (
@@ -111,6 +145,70 @@ export function AccountSection() {
               </Badge>
             </Button>
           </div>
+        </div>
+      </div>
+
+      {/* Extension Token */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-medium text-text-primary">Extension Token</h3>
+          <p className="text-xs text-text-muted mt-0.5">
+            Connect the Pawkit browser extension
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-bg-surface-1 border border-border-subtle">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-bg-surface-2">
+              <Key className="h-5 w-5 text-text-muted" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-text-primary">
+                Generate Extension Token
+              </h4>
+              <p className="text-xs text-text-muted mt-0.5">
+                Generate a token and paste it into the extension popup to connect.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateToken}
+              disabled={isGeneratingToken}
+              className="gap-1.5"
+            >
+              {extensionToken ? <RefreshCw className="h-3.5 w-3.5" /> : <Key className="h-3.5 w-3.5" />}
+              {extensionToken ? 'Regenerate' : 'Generate'}
+            </Button>
+          </div>
+
+          {extensionToken ? (
+            <div className="mt-4 space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={extensionToken}
+                  readOnly
+                  className="font-mono text-xs"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyToken}
+                  className="gap-1.5"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy
+                </Button>
+              </div>
+              <p className="text-xs text-text-muted">
+                This token is shown only once. Generating a new token will invalidate the previous one.
+              </p>
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-text-muted">
+              Your token will appear here once generated. Keep it somewhere safe.
+            </p>
+          )}
         </div>
       </div>
 

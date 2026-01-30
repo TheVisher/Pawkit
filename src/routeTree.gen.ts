@@ -21,6 +21,7 @@ import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PawkitsIndexRouteImport } from './routes/pawkits/index'
 import { Route as PawkitsSlugRouteImport } from './routes/pawkits/$slug'
+import { Route as ExtensionConnectRouteImport } from './routes/extension/connect'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
@@ -89,6 +90,11 @@ const PawkitsSlugRoute = PawkitsSlugRouteImport.update({
   path: '/pawkits/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExtensionConnectRoute = ExtensionConnectRouteImport.update({
+  id: '/extension/connect',
+  path: '/extension/connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
   path: '/demo/start/server-funcs',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/tags': typeof TagsRoute
   '/trash': typeof TrashRoute
+  '/extension/connect': typeof ExtensionConnectRoute
   '/pawkits/$slug': typeof PawkitsSlugRoute
   '/pawkits/': typeof PawkitsIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/tags': typeof TagsRoute
   '/trash': typeof TrashRoute
+  '/extension/connect': typeof ExtensionConnectRoute
   '/pawkits/$slug': typeof PawkitsSlugRoute
   '/pawkits': typeof PawkitsIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/tags': typeof TagsRoute
   '/trash': typeof TrashRoute
+  '/extension/connect': typeof ExtensionConnectRoute
   '/pawkits/$slug': typeof PawkitsSlugRoute
   '/pawkits/': typeof PawkitsIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/tags'
     | '/trash'
+    | '/extension/connect'
     | '/pawkits/$slug'
     | '/pawkits/'
     | '/demo/api/names'
@@ -223,6 +233,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/tags'
     | '/trash'
+    | '/extension/connect'
     | '/pawkits/$slug'
     | '/pawkits'
     | '/demo/api/names'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/tags'
     | '/trash'
+    | '/extension/connect'
     | '/pawkits/$slug'
     | '/pawkits/'
     | '/demo/api/names'
@@ -266,6 +278,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   TagsRoute: typeof TagsRoute
   TrashRoute: typeof TrashRoute
+  ExtensionConnectRoute: typeof ExtensionConnectRoute
   PawkitsSlugRoute: typeof PawkitsSlugRoute
   PawkitsIndexRoute: typeof PawkitsIndexRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PawkitsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/extension/connect': {
+      id: '/extension/connect'
+      path: '/extension/connect'
+      fullPath: '/extension/connect'
+      preLoaderRoute: typeof ExtensionConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
       path: '/demo/start/server-funcs'
@@ -426,6 +446,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   TagsRoute: TagsRoute,
   TrashRoute: TrashRoute,
+  ExtensionConnectRoute: ExtensionConnectRoute,
   PawkitsSlugRoute: PawkitsSlugRoute,
   PawkitsIndexRoute: PawkitsIndexRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,

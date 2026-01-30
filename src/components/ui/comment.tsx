@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { toast } from 'sonner';
 
 import type { CreatePlateEditorOptions } from 'platejs/react';
 
@@ -311,7 +312,7 @@ function CommentMoreDropdown(props: {
 
   const onDeleteComment = React.useCallback(() => {
     if (!comment.id)
-      return alert('You are operating too quickly, please try again later.');
+      return toast.error('You are operating too quickly, please try again later.');
 
     // Find and update the discussion
     const updatedDiscussions = editor
@@ -346,7 +347,7 @@ function CommentMoreDropdown(props: {
     selectedEditCommentRef.current = true;
 
     if (!comment.id)
-      return alert('You are operating too quickly, please try again later.');
+      return toast.error('You are operating too quickly, please try again later.');
 
     setEditingId(comment.id);
   }, [comment.id, setEditingId]);

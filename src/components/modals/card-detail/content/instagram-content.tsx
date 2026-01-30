@@ -10,6 +10,20 @@ interface InstagramContentProps {
   className?: string;
 }
 
+/**
+ * Validate that a permalink URL is a valid Instagram URL.
+ */
+function isValidInstagramPermalink(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname.toLowerCase();
+    return hostname === 'www.instagram.com' || hostname === 'instagram.com';
+  } catch {
+    return false;
+  }
+}
+
 export function InstagramContent({ card, className }: InstagramContentProps) {
   const embedRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<'loading' | 'error'>('loading');
@@ -19,7 +33,8 @@ export function InstagramContent({ card, className }: InstagramContentProps) {
     let active = true;
     setStatus('loading');
     const permalink = getInstagramEmbedUrl(card.url);
-    if (!permalink) {
+    // Validate permalink URL before using
+    if (!permalink || !isValidInstagramPermalink(permalink)) {
       if (active) setStatus('error');
       return;
     }

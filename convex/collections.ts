@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { requireWorkspaceAccess } from "./users";
 import { Id } from "./_generated/dataModel";
@@ -575,5 +575,25 @@ export const reorder = mutation({
         updatedAt: Date.now(),
       });
     }
+  },
+});
+
+// =================================================================
+// INTERNAL QUERIES (for HTTP endpoints)
+// =================================================================
+
+/**
+ * List collections by workspace ID.
+ * Internal query - only callable from HTTP actions.
+ */
+export const listByWorkspace = internalQuery({
+  args: { workspaceId: v.string() },
+  handler: async (ctx, { workspaceId }) => {
+    return await ctx.db
+      .query("collections")
+      .withIndex("by_workspace_deleted", (q) =>
+        q.eq("workspaceId", workspaceId as Id<"workspaces">).eq("deleted", false)
+      )
+      .collect();
   },
 });

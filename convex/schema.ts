@@ -429,4 +429,16 @@ export default defineSchema({
   })
     .index("by_note", ["noteId"])
     .index("by_source", ["sourceType", "sourceId"]),
+
+  // =============================================
+  // RATE LIMITS (IP-based rate limiting for public APIs)
+  // =============================================
+  rateLimits: defineTable({
+    key: v.string(), // Format: "ip:endpoint" e.g. "192.168.1.1:/api/metadata"
+    count: v.number(), // Number of requests in current window
+    windowStart: v.number(), // Start of current window (timestamp)
+    expiresAt: v.number(), // When this record can be cleaned up
+  })
+    .index("by_key", ["key"])
+    .index("by_expires", ["expiresAt"]),
 });

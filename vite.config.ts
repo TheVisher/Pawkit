@@ -17,7 +17,28 @@ const config = defineConfig({
   },
   plugins: [
     devtools(),
-    nitro(),
+    nitro({
+      routeRules: {
+        '/**': {
+          headers: {
+            'X-Frame-Options': 'SAMEORIGIN',
+            'X-Content-Type-Options': 'nosniff',
+            'Referrer-Policy': 'strict-origin-when-cross-origin',
+            'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+            'Content-Security-Policy': [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' platform.twitter.com www.instagram.com www.tiktok.com assets.pinterest.com",
+              "frame-src 'self' www.tiktok.com www.instagram.com assets.pinterest.com www.facebook.com platform.twitter.com",
+              "style-src 'self' 'unsafe-inline' fonts.googleapis.com",
+              "font-src 'self' fonts.gstatic.com",
+              "img-src 'self' data: blob: https:",
+              "connect-src 'self' *.convex.cloud *.tiktok.com wss://*.convex.cloud",
+              "frame-ancestors 'self'",
+            ].join('; '),
+          },
+        },
+      },
+    }),
     // this is the plugin that enables path aliases
     viteTsConfigPaths({
       projects: ['./tsconfig.json'],

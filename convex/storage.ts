@@ -241,6 +241,13 @@ export const updateCardWithStoredImage = internalMutation({
 });
 
 function isPrivateHost(host: string): boolean {
+  // Check for localhost and loopback
+  if (host === "localhost") return true;
+  if (host === "::1") return true;
+
+  // Check for .local domains
+  if (host.endsWith(".local")) return true;
+
   // IPv4 checks
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
     const parts = host.split(".").map((p) => Number(p));
@@ -254,7 +261,7 @@ function isPrivateHost(host: string): boolean {
     if (a === 192 && b === 168) return true;
   }
 
-  // IPv6 unique-local, link-local
+  // IPv6 unique-local (fc00::/7), link-local (fe80::/10)
   if (host.startsWith("fc") || host.startsWith("fd")) return true;
   if (host.startsWith("fe80")) return true;
 

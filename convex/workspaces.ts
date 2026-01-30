@@ -1,6 +1,7 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { requireUser } from "./users";
+import { Id } from "./_generated/dataModel";
 
 // =================================================================
 // WORKSPACE QUERIES
@@ -390,5 +391,47 @@ export const addRecentTag = mutation({
     });
 
     return await ctx.db.get(id);
+  },
+});
+
+// =================================================================
+// INTERNAL QUERIES (for HTTP endpoints)
+// =================================================================
+
+/**
+ * List workspaces by user ID.
+ * Internal query - only callable from HTTP actions.
+ */
+export const listByUserId = internalQuery({
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
+    return await ctx.db
+      .query("workspaces")
+      .withIndex("by_user", (q) => q.eq("userId", userId as Id<"users">))
+      .collect();
+  },
+});
+
+/**
+ * Get workspace by ID and verify user ownership.
+ * Internal query - only callable from HTTP actions.
+ */
+export const getById = internalQuery({
+  args: {
+    workspaceId: v.string(),
+    userId: v.string(),
+  },
+  handler: async (ctx, { workspaceId, userId }) => {
+    const workspace = await ctx.db.get(workspaceId as Id<"workspaces">);
+    if (!workspace) {
+      return null;
+    }
+
+    // Verify user owns this workspace
+    if (workspace.userId !== userId) {
+      return null;
+    }
+
+    return workspace;
   },
 });

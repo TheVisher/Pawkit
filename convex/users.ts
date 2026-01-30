@@ -1,4 +1,4 @@
-import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
+import { query, mutation, QueryCtx, MutationCtx, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUserId, getAuthSessionId } from "@convex-dev/auth/server";
@@ -213,8 +213,10 @@ export const generateExtensionToken = mutation({
  * Validate extension token for API access.
  * Lookup by prefix, then compare hash securely.
  * Returns user if valid, null if invalid.
+ *
+ * Internal query - only callable from HTTP actions.
  */
-export const validateExtensionToken = query({
+export const validateExtensionToken = internalQuery({
   args: { token: v.string() },
   handler: async (ctx, { token }) => {
     // Validate token format
