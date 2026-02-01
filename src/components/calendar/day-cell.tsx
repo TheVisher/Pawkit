@@ -54,6 +54,7 @@ export const DayCell = forwardRef<HTMLDivElement, DayCellProps>(function DayCell
   ref
 ) {
   const dayNumber = format(date, "d");
+  const dayName = format(date, "EEE"); // Mon, Tue, Wed, etc.
   const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = items.length - MAX_VISIBLE_ITEMS;
 
@@ -71,24 +72,27 @@ export const DayCell = forwardRef<HTMLDivElement, DayCellProps>(function DayCell
       )}
       {...rest}
     >
-      {/* Day number */}
+      {/* Day header - shows day name on mobile (since no weekday header row) */}
       <div className="flex items-center justify-between mb-2">
-        <span
-          className={cn(
-            "inline-flex items-center justify-center w-7 h-7 text-xs font-medium rounded-md transition-all border border-transparent",
-            // Selected (User Clicked)
-            isSelected &&
-              !isToday &&
-              "bg-white/10 border-brand text-text-primary",
-            // Today (Current Date)
-            isToday && "bg-brand/10 text-brand border-brand/20",
-            // Selected AND Today (Focus Ring) - REMOVED to match subtle look request
-            // isSelected && isToday && 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-bg-surface-1',
-            // Normal
-          )}
-        >
-          {dayNumber}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {/* Day name - only on mobile where weekday headers are hidden */}
+          <span className="md:hidden text-xs font-medium text-text-muted">
+            {dayName}
+          </span>
+          <span
+            className={cn(
+              "inline-flex items-center justify-center w-7 h-7 text-xs font-medium rounded-md transition-all border border-transparent",
+              // Selected (User Clicked)
+              isSelected &&
+                !isToday &&
+                "bg-white/10 border-brand text-text-primary",
+              // Today (Current Date)
+              isToday && "bg-brand/10 text-brand border-brand/20",
+            )}
+          >
+            {dayNumber}
+          </span>
+        </div>
         {dailyNoteId && (
           <Tooltip>
             <TooltipTrigger asChild>

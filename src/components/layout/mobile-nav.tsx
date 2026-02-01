@@ -1,28 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Link } from '@tanstack/react-router';
-import { usePathname } from '@/lib/navigation';
-import { Home, Library, Calendar, Menu } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { MobileSidebar } from './mobile-sidebar';
-
-interface MobileNavProps {
-  className?: string;
-}
-
-const navItems = [
-  { href: '/home', label: 'Home', icon: Home },
-  { href: '/library', label: 'Library', icon: Library },
-  { href: '/calendar', label: 'Calendar', icon: Calendar },
-];
 
 // Edge swipe detection constants
 const EDGE_THRESHOLD = 30; // pixels from left edge to trigger
 const SWIPE_THRESHOLD = 50; // minimum swipe distance to open
 
-export function MobileNav({ className }: MobileNavProps) {
-  const pathname = usePathname();
+/**
+ * MobileNav - Invisible gesture handler for mobile navigation
+ *
+ * Detects left-edge swipe gestures to open the sidebar.
+ * No visible UI - users navigate via swipe or omnibar.
+ */
+export function MobileNav() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Touch tracking refs
@@ -81,46 +72,6 @@ export function MobileNav({ className }: MobileNavProps) {
     };
   }, [isSidebarOpen]);
 
-  return (
-    <>
-      <nav
-        className={cn(
-          'min-h-[4rem] bg-bg-surface-1 border-t border-border-subtle',
-          'flex items-center justify-around px-2',
-          'safe-area-pb',
-          className
-        )}
-      >
-        {/* Menu button to open sidebar */}
-        <button
-          onClick={() => setIsSidebarOpen(true)}
-          className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[64px] text-text-muted active:text-text-secondary"
-        >
-          <Menu className="h-5 w-5" />
-          <span className="text-xs font-medium">Menu</span>
-        </button>
-
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                'flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[64px]',
-                isActive
-                  ? 'text-[var(--color-accent)]'
-                  : 'text-text-muted active:text-text-secondary'
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="text-xs font-medium">{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
-
-      <MobileSidebar open={isSidebarOpen} onOpenChange={setIsSidebarOpen} />
-    </>
-  );
+  // No visible UI - just the sidebar that opens on swipe
+  return <MobileSidebar open={isSidebarOpen} onOpenChange={setIsSidebarOpen} />;
 }

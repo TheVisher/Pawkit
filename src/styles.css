@@ -838,6 +838,20 @@ html.visual-style-high-contrast.light .border-border-subtle\/50 {
     animation: card-enter 300ms ease-out forwards;
 }
 
+/* Horizontal bounce animation for swipe hint */
+@keyframes bounce-x {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(6px);
+    }
+}
+
+.animate-bounce-x {
+    animation: bounce-x 1s ease-in-out infinite;
+}
+
 /* ==========================================================================
    NOTE CARD PREVIEW STYLES
    Styles for rendering markdown/HTML content in card previews

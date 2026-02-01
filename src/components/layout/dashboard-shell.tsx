@@ -11,6 +11,7 @@ import { useActiveToast } from '@/lib/stores/toast-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
+import { SwipeHint } from '@/components/layout/swipe-hint';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
@@ -324,8 +325,11 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
       <ConvexDataProvider>
         <TagColorsProvider>
           <div className="h-screen w-screen bg-bg-base text-text-primary">
-          {/* Mobile bottom nav - only shows < 768px */}
-          <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
+          {/* Mobile swipe gesture handler - invisible, only handles left-edge swipe to open sidebar */}
+          <div className="md:hidden">
+            <MobileNav />
+            <SwipeHint />
+          </div>
 
           {/* Main layout with padding to show purple gradient background */}
           <div
@@ -337,8 +341,8 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
               paddingLeft: isDesktop ? (isFullScreen ? 0 : 16) : 0,
               paddingRight: isDesktop ? (isFullScreen ? 0 : 16) : 0,
               paddingBottom: isDesktop
-                ? (isFullScreen ? 'var(--mobile-nav-height)' : 'calc(16px + var(--mobile-nav-height))')
-                : 'var(--mobile-nav-height)',
+                ? (isFullScreen ? 0 : 16)
+                : 0,
               transition: 'padding 300ms ease-out, background-color 300ms ease-out',
               backgroundColor: 'var(--bg-gradient-base)',
               backgroundImage: 'var(--bg-gradient-image)',
@@ -446,19 +450,25 @@ function AuthenticatedDashboardShell({ children }: DashboardShellProps) {
                 </div>
               </div>
               {/* Content - starts at top, scrolls under the omnibar */}
-              <ErrorBoundary>
-                {children}
-              </ErrorBoundary>
-              
-              {/* Mobile Omnibar - Sticky at bottom on mobile, above MobileNav */}
-              <div className="md:hidden sticky bottom-4 z-50 flex justify-center px-4 pointer-events-none">
-                <div className="relative pointer-events-auto w-full max-w-[400px]">
-                  <Omnibar isCompact={isScrolled && !activeToast} />
-                  <ToastStack isCompact={isScrolled && !activeToast} />
-                </div>
+              {/* Add bottom padding on mobile for fixed omnibar (80px = omnibar height + safe area) */}
+              {/* h-full is critical - calendar and other pages rely on height inheritance */}
+              <div className="h-full pb-20 md:pb-0">
+                <ErrorBoundary>
+                  {children}
+                </ErrorBoundary>
               </div>
             </div>
           </main>
+
+          {/* MOBILE OMNIBAR - Fixed at bottom, always visible on mobile */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pb-safe">
+            <div className="flex justify-center pointer-events-none mb-2">
+              <div className="relative pointer-events-auto w-full max-w-[400px]">
+                <Omnibar isCompact={isScrolled && !activeToast} />
+                <ToastStack isCompact={isScrolled && !activeToast} />
+              </div>
+            </div>
+          </div>
 
           {/* RIGHT SIDEBAR - Fixed position, slides in/out, width varies with expansion mode */}
           {/* z-index bumps to 60 when card modal is open so sidebar stays above backdrop */}

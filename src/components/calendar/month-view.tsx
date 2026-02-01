@@ -154,8 +154,8 @@ export function MonthView() {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Weekday headers */}
-      <div className="grid grid-cols-7 mb-2">
+      {/* Weekday headers - hidden on mobile since 2-col layout doesn't map to weekdays */}
+      <div className="hidden md:grid grid-cols-7 mb-2">
         {WEEKDAYS.map((day) => (
           <div
             key={day}
@@ -166,8 +166,11 @@ export function MonthView() {
         ))}
       </div>
 
-      {/* Calendar grid - cards float with spacing, no background */}
-      <div className="grid grid-cols-7 auto-rows-fr gap-2" style={{ height: 'calc(100% - 2.5rem)' }}>
+      {/* Calendar grid - 2 columns on mobile (scrollable), 7 columns on desktop */}
+      <div
+        className="grid grid-cols-2 md:grid-cols-7 auto-rows-fr gap-2 overflow-auto md:overflow-visible"
+        style={{ height: 'calc(100% - 2.5rem)' }}
+      >
         {calendarDays.map((date) => {
           const dateKey = format(date, 'yyyy-MM-dd');
           const dayItems = itemsByDate.get(dateKey) || [];
