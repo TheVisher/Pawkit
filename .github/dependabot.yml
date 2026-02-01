@@ -1,0 +1,55 @@
+# Dependabot configuration for Pawkit
+# This file ONLY affects this repository - other repos are not impacted.
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  # JavaScript/TypeScript dependencies (npm/pnpm)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Los_Angeles"
+    # Limit open PRs to avoid noise
+    open-pull-requests-limit: 5
+    # Group minor/patch updates to reduce PR count
+    groups:
+      production-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "typescript"
+          - "vitest"
+          - "@testing-library/*"
+          - "playwright*"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-dependencies:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "typescript"
+          - "vitest"
+          - "@testing-library/*"
+          - "playwright*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignore major version bumps (review manually)
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    # Labels for easier filtering
+    labels:
+      - "dependencies"
+      - "automated"
+    # Commit message format
+    commit-message:
+      prefix: "chore(deps)"

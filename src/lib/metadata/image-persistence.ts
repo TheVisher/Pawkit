@@ -24,6 +24,7 @@ const log = createModuleLogger("ImagePersistence");
 // =============================================================================
 
 const MAX_CONCURRENT_UPLOADS = 2;
+const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10MB limit for client uploads
 
 // Domains known to have expiring image URLs
 const EXPIRING_DOMAINS = [
@@ -249,6 +250,12 @@ export async function uploadToConvex(
   const client = getConvexClient();
   if (!client) {
     log.error('No Convex client available');
+    return null;
+  }
+
+  // Validate file size before uploading
+  if (blob.size > MAX_UPLOAD_SIZE_BYTES) {
+    log.error('File too large:', cardId, `${(blob.size / 1024 / 1024).toFixed(2)}MB exceeds ${MAX_UPLOAD_SIZE_BYTES / 1024 / 1024}MB limit`);
     return null;
   }
 

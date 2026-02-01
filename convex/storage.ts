@@ -135,6 +135,7 @@ export const deleteFile = mutation({
 // =============================================================================
 
 const DOWNLOAD_TIMEOUT_MS = 10000; // 10 seconds
+const MAX_DOWNLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for fetched images
 
 /**
  * Persist an image from an expiring URL to Convex storage.
@@ -191,6 +192,12 @@ export const persistImageFromUrl = action({
 
       const blob = await response.blob();
       const contentType = response.headers.get("content-type") || "image/jpeg";
+
+      // Validate file size before storing
+      if (blob.size > MAX_DOWNLOAD_SIZE_BYTES) {
+        console.warn("[Storage] Image too large:", blob.size, "bytes");
+        return { success: false, error: "Image exceeds 5MB size limit" };
+      }
 
       // Store in Convex storage
       const storageId = await ctx.storage.store(blob);
