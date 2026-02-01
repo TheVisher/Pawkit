@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { createFileRoute, notFound } from '@tanstack/react-router'
+import { createFileRoute, notFound, useLocation } from '@tanstack/react-router'
 import PawkitDetailPage from '@/pages/pawkit-detail'
 
 function PawkitDetailLoading() {
@@ -29,14 +29,16 @@ export const Route = createFileRoute('/pawkits/$slug')({
       throw notFound()
     }
   },
-  loader: ({ params }) => {
-    return { slug: params.slug }
-  },
   component: PawkitSlugRoute,
 })
 
 function PawkitSlugRoute() {
-  const { slug } = Route.useLoaderData()
+  // Use useLocation instead of Route.useParams to ensure slug always matches
+  // the current URL. Route.useParams can lag behind during navigation transitions,
+  // causing the content to be "one click behind" the sidebar highlight.
+  const { pathname } = useLocation()
+  const slug = (pathname.split('/pawkits/')[1] || '').split('/')[0]
+
   return (
     <Suspense fallback={<PawkitDetailLoading />}>
       <PawkitDetailPage key={slug} slug={slug} />
