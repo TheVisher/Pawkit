@@ -8,7 +8,7 @@
 import { useMemo } from 'react';
 import { BookOpen, ChevronRight, Clock } from 'lucide-react';
 import { Card as UICard, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/contexts/convex-data-context';
+import { useNonPrivateCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
@@ -88,7 +88,7 @@ function ReadingCardItem({ card, onClick }: ReadingCardItemProps) {
 
 export function ContinueReadingWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards();
+  const cards = useNonPrivateCards();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const inProgressCards = useMemo(() => {

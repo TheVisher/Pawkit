@@ -10,7 +10,7 @@ import { useMemo, useState, useEffect, type MouseEvent } from 'react';
 import { Layers, Facebook, Instagram } from 'lucide-react';
 
 import { Card as UICard, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/contexts/convex-data-context';
+import { useNonPrivateCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
@@ -227,7 +227,7 @@ function RecentCardItem({ card, onClick }: RecentCardItemProps) {
 
 export function RecentCardsWidget() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards();
+  const cards = useNonPrivateCards();
   const openCardDetailWithRect = useModalStore((s) => s.openCardDetailWithRect);
 
   const recentCards = useMemo(() => {

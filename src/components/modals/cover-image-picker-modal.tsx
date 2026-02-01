@@ -22,6 +22,7 @@ import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { cn } from '@/lib/utils';
+import { isCardInPawkit } from '@/lib/utils/pawkit-membership';
 
 export function CoverImagePickerModal() {
     const { isCoverImagePickerOpen, coverImageCollectionId, closeCoverImagePicker } = useModalStore();
@@ -57,11 +58,13 @@ export function CoverImagePickerModal() {
         return collections.find(c => c._id === coverImageCollectionId);
     }, [collections, coverImageCollectionId]);
 
-    // Get cards with images from this Pawkit (using tags)
+    // Get cards with images from this Pawkit
+    // Note: Not using leaf-only here - we want all cards in the Pawkit for cover selection
+    // @see docs/adr/0001-tags-canonical-membership.md
     const collectionCards = useMemo(() => {
         if (!collection) return [];
         return cards.filter(
-            card => card.tags?.includes(collection.slug) && !card.deleted && card.image
+            card => isCardInPawkit(card, collection.slug) && !card.deleted && card.image
         );
     }, [cards, collection]);
 

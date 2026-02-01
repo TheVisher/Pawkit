@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { Flame } from 'lucide-react';
-import { useCards } from '@/lib/contexts/convex-data-context';
+import { useNonPrivateCards } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import type { Card } from '@/lib/types/convex';
 
@@ -59,7 +59,7 @@ function calculateStreak(cards: Card[]): number {
  */
 export function useHomeStats() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards();
+  const cards = useNonPrivateCards();
 
   return useMemo(() => {
     const now = new Date();

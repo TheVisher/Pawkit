@@ -35,6 +35,7 @@ import { useDataContext } from "@/lib/contexts/data-context";
 import { useModalStore } from "@/lib/stores/modal-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getCardsInPawkit, buildPawkitSlugSet, isCardInAnyPawkit } from "@/lib/utils/pawkit-membership";
 import {
   Tooltip,
   TooltipContent,
@@ -236,6 +237,7 @@ export function RightSidebar() {
   const cards = allCards;
 
   // For pawkit views, scope cards to the current pawkit
+  // @see docs/adr/0001-tags-canonical-membership.md
   const { scopedCards, hasSubPawkits } = useMemo(() => {
     // Check if we're on a pawkit detail page
     const pawkitMatch = pathname.match(/^\/pawkits\/([^/]+)$/);
@@ -252,10 +254,8 @@ export function RightSidebar() {
       (c) => c.parentId === collection._id && !c.deleted,
     );
 
-    // Return only cards in this Pawkit (using tags - Pawkit slug is a tag)
-    const filtered = cards.filter(
-      (card) => card.tags?.includes(slug) && !card.deleted,
-    );
+    // Return only cards in this Pawkit using centralized helper (leaf-only by default)
+    const filtered = getCardsInPawkit(cards, slug, allCollections);
 
     return {
       scopedCards: filtered,
@@ -270,8 +270,9 @@ export function RightSidebar() {
   }, [scopedCards]);
 
   // Build set of Pawkit slugs to check if card has any Pawkit tags
+  // @see docs/adr/0001-tags-canonical-membership.md
   const pawkitSlugs = useMemo(() => {
-    return new Set(allCollections.map((c) => c.slug));
+    return buildPawkitSlugSet(allCollections);
   }, [allCollections]);
 
   const { allTags, noTagsCount, noPawkitsCount } = useMemo(() => {
@@ -281,12 +282,11 @@ export function RightSidebar() {
     for (const card of scopedCards) {
       if (card.deleted) continue;
       const tags = card.tags || [];
-      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
-      const hasAnyPawkitTag = tags.some((tag) => pawkitSlugs.has(tag));
       if (tags.length === 0) {
         noTags++;
       }
-      if (!hasAnyPawkitTag) {
+      // Use centralized helper for Pawkit membership check
+      if (!isCardInAnyPawkit(card, pawkitSlugs)) {
         noPawkits++;
       }
       for (const tag of tags) {

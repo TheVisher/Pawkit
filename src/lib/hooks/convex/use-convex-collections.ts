@@ -8,17 +8,21 @@ import { type CollectionUpdate } from "@/lib/types/convex";
 /**
  * Hook for collection operations with Convex
  * Returns native Convex documents
+ * @param includePrivate - If true, includes private collections (for owner views like sidebar)
  */
-export function useConvexCollections(workspaceId: Id<"workspaces"> | undefined) {
+export function useConvexCollections(
+  workspaceId: Id<"workspaces"> | undefined,
+  includePrivate: boolean = true  // Default true for backward compatibility - owner can see their private collections
+) {
   // Queries
   const collections = useQuery(
     api.collections.list,
-    workspaceId ? { workspaceId } : "skip"
+    workspaceId ? { workspaceId, includePrivate } : "skip"
   );
 
   const rootCollections = useQuery(
     api.collections.listRoot,
-    workspaceId ? { workspaceId } : "skip"
+    workspaceId ? { workspaceId, includePrivate } : "skip"
   );
 
   // Mutations
@@ -135,14 +139,16 @@ export function useConvexCollectionBySlug(
 
 /**
  * Hook for child collections
+ * @param includePrivate - If true, includes private collections (for owner views like sidebar)
  */
 export function useConvexChildCollections(
   workspaceId: Id<"workspaces"> | undefined,
-  parentId: Id<"collections"> | undefined
+  parentId: Id<"collections"> | undefined,
+  includePrivate: boolean = true  // Default true for backward compatibility
 ) {
   const children = useQuery(
     api.collections.listChildren,
-    workspaceId && parentId ? { workspaceId, parentId } : "skip"
+    workspaceId && parentId ? { workspaceId, parentId, includePrivate } : "skip"
   );
 
   return {

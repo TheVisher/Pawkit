@@ -13,7 +13,7 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useMutations } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCards, useCollections } from '@/lib/contexts/convex-data-context';
+import { useNonPrivateCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { Id } from '@/lib/types/convex';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, type SearchResults } from '../types';
@@ -99,7 +99,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const { createCard, updateCard } = useMutations();
   const currentWorkspace = useCurrentWorkspace();
-  const cards = useCards();
+  const cards = useNonPrivateCards();
   const collections = useCollections();
 
   // Derive uniqueTags from cards instead of using tag-store
