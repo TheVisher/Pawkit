@@ -254,3 +254,536 @@ export const validateExtensionToken = internalQuery({
     return null;
   },
 });
+
+// =================================================================
+// ACCOUNT DELETION
+// =================================================================
+
+/**
+ * Delete user account and all associated data.
+ * This is IRREVERSIBLE and immediately deletes:
+ * - All storage files
+ * - All cards, collections, events, todos
+ * - All workspaces
+ * - All auth sessions and accounts
+ * - The user record itself
+ */
+export const deleteAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const userId = user._id;
+
+    // Get all workspaces for this user
+    const workspaces = await ctx.db
+      .query("workspaces")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    // For each workspace, delete all associated data
+    for (const workspace of workspaces) {
+      const workspaceId = workspace._id;
+
+      // 1. Delete storage files from cards
+      const cards = await ctx.db
+        .query("cards")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const card of cards) {
+        if (card.storageId) {
+          try {
+            await ctx.storage.delete(card.storageId);
+          } catch {
+            // Ignore storage deletion errors (file may already be gone)
+          }
+        }
+      }
+
+      // 2. Delete collection notes (junction table)
+      const collections = await ctx.db
+        .query("collections")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const collection of collections) {
+        const collectionNotes = await ctx.db
+          .query("collectionNotes")
+          .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
+          .collect();
+
+        for (const note of collectionNotes) {
+          await ctx.db.delete(note._id);
+        }
+      }
+
+      // 3. Delete cards
+      for (const card of cards) {
+        // Delete card references first
+        const outgoingRefs = await ctx.db
+          .query("references")
+          .withIndex("by_source", (q) => q.eq("sourceId", card._id))
+          .collect();
+        for (const ref of outgoingRefs) {
+          await ctx.db.delete(ref._id);
+        }
+
+        const incomingRefs = await ctx.db
+          .query("references")
+          .withIndex("by_target", (q) => q.eq("targetId", card._id).eq("targetType", "card"))
+          .collect();
+        for (const ref of incomingRefs) {
+          await ctx.db.delete(ref._id);
+        }
+
+        // Delete citations
+        const citations = await ctx.db
+          .query("citations")
+          .withIndex("by_note", (q) => q.eq("noteId", card._id))
+          .collect();
+        for (const citation of citations) {
+          await ctx.db.delete(citation._id);
+        }
+
+        await ctx.db.delete(card._id);
+      }
+
+      // 4. Delete collections
+      for (const collection of collections) {
+        await ctx.db.delete(collection._id);
+      }
+
+      // 5. Delete calendar events
+      const events = await ctx.db
+        .query("calendarEvents")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const event of events) {
+        await ctx.db.delete(event._id);
+      }
+
+      // 6. Delete todos
+      const todos = await ctx.db
+        .query("todos")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const todo of todos) {
+        await ctx.db.delete(todo._id);
+      }
+
+      // 7. Delete view settings
+      const viewSettings = await ctx.db
+        .query("viewSettings")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const setting of viewSettings) {
+        await ctx.db.delete(setting._id);
+      }
+
+      // 8. Delete remaining references for this workspace
+      const workspaceRefs = await ctx.db
+        .query("references")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const ref of workspaceRefs) {
+        await ctx.db.delete(ref._id);
+      }
+
+      // 9. Delete import jobs
+      const importJobs = await ctx.db
+        .query("importJobs")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const job of importJobs) {
+        await ctx.db.delete(job._id);
+      }
+
+      // 10. Delete the workspace
+      await ctx.db.delete(workspaceId);
+    }
+
+    // Delete connected accounts (OAuth)
+    const connectedAccounts = await ctx.db
+      .query("connectedAccounts")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const account of connectedAccounts) {
+      await ctx.db.delete(account._id);
+    }
+
+    // Delete cloud connections (BYOS)
+    const connections = await ctx.db
+      .query("connections")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const connection of connections) {
+      await ctx.db.delete(connection._id);
+    }
+
+    // Delete auth-related data
+    // Auth sessions
+    const authSessions = await ctx.db
+      .query("authSessions")
+      .withIndex("userId", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const session of authSessions) {
+      // Delete refresh tokens for this session
+      const refreshTokens = await ctx.db
+        .query("authRefreshTokens")
+        .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+        .collect();
+
+      for (const token of refreshTokens) {
+        await ctx.db.delete(token._id);
+      }
+
+      await ctx.db.delete(session._id);
+    }
+
+    // Auth accounts (password, oauth providers)
+    const authAccounts = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const account of authAccounts) {
+      // Delete verification codes for this account
+      const verificationCodes = await ctx.db
+        .query("authVerificationCodes")
+        .withIndex("accountId", (q) => q.eq("accountId", account._id))
+        .collect();
+
+      for (const code of verificationCodes) {
+        await ctx.db.delete(code._id);
+      }
+
+      await ctx.db.delete(account._id);
+    }
+
+    // Finally, delete the user
+    await ctx.db.delete(userId);
+
+    return { success: true };
+  },
+});
+
+// =================================================================
+// DATA MANAGEMENT
+// =================================================================
+
+/**
+ * Trash all user data (soft delete).
+ * Moves ALL user content to trash with 30-day recovery period.
+ * Does NOT delete the user account.
+ * Use case: "I want to start fresh but might regret it"
+ */
+export const trashAllUserData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const userId = user._id;
+    const now = Date.now();
+
+    // Get all workspaces for this user
+    const workspaces = await ctx.db
+      .query("workspaces")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    let trashedCount = {
+      cards: 0,
+      collections: 0,
+      events: 0,
+      todos: 0,
+    };
+
+    for (const workspace of workspaces) {
+      const workspaceId = workspace._id;
+
+      // Soft delete all cards
+      const cards = await ctx.db
+        .query("cards")
+        .withIndex("by_workspace_deleted", (q) =>
+          q.eq("workspaceId", workspaceId).eq("deleted", false)
+        )
+        .collect();
+
+      for (const card of cards) {
+        await ctx.db.patch(card._id, {
+          deleted: true,
+          deletedAt: now,
+          updatedAt: now,
+        });
+        trashedCount.cards++;
+      }
+
+      // Soft delete all collections
+      const collections = await ctx.db
+        .query("collections")
+        .withIndex("by_workspace_deleted", (q) =>
+          q.eq("workspaceId", workspaceId).eq("deleted", false)
+        )
+        .collect();
+
+      for (const collection of collections) {
+        await ctx.db.patch(collection._id, {
+          deleted: true,
+          deletedAt: now,
+          updatedAt: now,
+        });
+        trashedCount.collections++;
+      }
+
+      // Soft delete all calendar events
+      const events = await ctx.db
+        .query("calendarEvents")
+        .withIndex("by_workspace_deleted", (q) =>
+          q.eq("workspaceId", workspaceId).eq("deleted", false)
+        )
+        .collect();
+
+      for (const event of events) {
+        await ctx.db.patch(event._id, {
+          deleted: true,
+          deletedAt: now,
+          updatedAt: now,
+        });
+        trashedCount.events++;
+      }
+
+      // Soft delete all todos
+      const todos = await ctx.db
+        .query("todos")
+        .withIndex("by_workspace_deleted", (q) =>
+          q.eq("workspaceId", workspaceId).eq("deleted", false)
+        )
+        .collect();
+
+      for (const todo of todos) {
+        await ctx.db.patch(todo._id, {
+          deleted: true,
+          deletedAt: now,
+          updatedAt: now,
+        });
+        trashedCount.todos++;
+      }
+
+      // Soft delete references
+      const references = await ctx.db
+        .query("references")
+        .withIndex("by_workspace_deleted", (q) =>
+          q.eq("workspaceId", workspaceId).eq("deleted", false)
+        )
+        .collect();
+
+      for (const ref of references) {
+        await ctx.db.patch(ref._id, {
+          deleted: true,
+          deletedAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    return { success: true, ...trashedCount };
+  },
+});
+
+/**
+ * Purge all user data (hard delete for GDPR).
+ * IMMEDIATELY and PERMANENTLY deletes all user data.
+ * Does NOT delete the user account.
+ * Use case: "Delete my data" GDPR request
+ */
+export const purgeAllUserData = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const userId = user._id;
+
+    // Get all workspaces for this user
+    const workspaces = await ctx.db
+      .query("workspaces")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    let deletedCount = {
+      cards: 0,
+      collections: 0,
+      events: 0,
+      todos: 0,
+      files: 0,
+    };
+
+    for (const workspace of workspaces) {
+      const workspaceId = workspace._id;
+
+      // Get ALL cards (including already deleted ones)
+      const cards = await ctx.db
+        .query("cards")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      // Delete storage files first
+      for (const card of cards) {
+        if (card.storageId) {
+          try {
+            await ctx.storage.delete(card.storageId);
+            deletedCount.files++;
+          } catch {
+            // Ignore storage deletion errors
+          }
+        }
+      }
+
+      // Delete collection notes (junction table)
+      const collections = await ctx.db
+        .query("collections")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const collection of collections) {
+        const collectionNotes = await ctx.db
+          .query("collectionNotes")
+          .withIndex("by_collection", (q) => q.eq("collectionId", collection._id))
+          .collect();
+
+        for (const note of collectionNotes) {
+          await ctx.db.delete(note._id);
+        }
+      }
+
+      // Delete cards and their references
+      for (const card of cards) {
+        const outgoingRefs = await ctx.db
+          .query("references")
+          .withIndex("by_source", (q) => q.eq("sourceId", card._id))
+          .collect();
+        for (const ref of outgoingRefs) {
+          await ctx.db.delete(ref._id);
+        }
+
+        const incomingRefs = await ctx.db
+          .query("references")
+          .withIndex("by_target", (q) => q.eq("targetId", card._id).eq("targetType", "card"))
+          .collect();
+        for (const ref of incomingRefs) {
+          await ctx.db.delete(ref._id);
+        }
+
+        const citations = await ctx.db
+          .query("citations")
+          .withIndex("by_note", (q) => q.eq("noteId", card._id))
+          .collect();
+        for (const citation of citations) {
+          await ctx.db.delete(citation._id);
+        }
+
+        await ctx.db.delete(card._id);
+        deletedCount.cards++;
+      }
+
+      // Delete collections
+      for (const collection of collections) {
+        await ctx.db.delete(collection._id);
+        deletedCount.collections++;
+      }
+
+      // Delete calendar events
+      const events = await ctx.db
+        .query("calendarEvents")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const event of events) {
+        await ctx.db.delete(event._id);
+        deletedCount.events++;
+      }
+
+      // Delete todos
+      const todos = await ctx.db
+        .query("todos")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const todo of todos) {
+        await ctx.db.delete(todo._id);
+        deletedCount.todos++;
+      }
+
+      // Delete view settings
+      const viewSettings = await ctx.db
+        .query("viewSettings")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const setting of viewSettings) {
+        await ctx.db.delete(setting._id);
+      }
+
+      // Delete remaining references
+      const workspaceRefs = await ctx.db
+        .query("references")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const ref of workspaceRefs) {
+        await ctx.db.delete(ref._id);
+      }
+
+      // Delete import jobs
+      const importJobs = await ctx.db
+        .query("importJobs")
+        .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+        .collect();
+
+      for (const job of importJobs) {
+        await ctx.db.delete(job._id);
+      }
+
+      // Keep the workspace but clear its preferences
+      await ctx.db.patch(workspaceId, {
+        preferences: undefined,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // Delete connected accounts (OAuth tokens - GDPR sensitive)
+    const connectedAccounts = await ctx.db
+      .query("connectedAccounts")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const account of connectedAccounts) {
+      await ctx.db.delete(account._id);
+    }
+
+    // Delete cloud connections (BYOS tokens - GDPR sensitive)
+    const connections = await ctx.db
+      .query("connections")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    for (const connection of connections) {
+      await ctx.db.delete(connection._id);
+    }
+
+    // Clear user's extension token (contains identifying prefix)
+    await ctx.db.patch(userId, {
+      extensionTokenHash: undefined,
+      extensionTokenPrefix: undefined,
+      extensionTokenCreatedAt: undefined,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, ...deletedCount };
+  },
+});

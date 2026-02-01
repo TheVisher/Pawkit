@@ -3,11 +3,13 @@
 import { User, Mail, Shield, AlertTriangle, Trash2, UserX, Key, Copy, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useRouter } from '@tanstack/react-router';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useMutation } from 'convex/react';
+import { useAuthActions } from '@convex-dev/auth/react';
 import { api } from '../../../../convex/_generated/api';
 import {
   Dialog,
@@ -21,9 +23,11 @@ import { useCurrentWorkspace, useWorkspaces } from '@/lib/stores/workspace-store
 import { useConvexUser } from '@/lib/hooks/convex/use-convex-user';
 
 export function AccountSection() {
+  const router = useRouter();
   const workspace = useCurrentWorkspace();
   const workspaces = useWorkspaces();
   const { user } = useConvexUser();
+  const { signOut } = useAuthActions();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -31,11 +35,27 @@ export function AccountSection() {
   const [isGeneratingToken, setIsGeneratingToken] = useState(false);
 
   const generateExtensionToken = useMutation(api.users.generateExtensionToken);
+  const deleteAccountMutation = useMutation(api.users.deleteAccount);
 
   const handleDeleteAccount = async () => {
     if (confirmText !== 'DELETE') return;
 
-    toast.info('Account deletion is not available yet.');
+    setIsDeleting(true);
+    try {
+      await deleteAccountMutation();
+      // Try to sign out to clear local session state, but don't block redirect if it fails
+      // (account is already deleted server-side at this point)
+      try {
+        await signOut();
+      } catch {
+        // Ignore signOut errors - account is already deleted
+      }
+      // Redirect to landing page
+      window.location.href = '/';
+    } catch (error) {
+      toast.error(`Failed to delete account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsDeleting(false);
+    }
   };
 
   const closeDialog = () => {

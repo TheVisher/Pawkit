@@ -19,6 +19,7 @@ import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as linkCheck from "../linkCheck.js";
 import type * as metadata from "../metadata.js";
+import type * as passwordReset from "../passwordReset.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as references from "../references.js";
 import type * as storage from "../storage.js";
@@ -46,6 +47,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   linkCheck: typeof linkCheck;
   metadata: typeof metadata;
+  passwordReset: typeof passwordReset;
   rateLimit: typeof rateLimit;
   references: typeof references;
   storage: typeof storage;

@@ -1,8 +1,10 @@
 'use client';
 
-import { Cloud, Download, HardDrive, Plus, Trash2, AlertTriangle, Database, Server } from 'lucide-react';
+import { Cloud, Download, HardDrive, Plus, Trash2, AlertTriangle, Database, Server, Archive, ShieldAlert } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useMutation } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -16,12 +18,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-type DeleteType = 'local' | 'database' | 'all' | null;
+type DeleteType = 'local' | 'trash' | 'purge' | null;
 
 export function DataSection() {
   const [deleteType, setDeleteType] = useState<DeleteType>(null);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const trashAllUserData = useMutation(api.users.trashAllUserData);
+  const purgeAllUserData = useMutation(api.users.purgeAllUserData);
 
   const deleteConfigs = {
     local: {
@@ -29,18 +34,21 @@ export function DataSection() {
       description: 'This will delete all data stored in your browser (IndexedDB). Your cloud data will remain intact and will sync back when you reload.',
       icon: HardDrive,
       buttonText: 'Delete Local Data',
+      confirmWord: 'DELETE',
     },
-    database: {
-      title: 'Delete Database',
-      description: 'This will permanently delete all your data from the cloud database. Your local data will remain until you clear it or it syncs.',
-      icon: Database,
-      buttonText: 'Delete Database',
+    trash: {
+      title: 'Move All Data to Trash',
+      description: 'This will move all your cards, collections, events, and todos to trash. You can restore them within 30 days. Your account and workspaces will remain.',
+      icon: Archive,
+      buttonText: 'Move to Trash',
+      confirmWord: 'TRASH',
     },
-    all: {
-      title: 'Delete All Data',
-      description: 'This will permanently delete ALL your data - both local storage and cloud database. This action cannot be undone.',
-      icon: Server,
-      buttonText: 'Delete Everything',
+    purge: {
+      title: 'Permanently Delete All Data (GDPR)',
+      description: 'This will IMMEDIATELY and PERMANENTLY delete all your data including cards, collections, events, todos, and uploaded files. This action cannot be undone. Your account will remain but all content will be gone.',
+      icon: ShieldAlert,
+      buttonText: 'Permanently Delete',
+      confirmWord: 'DELETE',
     },
   };
 
@@ -61,34 +69,32 @@ export function DataSection() {
     );
   };
 
-  const handleDeleteDatabase = async () => {
-    const response = await fetch('/api/user/delete-data', {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Failed to delete database');
-    }
-  };
-
   const handleDelete = async () => {
-    if (confirmText !== 'DELETE' || !deleteType) return;
+    if (!deleteType) return;
+    const config = deleteConfigs[deleteType];
+    if (confirmText !== config.confirmWord) return;
 
     setIsDeleting(true);
     try {
       if (deleteType === 'local') {
         await handleDeleteLocal();
-      } else if (deleteType === 'database') {
-        await handleDeleteDatabase();
-      } else if (deleteType === 'all') {
-        await handleDeleteDatabase();
-        await handleDeleteLocal();
+        toast.success('Local data deleted. Reloading...');
+      } else if (deleteType === 'trash') {
+        const result = await trashAllUserData();
+        toast.success(`Moved to trash: ${result.cards} cards, ${result.collections} collections, ${result.events} events, ${result.todos} todos`);
+      } else if (deleteType === 'purge') {
+        const result = await purgeAllUserData();
+        toast.success(`Permanently deleted: ${result.cards} cards, ${result.collections} collections, ${result.events} events, ${result.todos} todos, ${result.files} files`);
       }
 
       // Close dialog and reload
       setDeleteType(null);
       setConfirmText('');
-      window.location.reload();
+
+      // For local delete, reload to resync; for others, just close
+      if (deleteType === 'local') {
+        window.location.reload();
+      }
     } catch (error) {
       console.error('Delete failed:', error);
       toast.error(`Failed to delete data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -213,7 +219,7 @@ export function DataSection() {
             Danger Zone
           </h3>
           <p className="text-xs text-text-muted mt-0.5">
-            Irreversible actions - proceed with caution
+            Destructive actions - proceed with caution
           </p>
         </div>
 
@@ -225,7 +231,7 @@ export function DataSection() {
             </div>
             <div className="flex-1">
               <h4 className="text-sm font-medium text-text-primary">
-                Delete Local Data
+                Clear Local Data
               </h4>
               <p className="text-xs text-text-muted mt-0.5">
                 Clear browser storage (IndexedDB). Data will re-sync from cloud.
@@ -238,59 +244,59 @@ export function DataSection() {
               onClick={() => openDeleteDialog('local')}
             >
               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-              Delete
+              Clear
             </Button>
           </div>
 
           <div className="border-t border-red-500/20" />
 
-          {/* Delete Database */}
+          {/* Trash All Data (Soft Delete) */}
           <div className="p-4 flex items-center gap-3 bg-bg-surface-1">
-            <div className="p-2 rounded-lg bg-red-500/10">
-              <Database className="h-5 w-5 text-red-500" />
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <Archive className="h-5 w-5 text-amber-500" />
             </div>
             <div className="flex-1">
               <h4 className="text-sm font-medium text-text-primary">
-                Delete Database
+                Move All to Trash
               </h4>
               <p className="text-xs text-text-muted mt-0.5">
-                Remove all data from cloud. Local data remains until cleared.
+                Move all content to trash. Recoverable for 30 days.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-amber-500/50 text-amber-500 hover:bg-amber-500/10 hover:text-amber-500"
+              onClick={() => openDeleteDialog('trash')}
+            >
+              <Archive className="h-3.5 w-3.5 mr-1.5" />
+              Move to Trash
+            </Button>
+          </div>
+
+          <div className="border-t border-red-500/20" />
+
+          {/* Purge Data (GDPR Hard Delete) */}
+          <div className="p-4 flex items-center gap-3 bg-bg-surface-1">
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <ShieldAlert className="h-5 w-5 text-red-500" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-text-primary">
+                Permanently Delete All Data
+              </h4>
+              <p className="text-xs text-text-muted mt-0.5">
+                Immediately delete everything. For GDPR requests. Cannot be undone.
               </p>
             </div>
             <Button
               variant="outline"
               size="sm"
               className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-500"
-              onClick={() => openDeleteDialog('database')}
+              onClick={() => openDeleteDialog('purge')}
             >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-              Delete
-            </Button>
-          </div>
-
-          <div className="border-t border-red-500/20" />
-
-          {/* Delete All */}
-          <div className="p-4 flex items-center gap-3 bg-bg-surface-1">
-            <div className="p-2 rounded-lg bg-red-500/10">
-              <Server className="h-5 w-5 text-red-500" />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-medium text-text-primary">
-                Delete All Data
-              </h4>
-              <p className="text-xs text-text-muted mt-0.5">
-                Permanently delete everything - local and cloud. Cannot be undone.
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-500"
-              onClick={() => openDeleteDialog('all')}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-              Delete All
+              <ShieldAlert className="h-3.5 w-3.5 mr-1.5" />
+              Purge Data
             </Button>
           </div>
         </div>
@@ -311,12 +317,12 @@ export function DataSection() {
 
           <div className="space-y-3 py-4">
             <p className="text-sm text-text-secondary">
-              Type <span className="font-mono font-bold text-red-500">DELETE</span> to confirm:
+              Type <span className="font-mono font-bold text-red-500">{deleteType && deleteConfigs[deleteType].confirmWord}</span> to confirm:
             </p>
             <Input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="Type DELETE"
+              placeholder={`Type ${deleteType && deleteConfigs[deleteType].confirmWord}`}
               className="font-mono"
               autoComplete="off"
             />
@@ -329,9 +335,9 @@ export function DataSection() {
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={confirmText !== 'DELETE' || isDeleting}
+              disabled={!deleteType || confirmText !== deleteConfigs[deleteType].confirmWord || isDeleting}
             >
-              {isDeleting ? 'Deleting...' : deleteType && deleteConfigs[deleteType].buttonText}
+              {isDeleting ? 'Processing...' : deleteType && deleteConfigs[deleteType].buttonText}
             </Button>
           </DialogFooter>
         </DialogContent>

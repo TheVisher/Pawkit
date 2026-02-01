@@ -15,6 +15,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LibraryRouteImport } from './routes/library'
 import { Route as HomeRouteImport } from './routes/home'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as EditorRouteImport } from './routes/editor'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CalendarRouteImport } from './routes/calendar'
@@ -58,6 +59,11 @@ const LibraryRoute = LibraryRouteImport.update({
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EditorRoute = EditorRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/editor': typeof EditorRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/editor': typeof EditorRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
@@ -181,6 +189,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/dashboard': typeof DashboardRoute
   '/editor': typeof EditorRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/home': typeof HomeRoute
   '/library': typeof LibraryRoute
   '/login': typeof LoginRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/dashboard'
     | '/editor'
+    | '/forgot-password'
     | '/home'
     | '/library'
     | '/login'
@@ -227,6 +237,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/dashboard'
     | '/editor'
+    | '/forgot-password'
     | '/home'
     | '/library'
     | '/login'
@@ -249,6 +260,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/dashboard'
     | '/editor'
+    | '/forgot-password'
     | '/home'
     | '/library'
     | '/login'
@@ -272,6 +284,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   DashboardRoute: typeof DashboardRoute
   EditorRoute: typeof EditorRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   HomeRoute: typeof HomeRoute
   LibraryRoute: typeof LibraryRoute
   LoginRoute: typeof LoginRoute
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/home'
       fullPath: '/home'
       preLoaderRoute: typeof HomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/editor': {
@@ -440,6 +460,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   DashboardRoute: DashboardRoute,
   EditorRoute: EditorRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   HomeRoute: HomeRoute,
   LibraryRoute: LibraryRoute,
   LoginRoute: LoginRoute,
