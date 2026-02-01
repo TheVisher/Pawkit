@@ -15,7 +15,7 @@ vi.mock('@/lib/stores/data-store', () => ({
 }));
 
 vi.mock('@/lib/stores/workspace-store', () => ({
-  useCurrentWorkspace: () => ({ id: 'workspace-1' }),
+  useCurrentWorkspace: () => ({ _id: 'workspace-1', name: 'Test Workspace' }),
 }));
 
 vi.mock('@/lib/hooks/use-live-data', () => ({
@@ -29,6 +29,12 @@ vi.mock('@/lib/stores/toast-store', () => ({
 
 vi.mock('@/lib/stores/modal-store', () => ({
   useModalStore: () => ({ openCardDetail }),
+}));
+
+vi.mock('@/lib/contexts/convex-data-context', () => ({
+  useMutations: () => ({ createCard }),
+  useCards: () => [],
+  useCollections: () => [],
 }));
 
 describe('AddCardForm', () => {
@@ -56,12 +62,19 @@ describe('AddCardForm', () => {
 
     await waitFor(() => expect(createCard).toHaveBeenCalledTimes(1));
 
-    const payload = createCard.mock.calls[0][0] as { content?: string };
-    expect(payload.content).toBeTypeOf('string');
-    expect(isPlateJson(payload.content)).toBe(true);
+    const payload = createCard.mock.calls[0][0] as { content?: unknown };
 
-    const parsed = parseJsonContent(payload.content as string);
-    expect(parsed).not.toBeNull();
-    expect(parsed?.length).toBe(2);
+    // Content can be either an object (Plate JSON array) or a JSON string
+    // The component now stores it as an object directly
+    if (typeof payload.content === 'string') {
+      expect(isPlateJson(payload.content)).toBe(true);
+      const parsed = parseJsonContent(payload.content);
+      expect(parsed).not.toBeNull();
+      expect(parsed?.length).toBe(2);
+    } else {
+      // Content is already a Plate JSON array
+      expect(Array.isArray(payload.content)).toBe(true);
+      expect((payload.content as unknown[]).length).toBe(2);
+    }
   });
 });

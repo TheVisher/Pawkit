@@ -7,7 +7,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen, RefreshCw, Link2 } from 'lucide-react';
+import { Tag, FolderOpen, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2, FileText, Info, Sparkles, NotebookPen, RefreshCw } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { getTagStyle } from '@/lib/utils/tag-colors';
