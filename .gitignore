@@ -15,3 +15,8 @@ todos.json
 .vercel
 src/generated
 .playwright-mcp
+
+# Playwright
+.playwright/
+playwright-report/
+test-results/
