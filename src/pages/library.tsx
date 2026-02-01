@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { useSearchParams } from '@/lib/navigation';
-import { useCollections } from '@/lib/contexts/convex-data-context';
+import { useCollections, useNonPrivateCards } from '@/lib/contexts/convex-data-context';
 import { useDataContext } from '@/lib/contexts/data-context';
 import {
   useLayout,
@@ -30,6 +30,7 @@ import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX, X, FileText, Video, Image, FileIcon, Music, Filter } from 'lucide-react';
 import type { ContentType } from '@/lib/stores/view-store';
+import { buildPawkitSlugSet, isCardInAnyPawkit } from '@/lib/utils/pawkit-membership';
 
 // Content type display info
 const CONTENT_TYPE_INFO: Record<ContentType, { label: string; icon: typeof Bookmark }> = {
@@ -124,15 +125,17 @@ function LibraryPageContent() {
   const searchParams = useSearchParams();
   const workspace = useCurrentWorkspace();
   const collections = useCollections();
-  // Get cards AND isLoading from the same source to ensure consistency
-  // This prevents the "No bookmarks" flash caused by useDeferredValue lag
+  // Get loading states from context
   // isFullyLoaded indicates whether all cards are loaded (not just initial batch)
-  const { cards, isLoading, isFullyLoaded } = useDataContext();
+  const { isLoading, isFullyLoaded } = useDataContext();
+  // Use non-private cards - excludes cards that belong to private Pawkits
+  const cards = useNonPrivateCards();
 
   // Build set of Pawkit slugs for "No Pawkits" filter
   // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+  // @see docs/adr/0001-tags-canonical-membership.md
   const pawkitSlugs = useMemo(() => {
-    return new Set(collections.map((c) => c.slug));
+    return buildPawkitSlugSet(collections);
   }, [collections]);
 
   // Collision detection for omnibar
@@ -235,11 +238,9 @@ function LibraryPageContent() {
         if (cardTags.length > 0) return false;
       }
       // No Pawkits filter - card must not have any Pawkit tags
-      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+      // @see docs/adr/0001-tags-canonical-membership.md
       if (showNoPawkitsOnly) {
-        const cardTags = card.tags || [];
-        const hasAnyPawkitTag = cardTags.some((tag) => pawkitSlugs.has(tag));
-        if (hasAnyPawkitTag) return false;
+        if (isCardInAnyPawkit(card, pawkitSlugs)) return false;
       }
       // Unsorted/Quick filter
       if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;

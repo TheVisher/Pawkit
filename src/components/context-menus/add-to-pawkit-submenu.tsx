@@ -13,7 +13,7 @@ import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useCollections } from '@/lib/contexts/convex-data-context';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import type { Collection } from '@/lib/types/convex';
+import type { Collection, Id } from '@/lib/types/convex';
 import { cn } from '@/lib/utils';
 
 interface AddToPawkitSubmenuProps {
@@ -126,25 +126,25 @@ function CollectionItem({
 export function AddToPawkitSubmenu({ cardId, cardCollections }: AddToPawkitSubmenuProps) {
   const workspace = useCurrentWorkspace();
   const collections = useCollections();
-  const { updateCard } = useMutations();
+  const { addCardToCollection, removeCardFromCollection } = useMutations();
   const toast = useToastStore((s) => s.toast);
   const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
 
   const tree = buildCollectionTree(collections.filter(c => !c.deleted && !c.isSystem));
 
+  // Route all membership changes through collections.addCard/removeCard
+  // This ensures tags and collectionNotes stay in sync
+  // @see docs/adr/0001-tags-canonical-membership.md
   const handleToggleCollection = async (slug: string, name: string) => {
     const isInCollection = cardCollections.includes(slug);
+    const collection = collections.find(c => c.slug === slug);
+    if (!collection) return;
 
-    // Card-to-collection association is via tags (tag = collection slug)
     if (isInCollection) {
-      // Remove the slug from tags
-      const newTags = cardCollections.filter(t => t !== slug);
-      await updateCard(cardId as any, { tags: newTags });
+      await removeCardFromCollection(collection._id, cardId as Id<'cards'>);
       toast({ type: 'success', message: `Removed from ${name}` });
     } else {
-      // Add the slug to tags
-      const newTags = [...cardCollections, slug];
-      await updateCard(cardId as any, { tags: newTags });
+      await addCardToCollection(collection._id, cardId as Id<'cards'>);
       toast({ type: 'success', message: `Added to ${name}` });
     }
 

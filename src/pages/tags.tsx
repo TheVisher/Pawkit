@@ -3,8 +3,9 @@
 import { Suspense, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from '@/lib/navigation';
 import { MoreVertical, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
-import { useCards } from '@/lib/contexts/convex-data-context';
+import { useNonPrivateCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { useMutations } from '@/lib/contexts/convex-data-context';
+import { buildPawkitSlugSet } from '@/lib/utils/pawkit-membership';
 import { TagBadge } from '@/components/tags/tag-badge';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useTagSidebar } from '@/lib/stores/ui-store';
@@ -49,8 +50,13 @@ function TagsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const workspace = useCurrentWorkspace();
-  const cards = useCards();
+  const cards = useNonPrivateCards();
+  const collections = useCollections();
   const { bulkUpdateTags } = useMutations();
+
+  // Build set of Pawkit slugs - these are reserved tags
+  // @see docs/adr/0001-tags-canonical-membership.md
+  const pawkitSlugs = useMemo(() => buildPawkitSlugSet(collections), [collections]);
 
   // Derive unique tags and counts from cards
   const { uniqueTags, tagCounts } = useMemo(() => {
@@ -80,6 +86,7 @@ function TagsPageContent() {
   // Local state
   const [sortBy, setSortBy] = useState<SortBy>('alphabetical');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pawkitError, setPawkitError] = useState<string | null>(null);
 
   // Dialog states (for mobile/fallback)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
@@ -154,14 +161,29 @@ function TagsPageContent() {
     });
   }, [groupedTags]);
 
+  // Check if a tag is a Pawkit slug (reserved tag)
+  const isPawkitSlug = useCallback((tag: string) => pawkitSlugs.has(tag), [pawkitSlugs]);
+
   // Handlers for dialogs (mobile fallback)
   const openRenameDialog = (tag: string) => {
+    setPawkitError(null);
+    // Block renaming Pawkit slugs - these are reserved tags
+    if (isPawkitSlug(tag)) {
+      setPawkitError(`"${tag}" is a Pawkit name. Use the Pawkit settings to rename it.`);
+      return;
+    }
     setTagToEdit(tag);
     setNewTagName(tag);
     setRenameDialogOpen(true);
   };
 
   const openDeleteDialog = (tag: string) => {
+    setPawkitError(null);
+    // Block deleting Pawkit slugs - these are reserved tags
+    if (isPawkitSlug(tag)) {
+      setPawkitError(`"${tag}" is a Pawkit name. Use the Pawkit settings to manage membership.`);
+      return;
+    }
     setTagToEdit(tag);
     setDeleteDialogOpen(true);
   };
@@ -169,7 +191,15 @@ function TagsPageContent() {
   const handleRename = async () => {
     if (!tagToEdit || !newTagName.trim() || !workspace?._id) return;
 
+    // Block renaming to a Pawkit slug
+    const trimmedNewName = newTagName.trim();
+    if (isPawkitSlug(trimmedNewName)) {
+      setPawkitError(`"${trimmedNewName}" is a Pawkit name. Choose a different tag name.`);
+      return;
+    }
+
     setIsProcessing(true);
+    setPawkitError(null);
     try {
       // Find all cards with this tag
       const cardsWithTag = cards.filter(c => !c.deleted && c.tags?.includes(tagToEdit));
@@ -177,7 +207,7 @@ function TagsPageContent() {
 
       if (cardIds.length > 0) {
         // Use bulk update - remove old tag, add new tag
-        await bulkUpdateTags(cardIds, [newTagName.trim()], [tagToEdit]);
+        await bulkUpdateTags(cardIds, [trimmedNewName], [tagToEdit]);
       }
 
       setRenameDialogOpen(false);
@@ -185,6 +215,12 @@ function TagsPageContent() {
       setNewTagName('');
     } catch (error) {
       console.error('Failed to rename tag:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (message.includes('bulkUpdateTags does not support cards from multiple workspaces')) {
+        setPawkitError('Bulk tag updates can only run within a single workspace. Switch workspaces and try again.');
+      } else {
+        setPawkitError('Failed to rename tag. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -194,6 +230,7 @@ function TagsPageContent() {
     if (!tagToEdit || !workspace?._id) return;
 
     setIsProcessing(true);
+    setPawkitError(null);
     try {
       // Find all cards with this tag
       const cardsWithTag = cards.filter(c => !c.deleted && c.tags?.includes(tagToEdit));
@@ -208,6 +245,12 @@ function TagsPageContent() {
       setTagToEdit(null);
     } catch (error) {
       console.error('Failed to delete tag:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (message.includes('bulkUpdateTags does not support cards from multiple workspaces')) {
+        setPawkitError('Bulk tag updates can only run within a single workspace. Switch workspaces and try again.');
+      } else {
+        setPawkitError('Failed to delete tag. Please try again.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -266,6 +309,19 @@ function TagsPageContent() {
         </div>
 
         <div className="px-4 md:px-6 pt-4 pb-6">
+          {/* Pawkit slug error message */}
+          {pawkitError && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+              <div className="flex-1 text-sm text-amber-200">{pawkitError}</div>
+              <button
+                onClick={() => setPawkitError(null)}
+                className="text-amber-200/60 hover:text-amber-200 text-xs"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {filteredTags.length === 0 ? (
             <div className="text-center py-12 text-text-muted">
               {searchQuery ? 'No tags match your search' : 'No tags yet. Use + in the omnibar to create your first tag.'}
@@ -345,7 +401,10 @@ function TagsPageContent() {
       {/* Mobile Dialogs */}
       <ResponsiveDialog
         open={renameDialogOpen}
-        onOpenChange={setRenameDialogOpen}
+        onOpenChange={(open) => {
+          setRenameDialogOpen(open);
+          if (!open) setPawkitError(null);
+        }}
         title="Rename Tag"
         description={`This will update all ${tagCounts[tagToEdit || ''] || 0} card(s) that use this tag.`}
         footer={
@@ -353,20 +412,31 @@ function TagsPageContent() {
             <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleRename} disabled={isProcessing || !newTagName.trim()}>
+            <Button
+              onClick={handleRename}
+              disabled={isProcessing || !newTagName.trim() || isPawkitSlug(newTagName.trim())}
+            >
               {isProcessing ? 'Renaming...' : 'Rename'}
             </Button>
           </>
         }
       >
-        <div className="py-4">
+        <div className="py-4 space-y-2">
           <Input
             value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
+            onChange={(e) => {
+              setNewTagName(e.target.value);
+              setPawkitError(null);
+            }}
             placeholder="New tag name"
             className="bg-bg-surface-2"
             autoFocus
           />
+          {newTagName.trim() && isPawkitSlug(newTagName.trim()) && (
+            <p className="text-xs text-amber-400">
+              "{newTagName.trim()}" is a Pawkit name. Choose a different tag name.
+            </p>
+          )}
         </div>
       </ResponsiveDialog>
 

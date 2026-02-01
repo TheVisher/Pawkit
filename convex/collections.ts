@@ -1,7 +1,73 @@
-import { query, mutation, internalQuery } from "./_generated/server";
+import { query, mutation, internalQuery, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { requireWorkspaceAccess } from "./users";
 import { Id } from "./_generated/dataModel";
+
+// =================================================================
+// TAG MIGRATION HELPERS
+// =================================================================
+
+/**
+ * Migrate card tags when a Pawkit slug changes.
+ *
+ * This runs inline (not scheduled) to avoid privacy gaps where cards
+ * with the old slug could briefly appear in non-private views.
+ *
+ * IMPORTANT: We migrate ALL cards (including deleted/trashed) so that
+ * restoring a trashed card doesn't leave it orphaned with the old slug.
+ *
+ * Performance note: This is O(n) over all cards since Convex can't
+ * filter by array-contains. For most accounts this is fine. For very
+ * large accounts (1000+ cards), may need to batch via action.
+ *
+ * @see docs/adr/0001-tags-canonical-membership.md
+ */
+async function migrateTagsForSlugChange(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  oldSlug: string,
+  newSlug: string
+): Promise<number> {
+  // Get ALL cards for this workspace (including deleted/trashed)
+  // This ensures restoring a trashed card won't leave it orphaned
+  const [activeCards, deletedCards] = await Promise.all([
+    ctx.db
+      .query("cards")
+      .withIndex("by_workspace_deleted", (q) =>
+        q.eq("workspaceId", workspaceId).eq("deleted", false)
+      )
+      .collect(),
+    ctx.db
+      .query("cards")
+      .withIndex("by_workspace_deleted", (q) =>
+        q.eq("workspaceId", workspaceId).eq("deleted", true)
+      )
+      .collect(),
+  ]);
+
+  const allCards = [...activeCards, ...deletedCards];
+  const now = Date.now();
+  let migratedCount = 0;
+
+  for (const card of allCards) {
+    // Check if card has the old slug tag
+    if (card.tags.includes(oldSlug)) {
+      // Replace old slug with new slug, then dedupe
+      // Deduping handles edge case where card already has the new slug
+      const newTags = [...new Set(
+        card.tags.map((tag) => (tag === oldSlug ? newSlug : tag))
+      )];
+      await ctx.db.patch(card._id, { tags: newTags, updatedAt: now });
+      migratedCount++;
+    }
+  }
+
+  // TODO: For very large accounts (1000+ cards), consider batching
+  // via an action to avoid mutation timeout. Add monitoring to
+  // track migration times and optimize if needed.
+
+  return migratedCount;
+}
 
 // =================================================================
 // COLLECTION QUERIES
@@ -9,18 +75,30 @@ import { Id } from "./_generated/dataModel";
 
 /**
  * List all non-deleted collections for a workspace.
+ * By default excludes private collections unless includePrivate is true.
+ * Private collections are only visible in the sidebar (pawkits tree) and when navigating directly.
  */
 export const list = query({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, { workspaceId }) => {
+  args: {
+    workspaceId: v.id("workspaces"),
+    includePrivate: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { workspaceId, includePrivate = false }) => {
     await requireWorkspaceAccess(ctx, workspaceId);
 
-    return await ctx.db
+    const collections = await ctx.db
       .query("collections")
       .withIndex("by_workspace_deleted", (q) =>
         q.eq("workspaceId", workspaceId).eq("deleted", false)
       )
       .collect();
+
+    // Filter out private collections unless explicitly included
+    if (!includePrivate) {
+      return collections.filter((c) => !c.isPrivate);
+    }
+
+    return collections;
   },
 });
 
@@ -61,58 +139,86 @@ export const getBySlug = query({
 
 /**
  * List root collections (no parent).
+ * By default excludes private collections unless includePrivate is true.
  */
 export const listRoot = query({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, { workspaceId }) => {
+  args: {
+    workspaceId: v.id("workspaces"),
+    includePrivate: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { workspaceId, includePrivate = false }) => {
     await requireWorkspaceAccess(ctx, workspaceId);
 
-    return await ctx.db
+    const collections = await ctx.db
       .query("collections")
       .withIndex("by_workspace_parent", (q) =>
         q.eq("workspaceId", workspaceId).eq("parentId", undefined)
       )
       .filter((q) => q.eq(q.field("deleted"), false))
       .collect();
+
+    if (!includePrivate) {
+      return collections.filter((c) => !c.isPrivate);
+    }
+
+    return collections;
   },
 });
 
 /**
  * List child collections of a parent.
+ * By default excludes private collections unless includePrivate is true.
  */
 export const listChildren = query({
   args: {
     workspaceId: v.id("workspaces"),
     parentId: v.id("collections"),
+    includePrivate: v.optional(v.boolean()),
   },
-  handler: async (ctx, { workspaceId, parentId }) => {
+  handler: async (ctx, { workspaceId, parentId, includePrivate = false }) => {
     await requireWorkspaceAccess(ctx, workspaceId);
 
-    return await ctx.db
+    const collections = await ctx.db
       .query("collections")
       .withIndex("by_workspace_parent", (q) =>
         q.eq("workspaceId", workspaceId).eq("parentId", parentId)
       )
       .filter((q) => q.eq(q.field("deleted"), false))
       .collect();
+
+    if (!includePrivate) {
+      return collections.filter((c) => !c.isPrivate);
+    }
+
+    return collections;
   },
 });
 
 /**
  * List pinned collections.
+ * By default excludes private collections unless includePrivate is true.
  */
 export const listPinned = query({
-  args: { workspaceId: v.id("workspaces") },
-  handler: async (ctx, { workspaceId }) => {
+  args: {
+    workspaceId: v.id("workspaces"),
+    includePrivate: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { workspaceId, includePrivate = false }) => {
     await requireWorkspaceAccess(ctx, workspaceId);
 
-    return await ctx.db
+    const collections = await ctx.db
       .query("collections")
       .withIndex("by_workspace_deleted", (q) =>
         q.eq("workspaceId", workspaceId).eq("deleted", false)
       )
       .filter((q) => q.eq(q.field("pinned"), true))
       .collect();
+
+    if (!includePrivate) {
+      return collections.filter((c) => !c.isPrivate);
+    }
+
+    return collections;
   },
 });
 
@@ -305,15 +411,20 @@ export const update = mutation({
     // Filter out undefined values
     const filteredUpdates: Record<string, unknown> = { updatedAt: Date.now() };
 
+    // Track if slug is changing (for tag migration)
+    const oldSlug = collection.slug;
+    let newSlug: string | undefined;
+
     // Handle name change (requires slug update)
     if (name !== undefined && name !== collection.name) {
       filteredUpdates.name = name;
-      filteredUpdates.slug = await generateUniqueSlug(
+      newSlug = await generateUniqueSlug(
         ctx,
         collection.workspaceId,
         name,
         id
       );
+      filteredUpdates.slug = newSlug;
     }
 
     for (const [key, value] of Object.entries(updates)) {
@@ -323,6 +434,15 @@ export const update = mutation({
     }
 
     await ctx.db.patch(id, filteredUpdates);
+
+    // CRITICAL: Migrate card tags when slug changes
+    // This must run inline (not scheduled) to avoid privacy gaps
+    // where cards with the old slug could briefly appear in non-private views.
+    // @see docs/adr/0001-tags-canonical-membership.md
+    if (newSlug && newSlug !== oldSlug) {
+      await migrateTagsForSlugChange(ctx, collection.workspaceId, oldSlug, newSlug);
+    }
+
     return await ctx.db.get(id);
   },
 });
@@ -393,6 +513,12 @@ export const permanentDelete = mutation({
 
 /**
  * Add a card to a collection.
+ *
+ * This mutation keeps tags and collectionNotes in sync:
+ * - Adds a collectionNotes entry for ordering
+ * - Adds the collection slug to card.tags for membership
+ *
+ * @see docs/adr/0001-tags-canonical-membership.md
  */
 export const addCard = mutation({
   args: {
@@ -414,13 +540,24 @@ export const addCard = mutation({
       throw new Error("Card does not belong to this workspace");
     }
 
-    // Check if already in collection
+    // Check if already in collection (via collectionNotes)
     const existing = await ctx.db
       .query("collectionNotes")
       .withIndex("by_collection_card", (q) =>
         q.eq("collectionId", collectionId).eq("cardId", cardId)
       )
       .unique();
+
+    const now = Date.now();
+
+    // Add collection slug to card tags (deduplicated)
+    // Tags are canonical for membership - this keeps both systems in sync
+    if (!card.tags.includes(collection.slug)) {
+      await ctx.db.patch(cardId, {
+        tags: [...card.tags, collection.slug],
+        updatedAt: now,
+      });
+    }
 
     if (existing) return existing._id;
 
@@ -438,13 +575,19 @@ export const addCard = mutation({
       collectionId,
       cardId,
       position: pos,
-      createdAt: Date.now(),
+      createdAt: now,
     });
   },
 });
 
 /**
  * Remove a card from a collection.
+ *
+ * This mutation keeps tags and collectionNotes in sync:
+ * - Removes the collectionNotes entry
+ * - Removes only the collection slug from card.tags (preserves other tags)
+ *
+ * @see docs/adr/0001-tags-canonical-membership.md
  */
 export const removeCard = mutation({
   args: {
@@ -457,6 +600,17 @@ export const removeCard = mutation({
 
     await requireWorkspaceAccess(ctx, collection.workspaceId);
 
+    const now = Date.now();
+
+    // Remove collection slug from card tags (preserves all other tags)
+    // Tags are canonical for membership - this keeps both systems in sync
+    const card = await ctx.db.get(cardId);
+    if (card && card.tags.includes(collection.slug)) {
+      const newTags = card.tags.filter((tag) => tag !== collection.slug);
+      await ctx.db.patch(cardId, { tags: newTags, updatedAt: now });
+    }
+
+    // Remove collectionNotes entry
     const collectionNote = await ctx.db
       .query("collectionNotes")
       .withIndex("by_collection_card", (q) =>
@@ -575,6 +729,29 @@ export const reorder = mutation({
         updatedAt: Date.now(),
       });
     }
+  },
+});
+
+/**
+ * Get slugs of private collections.
+ * Used by client to filter out cards that belong to private collections.
+ */
+export const listPrivateSlugs = query({
+  args: {
+    workspaceId: v.id("workspaces"),
+  },
+  handler: async (ctx, { workspaceId }) => {
+    await requireWorkspaceAccess(ctx, workspaceId);
+
+    const privateCollections = await ctx.db
+      .query("collections")
+      .withIndex("by_workspace_deleted", (q) =>
+        q.eq("workspaceId", workspaceId).eq("deleted", false)
+      )
+      .filter((q) => q.eq(q.field("isPrivate"), true))
+      .collect();
+
+    return privateCollections.map((c) => c.slug);
   },
 });
 

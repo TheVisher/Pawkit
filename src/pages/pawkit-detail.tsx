@@ -12,7 +12,8 @@ import { EmptyState } from '@/components/cards/empty-state';
 import { PawkitHeader } from '@/components/pawkits/pawkit-header';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { FolderOpen, Plus, Tag, X, CalendarDays, Type, Globe, Bookmark, FileText, Video, Image, FileIcon, Music, Filter } from 'lucide-react';
-import type { Collection, Card } from '@/lib/types/convex';
+import type { Card } from '@/lib/types/convex';
+import { getCardsInPawkit } from '@/lib/utils/pawkit-membership';
 
 // Helper to get smart date label (Today, Yesterday, This Week, etc.)
 function getSmartDateLabel(date: Date): string {
@@ -83,23 +84,6 @@ interface PawkitDetailPageProps {
   slug: string;
 }
 
-// Helper to get all descendant slugs for leaf-only display logic
-function getDescendantSlugs(pawkitSlug: string, collections: Collection[]): string[] {
-  const pawkit = collections.find((c) => c.slug === pawkitSlug);
-  if (!pawkit) return [];
-
-  const descendants: string[] = [];
-  function findChildren(parentId: string) {
-    const children = collections.filter((c) => c.parentId === parentId && !c.deleted);
-    for (const child of children) {
-      descendants.push(child.slug);
-      findChildren(child._id);
-    }
-  }
-  findChildren(pawkit._id);
-  return descendants;
-}
-
 export default function PawkitDetailPage({ slug }: PawkitDetailPageProps) {
   const navigate = useNavigate();
   const collections = useCollections();
@@ -152,26 +136,15 @@ export default function PawkitDetailPage({ slug }: PawkitDetailPageProps) {
   // Filter cards that belong to this pawkit (cards with this pawkit's slug as a tag)
   // Uses leaf-only display: excludes cards that have a descendant pawkit tag
   // Also applies additional tag and content type filters from the sidebar
+  // @see docs/adr/0001-tags-canonical-membership.md
   const pawkitCards = useMemo(() => {
     if (!collection) return [];
 
-    // Get descendant slugs for leaf-only display
-    const descendantSlugs = getDescendantSlugs(collection.slug, collections);
-
-    // Filter cards that have this pawkit's tag
-    const cardsWithTag = cards.filter((card) => {
-      if (card.deleted) return false;
-      return card.tags?.includes(collection.slug);
-    });
-
-    // Leaf-only: exclude cards that also have a descendant pawkit tag
-    const leafCards = cardsWithTag.filter((card) => {
-      const hasDescendantTag = descendantSlugs.some((d) => card.tags?.includes(d));
-      return !hasDescendantTag;
-    });
+    // Get cards in this Pawkit using centralized helper (leaf-only by default)
+    const cardsInPawkit = getCardsInPawkit(cards, collection.slug, collections);
 
     // Apply content type filter
-    const contentFiltered = leafCards.filter((card) => cardMatchesContentTypes(card, contentTypeFilters));
+    const contentFiltered = cardsInPawkit.filter((card) => cardMatchesContentTypes(card, contentTypeFilters));
 
     // Apply additional tag filters (AND logic - card must have ALL selected tags)
     if (selectedTags.length === 0) return contentFiltered;

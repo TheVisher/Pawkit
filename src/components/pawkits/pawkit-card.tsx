@@ -13,23 +13,7 @@ import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { PawkitContextMenu } from '@/components/context-menus';
 import type { Collection } from '@/lib/types/convex';
 import type { SubPawkitSize, PawkitOverviewSize } from '@/lib/stores/view-store';
-
-// Helper to get all descendant slugs for leaf-only display logic
-function getDescendantSlugs(pawkitSlug: string, collections: Collection[]): string[] {
-  const pawkit = collections.find((c) => c.slug === pawkitSlug);
-  if (!pawkit) return [];
-
-  const descendants: string[] = [];
-  function findChildren(parentId: string) {
-    const children = collections.filter((c) => c.parentId === parentId && !c.deleted);
-    for (const child of children) {
-      descendants.push(child.slug);
-      findChildren(child._id);
-    }
-  }
-  findChildren(pawkit._id);
-  return descendants;
-}
+import { getCardsInPawkit } from '@/lib/utils/pawkit-membership';
 
 interface PawkitCardProps {
   collection: Collection;
@@ -132,23 +116,10 @@ export function PawkitCard({
     transition,
   };
 
-  // Get cards in this Pawkit (using tags)
-  // A card is in a Pawkit if it has the Pawkit's slug as a tag
-  // Uses leaf-only display: excludes cards that have a descendant pawkit tag
+  // Get cards in this Pawkit using centralized helper (leaf-only by default)
+  // @see docs/adr/0001-tags-canonical-membership.md
   const collectionCards = useMemo(() => {
-    // Get descendant slugs for leaf-only display
-    const descendantSlugs = getDescendantSlugs(collection.slug, collections);
-
-    // Filter cards that have this pawkit's tag
-    const cardsWithTag = cards.filter(
-      (card) => card.tags?.includes(collection.slug) && !card.deleted
-    );
-
-    // Leaf-only: exclude cards that also have a descendant pawkit tag
-    return cardsWithTag.filter((card) => {
-      const hasDescendantTag = descendantSlugs.some((d) => card.tags?.includes(d));
-      return !hasDescendantTag;
-    });
+    return getCardsInPawkit(cards, collection.slug, collections);
   }, [cards, collections, collection.slug]);
 
   // Get child collections count

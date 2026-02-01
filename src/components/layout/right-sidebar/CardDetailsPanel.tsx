@@ -36,6 +36,7 @@ import {
 import type { Card, Collection, Id } from '@/lib/types/convex';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useCardById } from '@/lib/contexts/convex-data-context';
+import { buildPawkitSlugSet } from '@/lib/utils/pawkit-membership';
 
 type CardDetailTab = 'details' | 'notes' | 'chat';
 
@@ -55,7 +56,7 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
   const [copied, setCopied] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [isEditingPawkits, setIsEditingPawkits] = useState(false);
-  const { updateCard } = useMutations();
+  const { updateCard, addCardToCollection, removeCardFromCollection } = useMutations();
   const { cardDetailTab, setTab } = useCardDetailSidebar();
   const visualStyle = useSettingsStore((s) => s.visualStyle);
   const isHighContrast = visualStyle === 'highContrast';
@@ -199,6 +200,8 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
             handleTagsChange={handleTagsChange}
             handleContentChange={handleContentChange}
             updateCard={updateCard}
+            addCardToCollection={addCardToCollection}
+            removeCardFromCollection={removeCardFromCollection}
           />
         )}
         {cardDetailTab === 'notes' && <NotesTabContent card={card} />}
@@ -243,6 +246,8 @@ interface DetailsTabContentProps {
   handleTagsChange: (tags: string[]) => void;
   handleContentChange: (content: string) => void;
   updateCard: (id: string | Id<'cards'>, updates: Partial<Card>) => Promise<void>;
+  addCardToCollection: (collectionId: Id<'collections'>, cardId: Id<'cards'>) => Promise<void>;
+  removeCardFromCollection: (collectionId: Id<'collections'>, cardId: Id<'cards'>) => Promise<void>;
 }
 
 function DetailsTabContent({
@@ -261,9 +266,15 @@ function DetailsTabContent({
   handleTagsChange,
   handleContentChange,
   updateCard,
+  addCardToCollection,
+  removeCardFromCollection,
 }: DetailsTabContentProps) {
   // Get triggerMuuriLayout for Pawkit tag changes
   const triggerMuuriLayout = useUIStore((s) => s.triggerMuuriLayout);
+
+  // Build Pawkit slugs set using helper
+  // @see docs/adr/0001-tags-canonical-membership.md
+  const pawkitSlugs = useMemo(() => buildPawkitSlugSet(collections), [collections]);
 
   return (
     <div className="space-y-4">
@@ -467,6 +478,8 @@ function DetailsTabContent({
       )}
 
       {/* Pawkit (Collection) Section */}
+      {/* Route all membership changes through collections.addCard/removeCard */}
+      {/* @see docs/adr/0001-tags-canonical-membership.md */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-text-muted">
@@ -485,9 +498,8 @@ function DetailsTabContent({
         </div>
         {/* Filter card.tags to only show Pawkit tags (tags that match a Pawkit slug) */}
         {(() => {
-          const pawkitSlugs = new Set(collections.map(c => c.slug));
           const cardPawkitTags = (card.tags || []).filter(tag => pawkitSlugs.has(tag));
-          const availablePawkits = collections.filter(c => !cardPawkitTags.includes(c.slug));
+          const availablePawkits = collections.filter(c => !c.deleted && !cardPawkitTags.includes(c.slug));
 
           if (isEditingPawkits) {
             return (
@@ -504,11 +516,12 @@ function DetailsTabContent({
                         >
                           {collection?.name || collectionSlug}
                           <button
-                            onClick={() => {
-                              const newTags = (card.tags || []).filter(t => t !== collectionSlug);
-                              updateCard(card._id, { tags: newTags });
-                              // Trigger layout refresh after React re-renders
-                              setTimeout(() => triggerMuuriLayout(), 100);
+                            onClick={async () => {
+                              if (collection) {
+                                await removeCardFromCollection(collection._id, card._id);
+                                // Trigger layout refresh after React re-renders
+                                setTimeout(() => triggerMuuriLayout(), 100);
+                              }
                             }}
                             className="opacity-60 hover:opacity-100 hover:text-red-400 transition-opacity"
                           >
@@ -527,9 +540,8 @@ function DetailsTabContent({
                       {availablePawkits.map((collection) => (
                         <button
                           key={collection._id}
-                          onClick={() => {
-                            const newTags = [...(card.tags || []), collection.slug];
-                            updateCard(card._id, { tags: newTags });
+                          onClick={async () => {
+                            await addCardToCollection(collection._id, card._id);
                             // Trigger layout refresh after React re-renders
                             setTimeout(() => triggerMuuriLayout(), 100);
                           }}

@@ -1,14 +1,19 @@
 'use client';
 
 import { useDndMonitor, DragEndEvent } from '@dnd-kit/core';
-import { useMutations, useCards } from '@/lib/contexts/convex-data-context';
+import { useMutations, useCards, useCollections } from '@/lib/contexts/convex-data-context';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { isCardInPawkit } from '@/lib/utils/pawkit-membership';
 
 export function CardsDragHandler() {
-    const { updateCard } = useMutations();
+    const { addCardToCollection } = useMutations();
     const cards = useCards();
+    const collections = useCollections();
     const toast = useToastStore((state) => state.toast);
 
+    // Route all membership changes through collections.addCard
+    // This ensures tags and collectionNotes stay in sync
+    // @see docs/adr/0001-tags-canonical-membership.md
     useDndMonitor({
         onDragEnd: async (event: DragEndEvent) => {
             const { active, over } = event;
@@ -32,14 +37,16 @@ export function CardsDragHandler() {
                     const card = cards.find((c) => c._id === cardId);
                     if (!card) return;
 
-                    const currentTags = card.tags || [];
-                    if (currentTags.includes(collectionSlug)) {
+                    // Check if already in collection using helper
+                    if (isCardInPawkit(card, collectionSlug)) {
                         return;
                     }
 
-                    await updateCard(card._id, {
-                        tags: [...currentTags, collectionSlug],
-                    });
+                    // Find the collection by slug
+                    const collection = collections.find((c) => c.slug === collectionSlug);
+                    if (!collection) return;
+
+                    await addCardToCollection(collection._id, card._id);
 
                     toast({
                         type: 'success',

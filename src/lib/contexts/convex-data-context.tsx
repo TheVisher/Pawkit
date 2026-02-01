@@ -23,6 +23,7 @@ import {
   type CalendarEvent,
   type CardUpdate,
 } from '@/lib/types/convex';
+import { filterNonPrivateCards } from '@/lib/utils/pawkit-membership';
 
 // =============================================================================
 // CONTEXT TYPES
@@ -32,6 +33,8 @@ interface DataContextValue {
   cards: Card[];
   collections: Collection[];
   calendarEvents: CalendarEvent[];
+  /** Slugs of private collections - used to filter cards client-side */
+  privateCollectionSlugs: string[];
   isLoading: boolean;
   /** True when all cards have been loaded */
   isFullyLoaded: boolean;
@@ -145,13 +148,23 @@ export function ConvexDataProvider({ children }: ConvexDataProviderProps) {
   // QUERIES - Real-time subscriptions via Convex
   // ==========================================================================
 
+  // Fetch ALL cards - filtering for private collections happens client-side
+  // This allows pawkit-detail to show cards in private Pawkits while
+  // Library/Search/Omnibar can filter them out using privateCollectionSlugs
   const cards = useQuery(
     api.cards.list,
-    workspaceId ? { workspaceId } : 'skip'
+    workspaceId ? { workspaceId, includePrivate: true } : 'skip'
   );
 
+  // Include private collections for sidebar/pawkits tree (owner can see their own private collections)
   const collections = useQuery(
     api.collections.list,
+    workspaceId ? { workspaceId, includePrivate: true } : 'skip'
+  );
+
+  // Get slugs of private collections for client-side card filtering
+  const privateCollectionSlugs = useQuery(
+    api.collections.listPrivateSlugs,
     workspaceId ? { workspaceId } : 'skip'
   );
 
@@ -187,7 +200,7 @@ export function ConvexDataProvider({ children }: ConvexDataProviderProps) {
   // LOADING STATE
   // ==========================================================================
 
-  const isLoading = !workspaceId || cards === undefined || collections === undefined;
+  const isLoading = !workspaceId || cards === undefined || collections === undefined || privateCollectionSlugs === undefined;
   const isFullyLoaded = cards !== undefined;
 
   // ==========================================================================
@@ -294,11 +307,12 @@ export function ConvexDataProvider({ children }: ConvexDataProviderProps) {
       cards: cards ?? [],
       collections: collections ?? [],
       calendarEvents: calendarEvents ?? [],
+      privateCollectionSlugs: privateCollectionSlugs ?? [],
       isLoading,
       isFullyLoaded,
       workspaceId,
     }),
-    [cards, collections, calendarEvents, isLoading, isFullyLoaded, workspaceId]
+    [cards, collections, calendarEvents, privateCollectionSlugs, isLoading, isFullyLoaded, workspaceId]
   );
 
   return (
@@ -349,10 +363,31 @@ export function useIsInDataProvider(): boolean {
 
 /**
  * Get all cards for the current workspace (from context)
+ * NOTE: This includes cards in private collections. For most views
+ * (Library, Search, Omnibar), use useNonPrivateCards() instead.
  */
 export function useCards(): Card[] {
   const context = useContext(DataContext);
   return context?.cards ?? [];
+}
+
+/**
+ * Get cards excluding those in private collections.
+ * Use this for Library, Search, Omnibar, and other views that should
+ * not show cards from private Pawkits.
+ *
+ * @see docs/adr/0001-tags-canonical-membership.md
+ */
+export function useNonPrivateCards(): Card[] {
+  const context = useContext(DataContext);
+  const cards = context?.cards ?? [];
+  const privateSlugs = context?.privateCollectionSlugs ?? [];
+
+  return useMemo(() => {
+    if (privateSlugs.length === 0) return cards;
+    const privateSlugsSet = new Set(privateSlugs);
+    return filterNonPrivateCards(cards, privateSlugsSet);
+  }, [cards, privateSlugs]);
 }
 
 /**
@@ -369,6 +404,14 @@ export function useCollections(): Collection[] {
 export function useCalendarEvents(): CalendarEvent[] {
   const context = useContext(DataContext);
   return context?.calendarEvents ?? [];
+}
+
+/**
+ * Get slugs of private collections.
+ */
+export function usePrivateCollectionSlugs(): string[] {
+  const context = useContext(DataContext);
+  return context?.privateCollectionSlugs ?? [];
 }
 
 /**

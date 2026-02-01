@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/cards/empty-state';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { cn } from '@/lib/utils';
 import type { Collection } from '@/lib/types/convex';
+import { buildPawkitSlugSet } from '@/lib/utils/pawkit-membership';
 
 export default function PawkitsPage() {
   const workspace = useCurrentWorkspace();
@@ -43,8 +44,9 @@ export default function PawkitsPage() {
   const [activeCollection, setActiveCollection] = useState<Collection | null>(null);
 
   // Build set of valid Pawkit slugs
+  // @see docs/adr/0001-tags-canonical-membership.md
   const pawkitSlugs = useMemo(() => {
-    return new Set(collections.map((c) => c.slug));
+    return buildPawkitSlugSet(collections);
   }, [collections]);
 
   // Calculate card counts per Pawkit (using tags)

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Drawer } from 'vaul';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import {
   type GroupBy,
   type DateGrouping,
 } from '@/components/layout/right-sidebar/config';
+import { buildPawkitSlugSet, isCardInAnyPawkit } from '@/lib/utils/pawkit-membership';
 
 // Import components from right-sidebar sections
 import {
@@ -61,22 +62,22 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
   const cards = useCards();
   const collections = useCollections();
 
-  // Build set of Pawkit slugs to check if card has any Pawkit tags
-  const pawkitSlugs = new Set(collections.map((c) => c.slug));
+  // Build set of Pawkit slugs using helper
+  // @see docs/adr/0001-tags-canonical-membership.md
+  const pawkitSlugs = useMemo(() => buildPawkitSlugSet(collections), [collections]);
 
-  const { sortedTags, noTagsCount, noPawkitsCount } = (() => {
+  const { sortedTags, noTagsCount, noPawkitsCount } = useMemo(() => {
     const tagCounts = new Map<string, number>();
     let noTags = 0;
     let noPawkits = 0;
     for (const card of cards) {
       if (card.deleted) continue;
       const tags = card.tags || [];
-      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
-      const hasAnyPawkitTag = tags.some((tag) => pawkitSlugs.has(tag));
       if (tags.length === 0) {
         noTags++;
       }
-      if (!hasAnyPawkitTag) {
+      // Use centralized helper for Pawkit membership check
+      if (!isCardInAnyPawkit(card, pawkitSlugs)) {
         noPawkits++;
       }
       for (const tag of tags) {
@@ -87,7 +88,7 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([tag, count]) => ({ tag, count }));
     return { sortedTags: sorted, noTagsCount: noTags, noPawkitsCount: noPawkits };
-  })();
+  }, [cards, pawkitSlugs]);
 
   const handleSettingChange = () => {
     if (workspace) {
