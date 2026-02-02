@@ -2,6 +2,7 @@ import { internalAction, action } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import * as cheerio from "cheerio";
+import { needsImagePersistence } from "./lib/expiringUrls";
 
 // =================================================================
 // METADATA SCRAPING ACTIONS
@@ -33,6 +34,16 @@ export const scrape = internalAction({
         status: "READY",
         metadata: metadata.raw || undefined,
       });
+
+      // Schedule image persistence if the image URL will expire
+      if (needsImagePersistence(metadata.image)) {
+        console.log("[Metadata] Scheduling image persistence for expiring URL:", cardId);
+        // Schedule with 2 second delay to avoid overwhelming the system
+        await ctx.scheduler.runAfter(2000, internal.storage.persistImageInternal, {
+          cardId,
+          imageUrl: metadata.image!,
+        });
+      }
     } catch (error) {
       console.error("Failed to scrape metadata for card:", cardId, error);
 

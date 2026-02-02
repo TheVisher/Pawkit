@@ -38,6 +38,59 @@ function getCorsHeaders(requestOrigin?: string | null) {
   };
 }
 
+/**
+ * Check if an origin is from a browser extension.
+ * Extensions use chrome-extension://, moz-extension://, safari-extension://, etc.
+ */
+function isBrowserExtensionOrigin(origin: string): boolean {
+  return (
+    origin.startsWith("chrome-extension://") ||
+    origin.startsWith("moz-extension://") ||
+    origin.startsWith("safari-extension://") ||
+    origin.startsWith("safari-web-extension://")
+  );
+}
+
+/**
+ * Check if the request origin is allowed for state-changing operations.
+ * Returns a 403 response if origin is not allowed.
+ * This is a defense-in-depth measure against CSRF.
+ *
+ * Allowed origins:
+ * - null (server-to-server, curl - no cookies so no CSRF risk)
+ * - ALLOWED_ORIGINS list (web app domains)
+ * - Browser extension origins (chrome-extension://, moz-extension://, etc.)
+ */
+function enforceOrigin(requestOrigin: string | null): Response | null {
+  // Allow requests with no origin (e.g., server-to-server, curl)
+  // These won't have cookies anyway so CSRF isn't a concern
+  if (!requestOrigin) {
+    return null;
+  }
+
+  // Check if origin is in allowed list
+  if (ALLOWED_ORIGINS.includes(requestOrigin)) {
+    return null;
+  }
+
+  // Allow browser extension origins
+  if (isBrowserExtensionOrigin(requestOrigin)) {
+    return null;
+  }
+
+  // Unknown origin - reject
+  return new Response(
+    JSON.stringify({ error: "Origin not allowed" }),
+    {
+      status: 403,
+      headers: {
+        "Content-Type": "application/json",
+        // Don't include CORS headers for rejected origins
+      },
+    }
+  );
+}
+
 function jsonResponse(data: unknown, status = 200, requestOrigin?: string | null): Response {
   return new Response(JSON.stringify(data), {
     status,
@@ -66,12 +119,15 @@ function rateLimitResponse(retryAfter: number, requestOrigin?: string | null): R
 /**
  * Check and record rate limit for a request.
  * Returns null if allowed, or a Response if rate limited.
+ *
+ * @param isExtension - If true, uses extension CORS headers for rate limit response
  */
 async function checkRateLimit(
   ctx: any,
   request: Request,
   endpoint: string,
-  origin: string | null
+  origin: string | null,
+  isExtension = false
 ): Promise<Response | null> {
   const ip = getClientIp(request);
   const now = Date.now();
@@ -85,7 +141,10 @@ async function checkRateLimit(
     });
 
     if (!result.allowed) {
-      return rateLimitResponse(result.retryAfter || 60, origin);
+      // Use appropriate CORS headers for the response type
+      return isExtension
+        ? extensionRateLimitResponse(result.retryAfter || 60, origin)
+        : rateLimitResponse(result.retryAfter || 60, origin);
     }
 
     // Record this request (non-blocking, don't fail if recording fails due to OCC)
@@ -190,6 +249,11 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Origin enforcement for CSRF protection
+    const originRejected = enforceOrigin(origin);
+    if (originRejected) return originRejected;
+
     try {
       // Rate limiting
       const rateLimited = await checkRateLimit(ctx, request, "/api/metadata", origin);
@@ -227,6 +291,11 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Origin enforcement for CSRF protection
+    const originRejected = enforceOrigin(origin);
+    if (originRejected) return originRejected;
+
     try {
       // Rate limiting
       const rateLimited = await checkRateLimit(ctx, request, "/api/article", origin);
@@ -264,6 +333,11 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Origin enforcement for CSRF protection
+    const originRejected = enforceOrigin(origin);
+    if (originRejected) return originRejected;
+
     try {
       // Rate limiting
       const rateLimited = await checkRateLimit(ctx, request, "/api/link-check", origin);
@@ -543,11 +617,8 @@ const EXTENSION_ALLOWED_ORIGINS = [
 ];
 
 function getExtensionCorsHeaders(requestOrigin?: string | null) {
-  // Allow any chrome-extension:// or moz-extension:// origin
-  if (requestOrigin && (
-    requestOrigin.startsWith("chrome-extension://") ||
-    requestOrigin.startsWith("moz-extension://")
-  )) {
+  // Allow any browser extension origin (Chrome, Firefox, Safari)
+  if (requestOrigin && isBrowserExtensionOrigin(requestOrigin)) {
     return {
       "Access-Control-Allow-Origin": requestOrigin,
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -571,6 +642,17 @@ function extensionJsonResponse(data: unknown, status = 200, requestOrigin?: stri
 
 function extensionErrorResponse(error: string, status = 400, requestOrigin?: string | null): Response {
   return extensionJsonResponse({ error }, status, requestOrigin);
+}
+
+function extensionRateLimitResponse(retryAfter: number, requestOrigin?: string | null): Response {
+  return new Response(JSON.stringify({ error: "Too many requests" }), {
+    status: 429,
+    headers: {
+      "Content-Type": "application/json",
+      "Retry-After": String(retryAfter),
+      ...getExtensionCorsHeaders(requestOrigin),
+    },
+  });
 }
 
 /**
@@ -654,6 +736,13 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Rate limiting for auth endpoint (use extension CORS for 429 response)
+    const rateLimitResponse = await checkRateLimit(ctx, request, "/api/auth/extension", origin, true);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     try {
       const body = await request.json();
       const { token } = body as { token?: string };
@@ -694,6 +783,11 @@ http.route({
   method: "GET",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Rate limiting (use extension CORS for 429 response)
+    const rateLimited = await checkRateLimit(ctx, request, "/api/workspaces", origin, true);
+    if (rateLimited) return rateLimited;
+
     try {
       const auth = await validateExtensionAuth(ctx, request);
       if (!auth) {
@@ -732,6 +826,11 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Rate limiting (use extension CORS for 429 response)
+    const rateLimited = await checkRateLimit(ctx, request, "/api/cards", origin, true);
+    if (rateLimited) return rateLimited;
+
     try {
       const auth = await validateExtensionAuth(ctx, request);
       if (!auth) {
@@ -789,9 +888,9 @@ http.route({
         card: { id: cardId },
       }, 201, origin);
     } catch (error) {
+      // Log full error for debugging, but don't expose internals to client
       console.error("[Extension Cards] Error:", error);
-      const message = error instanceof Error ? error.message : "Failed to create card";
-      return extensionErrorResponse(message, 500, origin);
+      return extensionErrorResponse("Failed to create card", 500, origin);
     }
   }),
 });
@@ -809,6 +908,11 @@ http.route({
   method: "GET",
   handler: httpAction(async (ctx, request) => {
     const origin = request.headers.get("origin");
+
+    // Rate limiting (use extension CORS for 429 response)
+    const rateLimited = await checkRateLimit(ctx, request, "/api/collections", origin, true);
+    if (rateLimited) return rateLimited;
+
     try {
       const auth = await validateExtensionAuth(ctx, request);
       if (!auth) {

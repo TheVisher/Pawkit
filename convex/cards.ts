@@ -10,6 +10,7 @@ import { requireWorkspaceAccess } from "./users";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { validateExternalUrl } from "./urlValidation";
+import { needsImagePersistence } from "./lib/expiringUrls";
 
 // =================================================================
 // CONTENT HELPERS
@@ -1095,10 +1096,23 @@ export const createFromExtension = internalMutation({
       }
     }
 
-    // Schedule metadata scraping if needed
+    // Schedule metadata scraping if no image provided
     if (args.url && !args.image) {
       try {
         await ctx.scheduler.runAfter(0, internal.metadata.scrape, { cardId });
+      } catch {
+        // Ignore scheduling errors
+      }
+    }
+
+    // If image was provided and it's from an expiring CDN, persist it
+    if (args.image && needsImagePersistence(args.image)) {
+      try {
+        console.log("[Cards] Scheduling image persistence for extension card:", cardId);
+        await ctx.scheduler.runAfter(2000, internal.storage.persistImageInternal, {
+          cardId,
+          imageUrl: args.image,
+        });
       } catch {
         // Ignore scheduling errors
       }

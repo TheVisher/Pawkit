@@ -18,7 +18,7 @@
  */
 
 import { v } from "convex/values";
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { Id } from "./_generated/dataModel";
@@ -138,6 +138,40 @@ const DOWNLOAD_TIMEOUT_MS = 10000; // 10 seconds
 const MAX_DOWNLOAD_SIZE_BYTES = 5 * 1024 * 1024; // 5MB limit for fetched images
 
 /**
+ * Check if a blob is likely an image by examining its magic bytes.
+ * Only used when content-type is ambiguous (empty or octet-stream).
+ * Supports JPEG, PNG, GIF, and WebP formats.
+ */
+async function isLikelyImage(blob: Blob): Promise<boolean> {
+  // Guard: need at least 12 bytes for WebP check
+  if (blob.size < 12) return false;
+
+  const header = await blob.slice(0, 12).arrayBuffer();
+  const bytes = new Uint8Array(header);
+
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true;
+  // GIF: 47 49 46 38
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return true;
+  // WebP: 52 49 46 46 ... 57 45 42 50
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45 &&
+    bytes[10] === 0x42 &&
+    bytes[11] === 0x50
+  )
+    return true;
+
+  return false;
+}
+
+/**
  * Persist an image from an expiring URL to Convex storage.
  * This action downloads the image and stores it permanently.
  *
@@ -209,11 +243,22 @@ export const persistImageFromUrl = action({
       }
 
       // Update the card with the internal mutation
-      await ctx.runMutation(internal.storage.updateCardWithStoredImage, {
-        cardId,
-        storageId,
-        imageUrl: permanentUrl,
-      });
+      // Pass originalImageUrl so we can check if user edited it since scheduling
+      const result: { updated: boolean; reason?: string } = await ctx.runMutation(
+        internal.storage.updateCardWithStoredImage,
+        {
+          cardId,
+          storageId,
+          imageUrl: permanentUrl,
+          originalImageUrl: imageUrl,
+        }
+      );
+
+      // Check if update was skipped (expected behavior, not an error)
+      if (!result.updated) {
+        console.log("[Storage] Update skipped:", result.reason);
+        return { success: true, skipped: true, reason: result.reason };
+      }
 
       console.log("[Storage] Successfully persisted image:", cardId);
       return { success: true, imageUrl: permanentUrl };
@@ -231,19 +276,40 @@ export const persistImageFromUrl = action({
 /**
  * Internal mutation to update a card with a stored image.
  * Called by the persistImageFromUrl action.
+ *
+ * Safety checks:
+ * - Card must still exist and not be deleted
+ * - Original image URL must match (avoid overwriting user edits)
  */
 export const updateCardWithStoredImage = internalMutation({
   args: {
     cardId: v.id("cards"),
     storageId: v.id("_storage"),
     imageUrl: v.string(),
+    originalImageUrl: v.optional(v.string()),
   },
-  handler: async (ctx, { cardId, storageId, imageUrl }) => {
+  handler: async (ctx, { cardId, storageId, imageUrl, originalImageUrl }) => {
+    const card = await ctx.db.get(cardId);
+
+    // Safety: Don't update if card was deleted or doesn't exist
+    if (!card || card.deleted) {
+      console.log("[Storage] Card not found or deleted, skipping update:", cardId);
+      return { updated: false, reason: "card_not_found" };
+    }
+
+    // Safety: Don't overwrite if user has changed the image since scheduling
+    if (originalImageUrl && card.image !== originalImageUrl) {
+      console.log("[Storage] Card image changed since scheduling, skipping update:", cardId);
+      return { updated: false, reason: "image_changed" };
+    }
+
     await ctx.db.patch(cardId, {
       storageId,
       image: imageUrl,
       updatedAt: Date.now(),
     });
+
+    return { updated: true };
   },
 });
 
@@ -274,3 +340,122 @@ function isPrivateHost(host: string): boolean {
 
   return false;
 }
+
+// =============================================================================
+// INTERNAL IMAGE PERSISTENCE (for server-to-server calls)
+// =============================================================================
+
+/**
+ * Internal action to persist an image from an expiring URL.
+ * Called by the metadata scraper - no auth required since it's server-to-server.
+ */
+export const persistImageInternal = internalAction({
+  args: {
+    cardId: v.id("cards"),
+    imageUrl: v.string(),
+  },
+  handler: async (ctx, { cardId, imageUrl }) => {
+    console.log("[Storage] Persisting image for card (internal):", cardId);
+
+    try {
+      const parsedUrl = new URL(imageUrl);
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+        console.warn("[Storage] Unsupported protocol:", parsedUrl.protocol);
+        return { success: false, error: "Unsupported URL protocol" };
+      }
+
+      const host = parsedUrl.hostname.toLowerCase();
+      if (host === "localhost" || host === "::1") {
+        return { success: false, error: "Local URLs are not allowed" };
+      }
+      if (isPrivateHost(host)) {
+        return { success: false, error: "Private network URLs are not allowed" };
+      }
+
+      // Download the image with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DOWNLOAD_TIMEOUT_MS);
+
+      const response = await fetch(imageUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        console.warn("[Storage] Download failed with status:", response.status);
+        return { success: false, error: `Download failed: ${response.status}` };
+      }
+
+      const blob = await response.blob();
+
+      // Validate file size before storing
+      if (blob.size > MAX_DOWNLOAD_SIZE_BYTES) {
+        console.warn("[Storage] Image too large:", blob.size, "bytes");
+        return { success: false, error: "Image exceeds 5MB size limit" };
+      }
+
+      // Validate content-type
+      const contentType = response.headers.get("content-type") || "";
+
+      // Clear image types pass through
+      if (contentType.startsWith("image/")) {
+        // Explicitly valid
+      } else if (
+        contentType === "application/octet-stream" ||
+        contentType === "" ||
+        contentType === "binary/octet-stream"
+      ) {
+        // Ambiguous content-type: validate with magic bytes to avoid storing HTML as image
+        if (!(await isLikelyImage(blob))) {
+          console.warn("[Storage] Magic byte check failed for ambiguous content-type:", contentType);
+          return { success: false, error: "URL does not return a recognizable image format" };
+        }
+      } else {
+        console.warn("[Storage] Unexpected content-type:", contentType);
+        return { success: false, error: "URL does not return an image" };
+      }
+
+      // Store in Convex storage
+      const storageId = await ctx.storage.store(blob);
+
+      // Get the permanent URL
+      const permanentUrl = await ctx.storage.getUrl(storageId);
+      if (!permanentUrl) {
+        return { success: false, error: "Failed to get storage URL" };
+      }
+
+      // Update the card with the internal mutation
+      // Pass originalImageUrl so we can check if user edited it since scheduling
+      const result: { updated: boolean; reason?: string } = await ctx.runMutation(
+        internal.storage.updateCardWithStoredImage,
+        {
+          cardId,
+          storageId,
+          imageUrl: permanentUrl,
+          originalImageUrl: imageUrl,
+        }
+      );
+
+      // Check if update was skipped (expected behavior, not an error)
+      if (!result.updated) {
+        console.log("[Storage] Update skipped:", result.reason);
+        return { success: true, skipped: true, reason: result.reason };
+      }
+
+      console.log("[Storage] Successfully persisted image:", cardId, "->", permanentUrl.substring(0, 60));
+      return { success: true, imageUrl: permanentUrl };
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.warn("[Storage] Download timed out for card:", cardId);
+        return { success: false, error: "Download timed out" };
+      }
+      console.error("[Storage] Persistence error for card:", cardId, error);
+      return { success: false, error: String(error) };
+    }
+  },
+});

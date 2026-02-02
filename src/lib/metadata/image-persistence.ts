@@ -29,9 +29,18 @@ const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10MB limit for client uploads
 // Domains known to have expiring image URLs
 const EXPIRING_DOMAINS = [
   'tiktokcdn.com',          // TikTok CDN (any subdomain)
-  'scontent.cdninstagram.com',
-  'cdn.discordapp.com/attachments',
+  'tiktokcdn-us.com',       // TikTok US CDN
+  'tiktokv.com',            // TikTok video CDN
+  'fbcdn.net',              // Facebook CDN
+  'cdninstagram.com',       // Instagram CDN
+  'scontent.cdninstagram.com', // Instagram content CDN
+  'discordapp.com',         // Discord attachments
+  'discord.com',            // Discord CDN
   'pbs.twimg.com',          // Twitter/X images
+  'twimg.com',              // Twitter CDN
+  'redd.it',                // Reddit short URLs
+  'redditmedia.com',        // Reddit media CDN
+  'preview.redd.it',        // Reddit preview images
 ];
 
 // URL params that indicate expiring URLs

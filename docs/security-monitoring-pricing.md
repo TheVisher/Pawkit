@@ -51,11 +51,11 @@ any paid services - they're code/configuration changes only.
 
 ### CSRF Protection (OWASP A01 - was missing)
 - [x] SameSite cookie attribute properly configured — *@convex-dev/auth*
-- [x] Origin header validation on mutations — *convex/http.ts CORS whitelist*
+- [x] Origin header validation on mutations — *convex/http.ts enforceOrigin() + CORS whitelist*
 
 ### Auth + Account Safety (original - good)
 - [x] Password reset flow works end-to-end — *convex/passwordReset.ts (OTP via Resend)*
-- [x] Rate-limit auth endpoints — *convex/rateLimit.ts (IP-based sliding window)*
+- [x] Rate-limit auth endpoints — *Custom HTTP endpoints in convex/rateLimit.ts; see Assumption 1 below*
 - [x] Revoke sessions/tokens on password reset and account deletion — *@convex-dev/auth + users.ts*
 
 ### Authorization (original - good)
@@ -91,6 +91,30 @@ any paid services - they're code/configuration changes only.
 All items above are code/configuration. No paid services required.
 
 **Status: 30/30 items complete (2026-02-01).**
+
+### Known Assumptions (MVP Tradeoffs)
+
+The following are conscious tradeoffs accepted for MVP launch:
+
+**Assumption 1: Auth provider routes not custom rate-limited**
+The auth routes added by `@convex-dev/auth` (login, signup, password reset) are not wrapped by
+our custom rate limiter in `convex/rateLimit.ts`. We rely on Convex Cloud infrastructure-level
+protections for these endpoints. Our custom rate limiting covers the extension API endpoints
+(`/api/auth/extension`, `/api/cards`, `/api/workspaces`, `/api/collections`) and metadata
+endpoints (`/api/metadata`, `/api/article`, `/api/link-check`).
+
+**Assumption 2: Any browser extension origin allowed**
+The `enforceOrigin()` function allows any browser extension origin (`chrome-extension://`,
+`moz-extension://`, `safari-extension://`, etc.), not just the Pawkit extension specifically.
+This is acceptable because:
+- Public endpoints (`/api/metadata`, etc.) are rate-limited
+- Authenticated endpoints require valid bearer tokens regardless of origin
+- Restricting to specific extension IDs would require maintaining a list across browsers
+  and would break if IDs change
+
+**Monitoring item:** Verify in production logs that Convex sets `x-forwarded-for` headers for
+extension requests. If missing, all extension users would share a single rate-limit bucket
+(IP = "unknown"). This is degraded but functional behavior.
 
 ---
 
@@ -322,7 +346,7 @@ Add when revenue exceeds ~$1000/mo:
 | CSRF protection | A01 | $0 | [x] SameSite cookies + CORS |
 | Secure cookie flags | A07 | $0 | [x] HttpOnly, Secure, SameSite |
 | Parameterized queries | A03 | $0 | [x] Convex by design |
-| Rate limiting on auth | A07 | $0 | [x] convex/rateLimit.ts |
+| Rate limiting on auth | A07 | $0 | [x] Custom endpoints; auth provider routes rely on Convex infra (see Assumption 1) |
 | Input validation | A03 | $0 | [x] SSRF + XSS + file limits |
 | Secrets in env vars only | A05 | $0 | [x] .env in .gitignore |
 

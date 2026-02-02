@@ -10,6 +10,12 @@ import { internalMutation, internalQuery } from "./_generated/server";
 
 // Rate limit configurations per endpoint
 export const RATE_LIMITS: Record<string, { limit: number; windowMs: number }> = {
+  // Auth endpoints - stricter limits to prevent brute force
+  "/api/auth/extension": { limit: 10, windowMs: 60_000 }, // 10 req/min - token validation
+  "/api/cards": { limit: 60, windowMs: 60_000 }, // 60 req/min - card creation
+  "/api/workspaces": { limit: 30, windowMs: 60_000 }, // 30 req/min - workspace listing
+  "/api/collections": { limit: 30, windowMs: 60_000 }, // 30 req/min - collection listing
+  // Metadata endpoints
   "/api/metadata": { limit: 30, windowMs: 60_000 }, // 30 req/min - expensive scraping
   "/api/article": { limit: 20, windowMs: 60_000 }, // 20 req/min - heavy processing
   "/api/link-check": { limit: 50, windowMs: 60_000 }, // 50 req/min - batch operations

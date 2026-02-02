@@ -17,6 +17,7 @@ import type * as connectedAccountsInternal from "../connectedAccountsInternal.js
 import type * as crons from "../crons.js";
 import type * as events from "../events.js";
 import type * as http from "../http.js";
+import type * as lib_expiringUrls from "../lib/expiringUrls.js";
 import type * as linkCheck from "../linkCheck.js";
 import type * as metadata from "../metadata.js";
 import type * as passwordReset from "../passwordReset.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   events: typeof events;
   http: typeof http;
+  "lib/expiringUrls": typeof lib_expiringUrls;
   linkCheck: typeof linkCheck;
   metadata: typeof metadata;
   passwordReset: typeof passwordReset;
